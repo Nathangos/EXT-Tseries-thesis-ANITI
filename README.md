@@ -1,6 +1,8 @@
 # EXT-Tseries-ANITI
+This repository has two branches: 1)the main branch which deals with udpated works on the simulation of extreme time series for wind speed and (2) the multivariate branch which deals with the multivariate adaptation.
+You are here in the multivariate branch. [THE BRANCH IS STILL IN CONSTRUCTION].
 
-Simulation of multivariate extreme time series accounting for temporal dependence (MV case)
+2) Simulation of multivariate extreme time series accounting for temporal dependence (MV case)
 
 For better modelling surge-induced coastal flooding, we analyse extreme time series and build a simulator of extreme time series. 
 Our main contributions are the following:
