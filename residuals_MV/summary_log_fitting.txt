@@ -1,0 +1,18 @@
+(Note résultats)
+---------------
+alpha=0.86 with model log (Hs-Surcote)<--> coherent with weak extremal dependence;
+seen on the correlation between Hs(t) and Surcote(s). 
+Algo runs for (Surcote-U), normally better results-->0.84. 
+(Hs-U), ~0.69.
+(Hs-U) dépendance asymptotique selon le test de Reiss; (Hs-Surcote) indépendance asymptotique; 
+(Surcote-U) indépendance asymptotique mais moins flagrante. 
+ 
+---------------
++)) 
+Amélioration assez notable des résultats, dépendance par rapport au couple utilisé (niveau de dépendance extrémale); l'algorithme de gradient scoring rule fonctionne (ne dépend pas de la fonction l utilisée donc OK). Travail effectué sur le choix du seuil (méthode croisant les deux outils). 
+Problèmes à régler) Corrélation entre les séries temporelles pleines; niveau ok de corrélation
+mais la trajectoire laisse à désirer. 
+Vient peut-être du modèle logarithme alors que HR est peut-être meileur  
+
+Urgent) convertir dans la bonne échelle le couple des l pour comparer pour le maximum avec 
+la méthode non paramétrique de Legrand. 

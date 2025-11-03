@@ -83,3 +83,50 @@
 # for (nom_s in liste_variable){
 #   Shape_noms<-LISTE_shapes[[nom_s]]
 # }
+# for(t in c(1,19,37)){
+#   for(nameV in l_name){
+#     print(nameV)
+#     St<-Result_MV$orig[[nameV]][,t]
+#     Sub<-Result_MV$resume[[nameV]]
+#     sig_t<-Sub$params_transfo[[t]]$sigma
+#     gam_t<-Sub$params_transfo[[t]]$mu
+#     Kappa_t<-Sub$params_transfo[[t]]$nu
+#     # F emp to provide x values -----------------------------------------------
+#     logemp_fonction<-Ratio_log_model1(gamma = gam_t,sigma_EGPD = sig_t,
+#                                       order_quantiles = Order_quantiles,
+#                                       data = St)
+# 
+#     # Boostrap band -----------------------------------------------------------
+#     Ratio_param_bootstrap<-replicate(n = 100,Ratio_generations_EGPD(gamma = gam_t, sigma = sig_t,
+#                            kappa =Kappa_t,M = length(St),
+#                            order_quantiles = Order_quantiles))
+#     Bound_boot_inf<-as.numeric(apply(Ratio_param_bootstrap,MARGIN = 1,FUN = function(x){
+#       return(as.numeric(quantile(x,0.025)))}))
+#     Bound_boot_sup<-as.numeric(apply(Ratio_param_bootstrap,MARGIN = 1,FUN = function(x){
+#       return(as.numeric(quantile(x,0.975)))}))
+#     Mean_ratio<-mean(logemp_fonction)
+#     df_compar_log_found<-cbind.data.frame(Order_quantiles,
+#                                           logemp_fonction,
+#                                           Bound_boot_inf,
+#                                           Bound_boot_sup)
+#     colnames(df_compar_log_found)<-c("q_lev",
+#                                      "ratio",
+#                                      "bound_inf",
+#                                      "bound_sup")
+#     GG_kt<-ggplot(data=df_compar_log_found,aes(x=q_lev,y=ratio))+
+#       geom_point(aes(col="ratio"))+
+#       geom_hline(aes(yintercept = Mean_ratio,col="mean_ratio"))+
+#       geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,linetype="confidence_band"),
+#                   alpha=0.02,fill="grey",col="darkblue")+
+#       scale_color_manual(values=c("ratio"="blue",
+#                                   "mean_ratio"="red",
+#                                   "confidence_band"="darkblue"))+
+#       scale_linetype_manual("Legend",values=c("confidence_band"=2,
+#                                               "mean"=5))+
+#       ylab("ratio")+xlab("quantile order")+
+#       labs(col="Legend")
+#     ggsave(filename = paste0("graphiques_MV/EGPD_fitting/",nameV,"/ComparQ_",nameV,"_t=",t,".png"),
+#            plot = GG_kt)
+#   }
+# 
+# }

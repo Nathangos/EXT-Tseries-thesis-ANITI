@@ -1,0 +1,521 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+rm(list=ls())
+set.seed(133)
+par(mfrow=c(1,1))
+
+#### Import of packages #####
+require(dplyr)
+require(ggplot2)
+require(reshape2)
+require(FactoMineR)
+require(extRemes)
+require(fda)
+require(parallel)
+require(VineCopula)
+require(grid)
+require(gridExtra)
+require(mvPot)
+require(ggside)
+require(mev)
+
+```
+
+
+```{r}
+### Import of the functions ####
+#Functions from univariate case. 
+source("../../fonctions/fonctions_Pareto.R")
+source("../../fonctions/fonctions.r")
+source("../../fonctions/fonctions_r_pareto_EVOLTAU.r")
+
+# Specific multivariate functions. 
+source("../functions_MV/function_simul_MV.r")
+source("../functions_MV/F_simulations_cond.R")
+
+# Import G pareto functions. ---------------------------------------------------------
+source("../functions_MV/function_estim_simul_gPareto.R")
+
+F_names<-ls()
+nb_coeurs<-detectCores()-4
+
+# Running of the optional parallelisation --------------------------------------------------
+coeurs<-makeCluster(nb_coeurs)
+clusterExport(coeurs,varlist=F_names)
+
+```
+
+
+```{r}
+### Parameters of the marginal transformation
+l_root<-"../../Univariate_whitening/residus_clust/"
+l_name<-c("Surcote","Hs")
+TE<-"residus"
+STD_donnees<-TRUE
+
+# Import thresholds -------------------------------------------------------
+#SHS<-1-read.csv("residus_MV/seuil_Hs.csv")[,2]
+SHS<-rep(0.10,37)
+LPU<-list("Surcote"=rep(0.10,37),"Hs"=SHS)
+PL2<-0.05
+opt_Frech<-TRUE
+l_nb_SCORES<-list("Surcote"=3,"Hs"=2)
+M<-2000
+file_dates<-"../../ss_tend/HIVER/dates_prises.csv"
+Bool_rotations<-FALSE
+# show the details of EGPD fitting
+show_EGPD<-FALSE
+```
+
+
+```{r}
+# Run the following  functions to convert to the desired scale ---------------------------------------------------
+################
+source("../functions_MV/GenericEGPDg_carrer.R")
+
+# 1) Mixture  -----------------------------------------------------------
+# Result_MV<-MarTransfo_TS_exts_MV(type_entree = TE,
+#                type_donnees="hiver",coeurs = coeurs,
+#                lien_racine =l_root,
+#                liste_noms=l_name,p_U = LPU,
+#                n.dens =2^(14),opt_Frech =opt_Frech)
+
+# 2) EGPD fitting --------------------------------------------------------------
+Result_MV<-MarTransfo_TS_EXTGP_MV(type_donnees = "hiver",
+          coeurs = coeurs,lien_racine = l_root,
+          liste_noms = l_name,opt_Frech = opt_Frech,
+          type_entree = TE,p_U = LPU, n.dens=2^(14),
+           file_dates = file_dates,show_EGPD=show_EGPD)
+
+```
+```{r}
+Vect_l_function<-Result_MV$df
+Vect_l_function<-as.data.frame(Vect_l_function)
+```
+
+```{r}
+# Work on null hypothesis -------------------------------------------------
+Type_law<-ifelse(opt_Frech,yes="GEV",no="GP")
+for(NAME_for_test in l_name){
+  EXTGP<-Result_MV$resume[[NAME_for_test]]$transf
+  ad_<-rep(NA,ncol(EXTGP))
+  ks_<-rep(NA,ncol(EXTGP))
+  cvm_<-rep(NA,ncol(EXTGP))
+  for(t in c(1:ncol(EXTGP))){
+    ad_[t]<-goftest::ad.test(x = EXTGP[,t],null = extRemes::"pevd",
+                             scale=1,shape=1,loc=1,type=Type_law, 
+                             threshold=1)$p.value
+    ks_[t]<-ks.test(EXTGP[,t],extRemes::"pevd",
+                    scale=1,shape=1,loc=1,type=Type_law,
+                    threshold=1)$p.value
+    cvm_[t]<-goftest::cvm.test(EXTGP[,t],extRemes::"pevd",
+                               scale=1,shape=1,loc=1,type=Type_law,
+                               threshold=1)$p.value
+  }
+  plot(c(1:37),ad_,ylim = c(0,1),ylab="p value gof tests")
+  points(c(1:37),ks_,col="red")
+  points(c(1:37),cvm_,col="green")
+  abline(h=0.05,col="black")
+}
+```
+
+
+```{r}
+# Asymptotic dependence ? -------------------------------------------------
+
+# For t,t', relation between the variables --------------------------------
+Epsi_1<-Result_MV$orig$Surcote
+Epsi_2<-Result_MV$orig$Hs
+Epsi_tf1<-Result_MV$resume$Surcote$transf
+Epsi_tf2<-Result_MV$resume$Hs$transf
+t<-1
+t_prime<-19
+### Work on extremal dependence
+par(mfrow=c(1,2))
+POT::chimeas(data = cbind(Epsi_1[,t],Epsi_2[,t_prime])
+             ,which = 1,ask = FALSE)
+abline(h=0,col="red")
+POT::chimeas(data = cbind(Epsi_1[,t],Epsi_2[,t_prime])
+             ,which = 2,ask = FALSE)
+abline(h=0,col="red")
+par(mfrow=c(1,1))
+Pval_Test<-POT::tailind.test(data =cbind(Epsi_1[,t],Epsi_2[,t_prime]),emp.trans =TRUE,c=-0.1)
+Pval_Test$stats[,2]
+Hnull_asymp_dep<-extRemes::taildep.test(x = Epsi_1[,t],y=Epsi_2[,t_prime],
+                                        cthresh = -0.35)
+Hnull_asymp_dep
+
+```
+
+```{r}
+# Work on hidden regular variations ---------------------------------------
+# Sample in decreasing order ----------------------------------------------
+R_star1<-rank(x =Epsi_tf1[,t])
+R_star2<-rank(x =Epsi_tf1[,t_prime])
+Var_1<-Epsi_tf1[,t]
+Graphics_estimators_gamma(series =Var_1 ,
+                          vect_k = c(10:500),
+                          Title_graphic = paste0("S_",t))
+
+
+```
+
+```{r}
+# Compare with the law of another marginal of the same variable.
+Var_2<-Epsi_tf1[,t_prime]
+Graphics_estimators_gamma(series = Var_2,vect_k = c(10:500),Title_graphic = paste0("S_",t_prime))
+Max_<-apply(cbind(Var_1,Var_2),MARGIN = 1,FUN = max)
+Min_<-apply(cbind(Var_1,Var_2),MARGIN = 1,FUN = min)
+Graphics_estimators_gamma(series =Max_,
+                          vect_k = c(10:500),
+                          Title_graphic = "Max_t_tprime")
+## The shape parameter corresponds to that we have in each marginal.
+Graphics_estimators_gamma(series =Min_,
+                          vect_k = c(10:500),
+                          Title_graphic = "Min_t_tprime")
+## Same result. 
+```
+
+
+```{r}
+# Compare with the marginal of another variable.
+Var_3<-Epsi_tf2[,t_prime]
+Graphics_estimators_gamma(series = Var_3,vect_k = c(10:500),Title_graphic = paste0("Hs_",t_prime))
+Max_<-apply(cbind(Var_1,Var_3),MARGIN = 1,FUN = max)
+Min_<-apply(cbind(Var_1,Var_3),MARGIN = 1,FUN = min)
+Graphics_estimators_gamma(series =Max_,
+                          vect_k = c(10:500),
+                          Title_graphic = "Max_t_tprime")
+## The shape parameter corresponds to that we have in each marginal.
+Graphics_estimators_gamma(series =Min_,
+                          vect_k = c(10:500),
+                          Title_graphic = "Min_t_tprime")
+## Shape parameter is smaller than that we have in each marginal.
+## Advocates for hidden regular variations.
+```
+
+```{r}
+# Asymptotic dependence for the vector of norms.
+### Work on extremal dependence
+par(mfrow=c(1,2))
+POT::chimeas(data = Result_MV$df
+             ,which = 1,ask = FALSE)
+abline(h=0,col="red")
+POT::chimeas(data = Result_MV$df
+             ,which = 2,ask = FALSE)
+abline(h=0,col="red")
+par(mfrow=c(1,1))
+# Chi does converge to a value close to 0.
+```
+
+```{r}
+# (Hnull) asymptotic independence 
+Pval_Test<-POT::tailind.test(data =Result_MV$df,emp.trans =TRUE,c=-0.1)
+Pval_Test$stats[,2]
+
+# (Hnull) Asymptotic dependence
+Hnull_asymp_dep<-extRemes::taildep.test(x=Result_MV$df[,1] ,y=Result_MV$df[,2],cthresh = -0.35)
+Hnull_asymp_dep$p.value   
+
+# Rate of exceedance should be between 10 and 15%.
+Exceedce_rate_test<-as.numeric(Hnull_asymp_dep$parameter[4])
+Exceedce_rate_test
+
+# Low p value, advocate for asymp independence ----------------------------
+```
+
+```{r}
+### Computing the scale of the coordinate-wise maximums.
+NPY_per_block_OPTIM<-40
+NRows<-nrow(Vect_l_function)
+M_max<-round(NRows/NPY_per_block_OPTIM)
+BLOCKS<-as.character(round(c(1:NRows)/NPY_per_block_OPTIM))
+Calul_max<-cbind.data.frame(Vect_l_function,BLOCKS)
+colnames(Calul_max)<-c(l_name,"block")
+
+Vect_input<-Calul_max %>% group_by(block) %>%
+summarise(across(l_name,~max(.x,na.rm = TRUE)))
+
+```
+
+```{r}
+# Normalisation to get the converged law of maximum
+Vect_GEV<-as.data.frame(Vect_input[,1+c(1:length(l_name))])/NPY_per_block_OPTIM
+
+delta_moment<-0.5
+value_found<-colMeans(Vect_GEV^delta_moment)
+value_std_frechet<-factorial(-delta_moment)
+scale_frechet_d<-(value_found/value_std_frechet)^(1/delta_moment)
+```
+
+
+```{r}
+
+Result_std<-matrix(NA,nrow = nrow(Vect_GEV),
+                   ncol=ncol(Vect_GEV))
+Fill<-matrix(NA,ncol=ncol(Vect_GEV),nrow=3)
+Result_std<-Vect_GEV
+for(j in c(1:ncol(Vect_GEV))){
+  Result_std[,j]<-Vect_GEV[,j]/scale_frechet_d[j]
+  pval<-goftest::ad.test(Vect_l_function[,j],null = extRemes::"pevd",
+                         scale=scale_frechet_d[j],shape=1,
+                         loc=scale_frechet_d[j],type="GEV")$p.value
+  pval2<-ks.test(Vect_l_function[,j],extRemes::"pevd",
+                 scale=scale_frechet_d[j],shape=1,
+                 loc=scale_frechet_d[j],type="GEV")$p.value
+  pval3<-goftest::cvm.test(Vect_l_function[,j],extRemes::"pevd",
+                           scale=scale_frechet_d[j],shape=1,
+                           loc=scale_frechet_d[j],type="GEV")$p.value
+  Fill[,j]<-c(pval,pval2,pval3)
+}
+Fill
+```
+
+```{r}
+# 1) Choice of risk functional g.
+#----------------
+Risk_f<-function(x){return(sum(x))}
+Name_riskF<-"sum"
+# W_chosen<-c(0.7,0.3)
+# Risk_f<-function(x){return(sum_penalized(x = x,vect_w = W_chosen))}
+# Name_riskF<-"sum_penalized"
+
+```
+
+```{r}
+### Choice of the threshold
+# ### 2) convergence of correlation
+Liste_transf<-list()
+for(name in l_name){
+  obj<-Result_MV$resume[[name]]
+  Liste_transf[[name]]<-obj$transf
+}
+```
+
+```{r}
+Max_nb_exts<-500
+vectk<-seq.int(from = 50,
+               to = Max_nb_exts,
+               by = 1)
+Con2results<-parSapply(cl=coeurs,vectk,FUN = Conv_scalar_product,l_name_variables = l_name,
+                       list_TS = Liste_transf,g_function=Risk_f)
+rho_corr<-unlist(Con2results[1,])
+plot(vectk,rho_corr,xlab="Number exceedances",
+     ylab="mean_beta",type="l")
+plot(vectk,unlist(Con2results[2,])
+     ,xlab="Number exceedances",
+     ylab="var_beta",type="l")
+Matrix<-sapply(Con2results[3,],unlist)
+
+```
+```{r}
+View(Matrix)
+```
+
+
+
+```{r}
+## Convergence of the angle for both variables
+## Evolution of the first moment for several functions.
+par(mfrow=c(1,2))
+# Result for var_Z
+Z<-0
+Ind_beginning<-8*Z+1
+End_beginning<-7+Ind_beginning
+Sub_matrix<-Matrix[Ind_beginning:End_beginning,]
+for(j in c(1:nrow(Sub_matrix))){
+  plot(vectk,unlist(Sub_matrix[j,]),
+       type="l",
+       ylab=paste0(j,"th eigen function"),
+       xlab="Number exceedances")
+}
+```
+```{r}
+par(mfrow=c(1,2))
+Z<-1
+Ind_beginning<-8*Z+1
+End_beginning<-7+Ind_beginning
+Sub_matrix<-Matrix[Ind_beginning:End_beginning,]
+for(j in c(1:nrow(Sub_matrix))){
+  plot(vectk,unlist(Sub_matrix[j,]),
+       type="l",
+       ylab=paste0(j,"th eigen function"),
+       xlab="Number exceedances")
+}
+```
+
+
+```{r}
+# Choice of the model for the g Pareto aspect and of the weight function (used for gradient scoring rule if max is not used)--------------------------------------------
+NameModel<-"log"
+
+wFun<-weightFun_sum
+dwFun<-DweightFun_sum
+
+# wFun<-function(x,u){
+#   weightFun_sum_penalized(x = x,u = u,
+#                           vect_w = W_chosen)
+# }
+# dwFun<-function(x,u){
+#   DweightFun_sum_penalized(x = x,u = u,
+#                           vect_w = W_chosen)
+# }
+
+```
+
+```{r}
+List_Params_RF<-list("parametric"=TRUE,"name_RF"=Name_riskF,
+                    "function"=Risk_f,"name_model"=NameModel,
+                    "Scale_Frechet"=scale_frechet_d,"weightFunction"=wFun,
+                    "dWeightFunction"=dwFun,"init_opt_param"=0.5)
+```
+
+```{r}
+## 3) Fitting of parametric models and simulations. 
+############
+simul_MV_exts<-Simul_MV_residuals(result_transformation=Result_MV,
+                l_variables = l_name, Q_thresh = 0.75,
+                liste_nb_scores=l_nb_SCORES,M=M,
+                rotations_available=Bool_rotations,
+                Params_risk_Function=List_Params_RF)
+```
+
+```{r}
+# (PCA) Shapes and coordinates #--------------------------------------------------
+par(mfrow=c(1,2))
+MAX_Eigen<-max(simul_MV_exts$EIGEN_functions$Surcote)
+MIN_Eigen<-min(simul_MV_exts$EIGEN_functions$Surcote)
+plot(c(1:37),simul_MV_exts$EIGEN_functions$Surcote[,1],
+     ylim=c(MIN_Eigen,MAX_Eigen),ylab=expression(nu[j]),xlab="Time")
+
+lines(c(1:37),simul_MV_exts$EIGEN_functions$Surcote[,2],col="green")
+lines(c(1:37),simul_MV_exts$EIGEN_functions$Surcote[,3],col="red")
+
+
+```
+```{r}
+MAX_Eigen<-max(simul_MV_exts$EIGEN_functions$Hs)
+MIN_Eigen<-min(simul_MV_exts$EIGEN_functions$Hs)
+plot(c(1:37),simul_MV_exts$EIGEN_functions$Hs[,1],
+     ylim=c(MIN_Eigen,MAX_Eigen),
+     ylab=expression(nu[j]),xlab="Time")
+lines(c(1:37),simul_MV_exts$EIGEN_functions$Hs[,2],col="green")
+mtext("PCA eigen functions for the variables",outer=TRUE,
+      line=-2)
+```
+
+```{r}
+### PCA scores for simulations and observations.
+corrplot::corrplot(cor(simul_MV_exts$coords_data))
+corrplot::corrplot(cor(simul_MV_exts$coords_simul))
+j<-5
+plot(density(simul_MV_exts$coords_data[,j]))
+plot(density(simul_MV_exts$coords_simul[,j]))
+par(mfrow=c(1,1))
+```
+
+```{r}
+cols_<-c("data"="blue","simulations"="orange",
+         "confidence_band"="darkblue")
+# Consistency results -----------------------------------------------------
+source("../functions_MV/Fonctions_consistency.R")
+#Calculate correlations --------------------------------------------------
+#Shape correlation var1 var2 ---------------------------------------------
+Mat_obs<-Fct_correlations(method_corr = "kendall",
+                        df1 =simul_MV_exts$Frechet_angle$obs$Surcote,
+                        df2=simul_MV_exts$Frechet_angle$obs$Hs)
+
+
+Conf_interval_angle<-Conf_interval_correlations_2V(
+                  df1 = simul_MV_exts$Frechet_angle$obs$Surcote,
+                  df2 = simul_MV_exts$Frechet_angle$obs$Hs,
+                   niv_conf = 0.05,method_corr = "kendall",
+                  NB_boot = 500)
+Mat_simul<-Fct_correlations(method_corr = "kendall",
+                            df1 =simul_MV_exts$Frechet_angle$simul$Surcote,
+                            df2=simul_MV_exts$Frechet_angle$simul$Hs)
+
+```
+
+```{r}
+Data_corr<-as.data.frame(Conf_interval_angle)
+colnames(Data_corr)<-c("bound_inf","data","bound_sup")
+Data_corr$simulations<-Mat_simul
+Data_corr$Time<-(c(1:nrow(Data_corr))-19)/6
+ggplot(data=Data_corr,aes(x=Time,y=data,col="data"))+
+  geom_ribbon(aes(ymin=bound_inf,col="confidence_band",
+                  ymax=bound_sup),alpha=0.05,fill="grey",
+              linetype="dashed")+
+  geom_line(aes(y=simulations,col="simulations"))+
+  geom_line()+
+  geom_point()+
+  xlab("Time (hour) with respect to tidal peak")+
+  scale_color_manual(values = cols_)+
+  ylab("correlation")+
+  labs(col="Legend")+theme(axis.title=element_text(size=15),
+                            legend.text=element_text(size=10))
+```
+
+```{r}
+liste_ext<-list("Hs"=simul_MV_exts$obs_exts$Hs,
+                "Surcote"=simul_MV_exts$obs_exts$Surcote)
+# Cross extremogram -------------------------------------------------------
+#########
+Obj<-Extremo_Quality_MV(list_simul = simul_MV_exts$simul,
+                   list_reality = liste_ext,
+                   name_cond = "Surcote",
+                   name_other = "Hs",
+                   q_per_time = 0.95)
+
+plot(Obj$time_d,Obj$val_data)
+plot(Obj$time_d,Obj$val_sim,col="red")
+#### Extremal dependence goes to 0 in the data but it
+#### is larger than 0 in our simulations.
+```
+
+```{r}
+# Statistical test to compare the distribution of simulated and observed coordinates ------------------------------------------------------------------
+NDIM<-ncol(simul_MV_exts$coords_simul)
+KS_results_coords<-rep(NA,NDIM)
+for(j in c(1:NDIM)){
+  KS_results_coords[j]<-ks.test(simul_MV_exts$coords_simul[,j],
+                                simul_MV_exts$coords_data[,j])$p.value
+}
+
+KS_results_coords
+### Export PCA coords
+write.csv(file = paste0("coord_data.csv"),
+          x = simul_MV_exts$coords_data)
+write.csv(file = paste0("coord_simul.csv"),
+          x = simul_MV_exts$coords_simul)
+```
+
+
+```{r}
+Riskmv<-simul_MV_exts$Risk_MV
+Inds_exts<-simul_MV_exts$Indices_exts
+DF_inds_risk<-cbind.data.frame(Riskmv,
+                               Inds_exts)
+colnames(DF_inds_risk)<-c("RiskF","indexes")
+#Export dates of extreme events ------------------------------------------
+write.csv(file="ext_series_chosen_risks.csv",x = DF_inds_risk)
+```
+
+```{r}
+### Various exports.
+Riskmv<-simul_MV_exts$Risk_MV
+Inds_exts<-simul_MV_exts$Indices_exts
+DF_inds_risk<-cbind.data.frame(Riskmv,
+                               Inds_exts)
+colnames(DF_inds_risk)<-c("RiskF","indexes")
+```
+
+```{r}
+### End of the code.
+###################
+stopCluster(coeurs)
+```
+

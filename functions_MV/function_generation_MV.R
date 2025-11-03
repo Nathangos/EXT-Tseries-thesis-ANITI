@@ -31,10 +31,11 @@ KNN_distancef<-function(x,X_data,f_distance,K){
 }
 
 Generator_TSERIES_MV<-function(coeurs,type_donnees,list_variable,
-                               link_g_chosen,link_import_residuals,
+                               Name_riskF,link_import_residuals,
                                link_VAR_model,
-                               K_chosen,f_distance,link_export_generations){
-  
+                               K_chosen,f_distance,link_export_generations,
+                               cols_gg){
+  link_g_chosen<-paste0("residuals_MV/",Name_riskF,"/")
   # Import X(M-1) -----------------------------------------------------------
   ######
   repertory<-"../ss_tend/"
@@ -102,7 +103,6 @@ Generator_TSERIES_MV<-function(coeurs,type_donnees,list_variable,
   RiskF<-as.data.frame(l_RiskF)
   RiskF_Epsi_Sim<-as.data.frame(l_RiskF_Epsi_Sim)
   RiskF_Epsi_Data<-as.data.frame(l_RiskF_Epsi_Data)
-  
  
   # 3) Import VAR model
   END_column<-length(list_variable)+1
@@ -119,6 +119,49 @@ Generator_TSERIES_MV<-function(coeurs,type_donnees,list_variable,
                                  FUN = KNN_distancef,f_distance=f_distance,
                                  K=K_chosen,X_data=RiskF_Epsi_Data)
   Index_delta<-Indexes_knn_sim_vs_data-1
+  L<-nrow(RiskF_Epsi_Data)
+  END<-L-1
+  Z_gg<-1
+  list_gg<-list()
+  list_gg1<-list()
+  for(name_v in list_variable){
+    Data_Xo_v<-l_RiskF[[name_v]][1:END]
+    Epsi_data_v<-l_RiskF_Epsi_Data[[name_v]]
+    Epsi_Sim_v<-l_RiskF_Epsi_Sim[[name_v]]
+    Data_Xo_chosen<-Data_Xo_v[Index_delta]
+    Epsi_data_v<-Epsi_data_v[2:L]
+    MATRIX_rel_epsi_previous<-cbind.data.frame(Data_Xo_v,Epsi_data_v)
+    colnames(MATRIX_rel_epsi_previous)<-c("X_prevnorm","Epsi_norm")
+    MATRIX_rel_epsi_previous_sim<-cbind.data.frame(Data_Xo_chosen,Epsi_Sim_v)
+    colnames(MATRIX_rel_epsi_previous_sim)<-c("X_prevnorm","Epsi_norm")
+    m<-min(apply(X = MATRIX_rel_epsi_previous_sim,MARGIN = 2,FUN = min),
+           apply(X = MATRIX_rel_epsi_previous,MARGIN = 2,FUN = min))
+    M<-max(apply(X = MATRIX_rel_epsi_previous_sim,MARGIN = 2,FUN = max),
+           apply(X = MATRIX_rel_epsi_previous,MARGIN = 2,FUN = max))
+    XLAB<-expression("L2 norm of "~epsilon[M~","~Z_gg])
+    XLAB<-as.expression(do.call('substitute', list( XLAB[[1]], list(Z_gg=Z_gg))))
+    YLAB<-expression("L2 norm of "~tilde(X)[M-Delta~","~Z_gg])
+    YLAB<-as.expression(do.call('substitute', list( YLAB[[1]], list(Z_gg=Z_gg))))
+    GG_relation<-ggplot(MATRIX_rel_epsi_previous,aes(x=Epsi_norm,y=X_prevnorm,
+                                                     col="data"))+
+      geom_point()+
+      geom_point(data=MATRIX_rel_epsi_previous_sim,aes(y=X_prevnorm,
+                 x=Epsi_norm,col="simulations",shape="simulations"),size=1
+                 ,pch=17)+
+      xlab(XLAB)+
+      ylab(YLAB)+
+      scale_color_manual(values=cols_gg)+
+      ylim(c(m,M))+
+      xlim(c(m,M))+
+      labs(col="Legend")
+    list_gg[[name_v]]<-GG_relation
+    Z_gg<-Z_gg+1
+
+  }
+  rel_MV_epsi_previous<-do.call("grid.arrange", c(list_gg,
+                                                  ncol=length(list_variable)))
+  ggsave(plot= rel_MV_epsi_previous,width=8,height=6,
+         filename=paste0("graphiques_MV/data/",Name_riskF,"/rel_Epsi_previous_observation.png"))
   
   # 5) Apply VAR model
   # Matrix to Array

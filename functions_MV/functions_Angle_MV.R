@@ -1,7 +1,7 @@
 ### Approach the angle with several PCA basis.
-Approach_Angle_Mult_PCA<-function(Indices_exts,
+Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
                                   LIST_all,l_variables,
-                                  list_nb_scores){
+                                  list_nb_scores,f_transf){
   LIST_shapes<-list()
   Length_T<-ncol(LIST_all[[l_variables[1]]]$transf)
   LIST_Mu<-list()
@@ -18,8 +18,8 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,
     colnames(DF_nom)<-c(1:ncol(DF_nom))
     Excedents_l<-apply(X = DF_nom,MARGIN = 1,
                        FUN = calcul_norme_L2)
-    FORME_v<-t(t(DF_nom)%*%diag(Excedents_l^(-1)))
-    #LIST_SHAPE_OBS[[nom_v]]<-FORME_v
+    FORME_v<-f_transf(t(t(DF_nom)%*%diag(Excedents_l^(-1))))
+    ## With log transformation
     Mu_<-colMeans(FORME_v)
     Sig_<-apply(FORME_v,MARGIN = 2,FUN = sd)
     ANALYSE_PCA<-FactoMineR::PCA(X =FORME_v ,
@@ -29,9 +29,9 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,
     vect_diff<-cumsum(c(0,val_lambda))/sum(val_lambda)
     vecteur_propvarexp<-1-vect_diff
     
-    Name_for_export_inertia<-paste0("evol_inertia_Theta_",
-                                    nom_v,
+    Name_for_export_inertia<-paste0(root_export,"/Theta/",nom_v,"/evolMultPCA_inertia_Theta_",nom_v,
                                     ".png")
+    print(Name_for_export_inertia)
     Nb_scores<-list_nb_scores[[Z]]
     png(filename = Name_for_export_inertia,width = 1200,
         height = 600)
@@ -46,9 +46,11 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,
     F_propres<-ANALYSE_PCA$svd$V
     Coordonnees<-ANALYSE_PCA$ind$coord
     MATRICE_SCORES[, beg:End]<-Coordonnees[,1:Nb_scores]
+    
     LIST_Mu[[nom_v]]<-Mu_
     LIST_Sig[[nom_v]]<-Sig_
     LIST_PCA_functs[[nom_v]]<-F_propres[,1:Nb_scores]
+    
   }
   return(list("Scores"=MATRICE_SCORES[,c(1:NbScores_Omega)],
               "Eigen_functions"=LIST_PCA_functs,
@@ -61,13 +63,18 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,
 ### Approach the angle with one PCA basis.
 Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
                                  NbScores_Omega,l_variables,
-                                 Indices_exts,d){
+                                 Indices_exts,d,f_transf){
   Length_T<-ncol(LIST_all[[l_variables[1]]]$transf)
   Omega<-matrix(NA,ncol=d*Length_T,
                 nrow =length(Indices_exts))
   
   Ind_final<-0
   LIST_Frechet_OBS<-list()
+  L<-length(l_variables)-1
+  NE<-l_variables[1]
+  for(w in c(1:length(l_variables))){
+    NE<-paste0(Name_for_export,"_",l_variables[w])
+  }
   for(Z in c(1:length(l_variables))){
     Beg<-1+(Z-1)*Length_T
     End<-as.numeric(Length_T*(Z))
@@ -78,7 +85,7 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
     Excedents_l<-apply(X = DF_nom,MARGIN = 1,
                        FUN = calcul_norme_L2)
     FORME_v<-t(t(DF_nom)%*%diag(Excedents_l^(-1)))
-    Omega[,c(Beg:End)]<-FORME_v
+    Omega[,c(Beg:End)]<-f_transf(FORME_v)
   }
   mu_Omega<-colMeans(Omega)
   sigma_Omega<-apply(Omega, 2,FUN = sd)
@@ -95,7 +102,13 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
   vecteur_propvarexp<-1-vect_diff
   
   Name_for_export_inertia<-paste0(Name_for_export,
-                                  "_evol_inertia_Theta.png")
+                                  "Theta/evol_inertia_Single_Theta")
+  
+  for(name_V in l_variables[c(1:L)]){
+    Name_for_export_inertia<-paste0(Name_for_export_inertia,"_",name_V)
+  }
+  Name_for_export_inertia<-paste0(Name_for_export_inertia,"_",l_variables[length(l_variables)],
+                                  ".png")                               
   png(filename = Name_for_export_inertia,width = 1200,
       height = 600)
   plot(vecteur_propvarexp,type="o",
@@ -105,9 +118,7 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
   dev.off()
   F_propres<-ANALYSE_PCA$svd$V
   Coordonnees<-ANALYSE_PCA$ind$coord
-  png(filename = Name_for_export,width = 1200,
-      height = 600)
-  Name_for_export_eigen_functions<-paste0(Name_for_export,
+  Name_for_export_eigen_functions<-paste0(NE,
                                           "_eigen_functions.png")
   png(filename = Name_for_export_eigen_functions,width = 1200,
       height = 600)
@@ -130,17 +141,18 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
 ######### Simulation from one PCA basis.
 Simul_Omega_One_PCA_base<-function(list_Mod_One_PCA,
                                    Simul_coords,
-                                   NbScores_Omega){
+                                   NbScores_Omega,
+                                   f_transf_inv){
   Shape_Omega_simul<-function_reconstitution_trajectory_std(Vector_coords = Simul_coords,
                                                             Base_functions_p = list_Mod_One_PCA$Eigen_functions,
                                                             NB_dim =NbScores_Omega,
                                                             mu_t =list_Mod_One_PCA$Mu,
                                                             sd_t =list_Mod_One_PCA$Sig)
-  return(Shape_Omega_simul)
+  return(f_transf_inv(Shape_Omega_simul))
 }
 ######### Simulation with several PCA basis.
 Simul_Omega_Mult_PCA_base<-function(list_Mod_Mult_PCA,M,d,list_nb_scores,
-                                    Simul_coords){
+                                    Simul_coords,f_transf_inv){
   LIST_Mu<-list_Mod_Mult_PCA[["Mu"]]
   LIST_Sig<-list_Mod_Mult_PCA[["Sig"]]
   LIST_PCA_functs<-list_Mod_Mult_PCA[["Eigen_functions"]]
@@ -164,5 +176,6 @@ Simul_Omega_Mult_PCA_base<-function(list_Mod_Mult_PCA,M,d,list_nb_scores,
       mu_t =LIST_Mu[[Z]],
       sd_t = LIST_Sig[[Z]])
   }
-  return(Shape_Omega_simul)
+  #exp (f_inv) for inverse transformation
+  return(f_transf_inv(Shape_Omega_simul))
 }

@@ -159,7 +159,7 @@ Estim_param_RF_homogeneous<-function(Params_risk_Function,Seuil_lprime,Vect_l_fu
   if(Params_risk_Function[["name_RF"]]=="max"){
     Model<-Params_risk_Function[["name_model"]]
     scale_frechet_d<-Params_risk_Function[["Scale_Frechet"]]
-    Excedents_lprime<-sapply(X = Excedents_lprime,FUN = unlist)
+    #Excedents_lprime<-sapply(X = Excedents_lprime,FUN = unlist)
     Optimization_<-optim(par =Params_risk_Function[["init_opt_param"]],
                          fn = Max_Likely,lower=0,upper = 1,
                          scale_frechet_d=scale_frechet_d,method = "Brent",

@@ -1,3 +1,45 @@
+#' Title
+#'
+#' @param gam_t 
+#' @param sig_t 
+#' @param Kappa_t 
+#' @param p 
+#'
+#' @return gradient for rl level confidence.Delta method
+#' @export
+#'
+#' @examples
+fprime_Rl_extgp<-function(gam_t,sig_t,Kappa_t,p){
+  
+  ### beta0=shape_param, exp(beta1)=sigma, exp(beta2)=Kappa
+  shape_param<-gam_t
+  beta_1<-log(sig_t)
+  beta_2<-log(Kappa_t)
+  rlevel<-as.numeric(mev::qextgp(kappa = Kappa_t,
+                                 sigma =  sig_t,
+                                 xi = gam_t,type = 1,
+                                 p=p))
+  ## Derivative|shape
+  #u'.v
+  grad_1num1<-shape_param*(-log(1-p*exp(-beta_2))*(1-p*exp(-beta_2))^(-shape_param))*exp(beta_1)
+  #u.v'
+  grad_1num2<-rlevel*shape_param
+  grad_1num<-grad_1num1-grad_1num2
+  grad_1denom<-shape_param^(2)
+  grad_1<-grad_1num/grad_1denom
+  
+  ## Derivative|scale
+  grad_2<-rlevel
+  
+  ## Derivative|kappa
+  Deriv_kappa<-(log(p)*exp(-beta_2))*(p^(exp(-beta_2)))
+  grad_3num<-(-shape_param)*(1-p^(exp(-beta_2)))^(-shape_param-1)*Deriv_kappa
+  grad_3denom<-shape_param*exp(-beta_1)
+  grad_3<-grad_3num/grad_3denom
+  
+  Vect_grad<-c(grad_1,grad_2,grad_3)
+  return(as.numeric(Vect_grad))
+}
 Fct_correlations<-function(method_corr,df1,df2){
   vect_r<-sapply(X = c(1:ncol(df1)),FUN = function(j,x_1,x_2){
     series_1<-x_1[,j]
@@ -252,33 +294,72 @@ Marg_2d_simul_vs_obs<-function(list_simul,list_obs,vect_times,l_name_2V,
 #' @export
 #'
 #' @examples
-Ratio_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles){
-  
-  Sample_EGPD<-rEGPDModel1(n = M,mu = gamma,nu = kappa,sigma = sigma)
-  Theta<-mev::gp.fit(xdat = Sample_EGPD,threshold = 0)$est
-  INIT<-c(Theta[2],Theta[1])
+RL_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles,
+                                 list_params_EGPD){
+  n.cyc<- list_params_EGPD[["n.cyc"]]
+  mu.step<- list_params_EGPD[["mu.step"]]
+  sigma.step<- list_params_EGPD[["sigma.step"]]
+  nu.step<- list_params_EGPD[["nu.step"]]
+  tau.step<- list_params_EGPD[["tau.step"]]
+  Sample_EGPD<-mev::rextgp(n = M,xi= as.numeric(gamma),
+                           kappa = kappa,sigma = sigma)
+  Th<-quantile(Sample_EGPD,probs=0.50)
+  #Th<-0
+  ### PWM way
+  SUB_EGPD<-Sample_EGPD[which(Sample_EGPD>Th)]-Th
+  mu0<-mean(SUB_EGPD)
+  next_<-length(SUB_EGPD)+1
+  Fbar_side<-(next_-VineCopula::pobs(SUB_EGPD)*next_)/next_
+  mu1<-mean(SUB_EGPD*Fbar_side)
+  Shape<-(mu0-4*mu1)/(mu0-2*mu1)
+  print(Shape)
+  Scale<-mu0*(1-Shape)
+  # FIT_pos<-mev::gp.fit(xdat = Sample_EGPD,threshold =Th)$est
+  # Shape<-FIT_pos[2]
+  # #Use gpd property to get the scale at 0.
+  # Scale<-FIT_pos[1]-Th*Shape
+  # #Scale<-FIT_pos[1]
+  # INIT<-c(Shape,Scale)
+  #Nu.start initialisation using moments.
+  Th_beg<-quantile(x = Sample_EGPD,0.10)
+  Lower_tail<-Sample_EGPD[which(Sample_EGPD<Th_beg)]
+  Moment_1<-mean(Lower_tail)
+  nu.start<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
   db<-as.data.frame(Sample_EGPD)
   colnames(db)<-c("x")
-  con <- gamlss.control(n.cyc = 100,
-                        mu.step = 0.1, 
-                        sigma.step = 0.1, nu.step = 0.1,tau.step = 0.1,autostep=TRUE,
-                        trace = FALSE)
-  con.i=glim.control(glm.trace = FALSE)
-  Fitting_sample_EGPD <- gamlss(x~1, 
+  con <- gamlss::gamlss.control(n.cyc =  n.cyc,
+                        mu.step = mu.step, sigma.step = sigma.step, 
+                        nu.step = nu.step,tau.step = tau.step,autostep=TRUE,
+                        trace = TRUE)
+  con.i<-gamlss::glim.control(glm.trace = TRUE)
+  EGPD1Family <- MakeEGPD (function (z,nu) z^nu, Gname = "Model1")
+  Fitting_sample_EGPD <- gamlss::gamlss(x~1, 
                            data=db,
                            family = EGPD1Family(mu.link = "identity"),
-                           control = con,mu.start=INIT[1],sigma.start=INIT[2],
-                           nu.start=0.5,
-                           i.control=con.i,
+                           control = con,mu.start=gamma,
+                           sigma.start=sigma,
+                           nu.start=kappa,
+                          i.control=con.i,
                            method=CG())
   muFit <- fitted(Fitting_sample_EGPD,"mu")[1]
   sigmaFit <- predict(Fitting_sample_EGPD,what="sigma", 
                       type="response")[[1]]
   nuFit <- predict(Fitting_sample_EGPD,what="nu", 
                    type="response")[[1]]
-  Ratio_found_EGPD<-Ratio_log_model1(gamma = muFit,sigma_EGPD = sigmaFit,order_quantiles = order_quantiles,
-                   data = Sample_EGPD)
-  return(Ratio_found_EGPD)
+  # Ratio_found_EGPD<-Ratio_log_model1(gamma = muFit,sigma_EGPD = sigmaFit,order_quantiles = order_quantiles,
+  #                  data = Sample_EGPD)
+  RL_EGPD<-sapply(order_quantiles,function(x){
+    return(as.numeric(mev::qextgp(p =x,
+          kappa = nuFit,sigma = sigmaFit,xi =muFit)))
+  })
+  return(RL_EGPD)
+}
+One_sim<-function(ALL_Quantiles,Kappa_t,gam_t,sig_t,list_params_EGPD,
+                  Msim,i){
+  return(RL_generations_EGPD(kappa=Kappa_t,
+                             gamma=gam_t,sigma=sig_t,
+                             list_params_EGPD= list_params_EGPD,
+                             M=Msim,order_quantiles = ALL_Quantiles))
 }
 # Extreme values estimators + data generated according to the model---------------------------------
 #' Title

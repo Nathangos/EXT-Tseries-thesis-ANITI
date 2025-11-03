@@ -82,6 +82,12 @@ fct_extract_Transf<-function(time_list){
 fct_extract_ParamsEGPD<-function(time_list){
   return(time_list[["params_egpd"]])
 }
+fct_extract_InitEGPD<-function(time_list){
+  return(time_list[["Init"]])
+}
+fct_extract_FittingEGPD<-function(time_list){
+  return(time_list[["Model_t"]])
+}
 #' Convert_time_z
 #'
 #' @param z: int. Time index. 
@@ -92,28 +98,43 @@ fct_extract_ParamsEGPD<-function(time_list){
 #' @export
 #'
 #' @examples
-Convert_time_z<-function(z,Data_pos,show_EGPD){
-  
+Convert_time_z<-function(z,Data_pos,show_EGPD,
+                         list_params_EGPD){
+  print(paste0("Result for time ",z))
+  n.cyc<- list_params_EGPD[["n.cyc"]]
+  mu.step<- list_params_EGPD[["mu.step"]]
+  sigma.step<- list_params_EGPD[["sigma.step"]]
+  nu.step<- list_params_EGPD[["nu.step"]]
+  tau.step<- list_params_EGPD[["tau.step"]]
   EGPD1Family <- MakeEGPD (function (z,nu) z^nu, Gname = "Model1")
   Col_t<-Data_pos[,z]
   Col_pos_t<-Col_t[which(Col_t>0)]
   db<-as.data.frame(Col_pos_t)
   colnames(db)<-c("x")
-  con <- gamlss.control(n.cyc = 100,mu.step = 0.1,
-                        sigma.step = 0.1, nu.step = 0.1,
-                        tau.step = 0.1,autostep=TRUE,
+  con <- gamlss.control(n.cyc = n.cyc,mu.step = mu.step,
+                        sigma.step = sigma.step, nu.step =nu.step,
+                        tau.step = tau.step,autostep=TRUE,
                         trace = show_EGPD)
-  con.i=glim.control(glm.trace = FALSE)
+  con.i<-glim.control(glm.trace = FALSE)
   # Identity to enable mu/gamma<0
-  FIT_pos<-mev::gp.fit(xdat = Col_pos_t,threshold = 0)$est
-  INIT<-c(FIT_pos[2],FIT_pos[1])
+  Th<-quantile(x =Col_pos_t,0.90)
+  #Th<-0
+  FIT_pos<-mev::gp.fit(xdat = Col_pos_t,threshold =Th)$est
+  Shape<-FIT_pos[2]
+  # ## Use gpd property to get the scale at 0.
+  Scale<-FIT_pos[1]-Th*Shape
+  INIT<-c(Shape,Scale)
+  #INIT<-c(FIT_pos[2],FIT_pos[1])
+  ## Nu.start initialisation using moments.
+  Th_beg<-quantile(x = Col_pos_t,0.05)
+  Lower_tail<-Col_pos_t[which(Col_pos_t<Th_beg)]
+  Moment_1<-mean(Lower_tail)
+  nu.start<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
   Fitting_time_t <- gamlss(x~1, 
-                           data=db,
-                           family = EGPD1Family(mu.link = "identity"),
-                           control = con,mu.start=INIT[1],sigma.start=INIT[2],
-                           nu.start=0.5,
-                           i.control=con.i,
-                           method=CG())
+                           data=db,family = EGPD1Family(mu.link = "identity"),
+                           control = con,mu.start=INIT[1],
+                           sigma.start=INIT[2],nu.start=nu.start,
+                           i.control=con.i,method=CG())
   muFit <- fitted(Fitting_time_t,"mu")[1]
   sigmaFit <- predict(Fitting_time_t,what="sigma", 
                       type="response")[[1]]
@@ -124,12 +145,15 @@ Convert_time_z<-function(z,Data_pos,show_EGPD){
                                   sigma = sigmaFit,
                                   nu = nuFit)
   return(list("params_egpd"=Params_egpd,
-              "unif_convert_t"=vect_unif_conver_t))
+              "unif_convert_t"=vect_unif_conver_t,
+              "Model_t"=Fitting_time_t,
+              "Init"=INIT))
 }
 
 MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
                                  liste_noms,opt_Frech,n.dens,type_entree,p_U,
-                                 file_dates,show_EGPD){
+                                 file_dates,show_EGPD,
+                                 list_params_EGPD){
   l_ALL<-list()
   l_Orig_all<-list()
   l_Orig<-list()
@@ -185,12 +209,19 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
     l_Orig[[nom_variable]]<-Donnes_pos
     Unif_EGPD<-matrix(NA,nrow = length(IND_select),
                       ncol=ncol(Donnes))
+    print(nom_variable)
     ALL_results<-lapply(c(1:ncol(Donnes)),FUN =Convert_time_z,
                         Data_pos=Donnes_pos,
-                        show_EGPD=show_EGPD)
+                        show_EGPD=show_EGPD,
+                        list_params_EGPD=list_params_EGPD)
     Unif_EGPD<-cbind.data.frame(lapply(X = ALL_results,
                             FUN = fct_extract_Transf))
-    Vect_egpd<-lapply(X = ALL_results,FUN = fct_extract_ParamsEGPD)
+    Vect_egpd<-lapply(X = ALL_results,
+                      FUN = fct_extract_ParamsEGPD)
+    Vect_Init<-lapply(X = ALL_results,
+           FUN = fct_extract_InitEGPD)
+    Vect_fitting<-lapply(X = ALL_results,
+                         FUN = fct_extract_FittingEGPD)
     # Other methods with transf and then heavy tail with Naveau code.
 
     # PARETO<-do.call(cbind.data.frame,Resultat_P$obs)
@@ -224,7 +255,9 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
       FINAL_transfo<-1/(1-Unif_EGPD)
     }
     l_ALL[[nom_variable]]<-list("transf"=FINAL_transfo,
-                                "params_transfo"=Vect_egpd)
+                                "params_transfo"=Vect_egpd,
+                                "Fitting"=Vect_fitting,
+                                "INIT"=Vect_Init)
     df[[nom_variable]]<-apply(X = FINAL_transfo,MARGIN = 1,
                   FUN = calcul_norme_L2)
 
@@ -359,12 +392,14 @@ Compar_MomentF_B<-function(NPY_per_block,Vect_l_function,l_name){
 Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                              NbScores_Omega,M,rotations_available,
                              Params_risk_Function,root_for_export,
-                             list_nb_scores,One_PCA_base){
-  LISTE_simul<-list()
+                             list_nb_scores,One_PCA_base,f_transf,
+                             f_transf_inv){
+  Array_simul<-array(data = NA,dim = c(length(l_variables),M,37))
+  
   LISTE_obs_exts<-list()
   Liste_all<-result_transformation$resume
   Vect_l_function<-result_transformation$df
-
+  
   # CF Kokozka ---------------------------------------------------------------
   L<-300
   vect_k<-c(20:L)
@@ -406,6 +441,12 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                          shape=1,scale=Seuil_lprime,
                          threshold=Seuil_lprime,
                          type="GP")$p.value)
+  Theta_opt<-NA
+  if(Params_risk_Function[["parametric"]]==TRUE){
+    Theta_opt<-Estim_param_RF_homogeneous(Params_risk_Function= Params_risk_Function,
+                                          Seuil_lprime= Seuil_lprime,
+                                          Vect_l_function = Vect_l_function)
+  }
   MATRICE_SCORES<-c()
   l_fonction<-list()
   l_Mat_moyenne<-list()
@@ -413,27 +454,29 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   LISTE_SHAPE_OBS<-list()
   d<-ncol(Vect_l_function)
   
-  Name_for_export<-"graphiques_MV/"
-  for(NameVAR in l_variables){
-    Name_for_export<-paste0(Name_for_export,NameVAR,"_")
+  L<-length(l_variables)-1
+  for(NameVAR in l_variables[1:L]){
+    Name_for_export<-paste0(root_for_export,NameVAR,"_")
   }
+  Name_for_export<-paste0(Name_for_export,"_",l_variables[length(l_variables)])
   if(One_PCA_base){
     print("One PCA basis")
     LIST_Mod<-Approach_Angle_One_PCA(LIST_all = Liste_all,
-                                     Name_for_export = Name_for_export,
+                                     Name_for_export =root_for_export,
                                      NbScores_Omega = NbScores_Omega,
                                      l_variables = l_variables,
                                      Indices_exts = Indices_exts,
-                                     d = d)
+                                     d = d,f_transf = f_transf)
   }else{
     print("Several PCA basis")
     LIST_Mod<-Approach_Angle_Mult_PCA(Indices_exts = Indices_exts,
                                       LIST_all = Liste_all,
+                                      root_export = root_for_export,
                                       l_variables = l_variables,
-                                      list_nb_scores=list_nb_scores)
+                                      list_nb_scores=list_nb_scores,
+                                      f_transf = f_transf)
     NbScores_Omega<-LIST_Mod[["Nb_scores_omega"]]
   }
-  print(NbScores_Omega)
   LISTE_Frechet_OBS<-LIST_Mod[["L_Frechet"]]
   Scores<-LIST_Mod[["Scores"]]
   Length_T<-LIST_Mod[["Length_TS"]]
@@ -442,115 +485,143 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   Matrix_C<-function_Structure_Matrice(NB_dim = NbScores_Omega)
   Modele_coords<-VineCopula::RVineCopSelect(Unif_coord,
                                             Matrix = Matrix_C)
-  # Simulations of coordinates  ------------------------------------------------------------
-  Simulations_coord<-VineCopula::RVineSim(N=M,
-                                          RVM = Modele_coords)
-  colnames(Simulations_coord)<-1:ncol(Simulations_coord)
-  Coords_ech_orig<-matrix(NA,nrow=M,ncol=NbScores_Omega)
-  for(j in c(1:ncol(Simulations_coord))){
-    sortie<-quantile(Scores[,j],Simulations_coord[,j])
-    Coords_ech_orig[,j]<-as.numeric(sortie)
-  }
-  if(One_PCA_base){
-    Shape_Omega_simul<-Simul_Omega_One_PCA_base(list_Mod_One_PCA = LIST_Mod,
-                                                Simul_coords =Coords_ech_orig 
-                                                ,NbScores_Omega =NbScores_Omega )
-  }else{
-    Shape_Omega_simul<-Simul_Omega_Mult_PCA_base(list_Mod_Mult_PCA =LIST_Mod,
-                                                 M = M,d = d,list_nb_scores = list_nb_scores,
-                                                 Simul_coords =Coords_ech_orig )
+  Bool_filled<-FALSE
+  N_sim<-M
+  Coords_simul<-matrix(NA,nrow = M,ncol = NbScores_Omega)
+  while(Bool_filled==FALSE){
+    # Simulations of coordinates  ------------------------------------------------------------
+    Simulations_coord<-VineCopula::RVineSim(N=N_sim,
+                                            RVM = Modele_coords)
+    colnames(Simulations_coord)<-1:ncol(Simulations_coord)
+    Coords_ech_orig<-matrix(NA,nrow=N_sim,
+                            ncol=NbScores_Omega)
+    for(j in c(1:ncol(Simulations_coord))){
+      sortie<-quantile(Scores[,j],Simulations_coord[,j])
+      Coords_ech_orig[,j]<-as.numeric(sortie)
+    }
+    if(One_PCA_base){
+      Shape_Omega_simul<-Simul_Omega_One_PCA_base(list_Mod_One_PCA = LIST_Mod,
+                                                  Simul_coords =Coords_ech_orig 
+                                                  ,NbScores_Omega =NbScores_Omega,
+                                                  f_transf_inv = f_transf_inv)
+    }else{
+      Shape_Omega_simul<-Simul_Omega_Mult_PCA_base(list_Mod_Mult_PCA =LIST_Mod,
+                                                   M = N_sim,d = d,list_nb_scores = list_nb_scores,
+                                                   Simul_coords =Coords_ech_orig,
+                                                   f_transf_inv = f_transf_inv)
+    }
+    
+    ##### Compar simul of theta with the reality
+    scale_frechet_d<-Params_risk_Function[["scale_frechet_d"]]
+    if(Params_risk_Function[["parametric"]]==FALSE){
+      Sim_l<-Simul_RF_max_NP(Params_risk_Function = Params_risk_Function,
+                             M=N_sim,Seuil_lprime = Seuil_lprime,
+                             Vect_l_function = Vect_l_function)
+    }else{ 
+      
+      Sim_l<-Simulation_gParetoP(Params_risk_Function=Params_risk_Function,
+                                 Threshold= Seuil_lprime,d=ncol(Vect_l_function),
+                                 M=N_sim,theta_opt=Theta_opt)
+      ### From Pareto to original.
+      TAU<-0.95
+      Sim_l<-sapply(X = c(1:ncol(Sim_l)),
+                    FUN = function(x){
+                      result<-rep(NA,nrow(Sim_l))
+                      col_j<-Sim_l[,x]
+                      data_j<-Vect_l_orig[,x]
+                      Qj<-quantile(data_j,TAU)
+                      ### MEV produces vectors with Frechet margins.
+                      Unif_<-exp(-(col_j)^(-1))
+                      Inds_exts<-which(Unif_>TAU)
+                      Convert_todata<-Unif_
+                      Sub_non_exts<-Unif_[-Inds_exts]
+                      #return the corresponding data quantile for non extremes.
+                      Convert_todata[-Inds_exts]<-sapply(X = Sub_non_exts,
+                                      function(x){return(quantile(data_j,x))})
+                      # And use the Pareto tails for the extreme ones.
+                      V<-(Unif_-TAU)/(1-TAU)
+                      Convert_todata[Inds_exts]<-Seuil_lprime*(1-V)^(-1)
+                      return(Convert_todata)
+                    })
+      return(list("simuls"=Sim_l,"obs"=Vect_l_orig[Indices_exts,],
+                  "th"=Seuil_lprime))
+    }
+    Sim_l<-as.data.frame(Sim_l)
+    colnames(Sim_l)<-l_variables
+    LISTE_shapes<-list()
+    vect_found<-c()
+    LISTE_candidats<-list()
+    DF_simul_lprime<-c()
+    Z<-1
+    for(k in c(1:length(l_variables))){
+      nom_s<-l_variables[k]
+      L_prime_simul<-Sim_l[,k]
+      #Deconcatenate the Omega----------------
+      #####
+      Beg<-1+Length_T*(Z-1)
+      END<-Length_T*Z
+      Shape_forcing<-Shape_Omega_simul[,Beg:END]
+      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norme_L2)
+      Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
+      LISTE_shapes[[nom_s]]<-Shape_forcing_std
+      Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
+      LISTE_candidats[[nom_s]]<-Z_varj
+      DF_simul_lprime<-c(DF_simul_lprime,
+                         apply(X = Z_varj,MARGIN = 1,FUN = calcul_norme_L2))
+      indicatrice_pos<-which(apply(X=Z_varj,
+                                   FUN=fonction_trajectoire_positive,MARGIN = 1)==TRUE)
+      Unif<-exp(-Z_varj[indicatrice_pos,]^(-1))
+      PTO<-(1-Unif)^(-1)
+      seuil_marg<-1+10^(-5)
+      indicatrice_pos2<-which(apply(X=(PTO-seuil_marg),
+                                    FUN=fonction_trajectoire_positive,MARGIN = 1)==TRUE)
+      indicatrice_pos<-indicatrice_pos[indicatrice_pos2]
+      vect_found<-c(vect_found,indicatrice_pos)
+      Z<-Z+1
+    }
+    ref<-Array_simul[1,,1]
+    Nb_filled<-length(which(!is.na(ref)==TRUE))
+    Inds_final_chosen<-unique(vect_found[duplicated(vect_found)])
+    Nb_final_chosen<-length(Inds_final_chosen)
+    Beg_filled<-Nb_filled+1
+    Gap<-M-(Nb_filled+Nb_final_chosen)
+    End_filled<-min(Nb_filled+Nb_final_chosen,M)
+    Lag<-End_filled-Beg_filled+1
+    for(k in c(1:length(l_variables))){
+      name_variable<-l_variables[k]
+      Z_vark<-LISTE_candidats[[name_variable]][Inds_final_chosen,]
+      Sub_coords<-Coords_ech_orig[Inds_final_chosen,]
+      Sub_coords<-Sub_coords[c(1:Lag),]
+      UNIF_k<-exp(-Z_vark^(-1))
+      UNIF_k<-UNIF_k[c(1:Lag),]
+      ### Unif scale
+      Array_simul[k,c(Beg_filled:End_filled),]<-UNIF_k
+      Coords_simul[c(Beg_filled:End_filled),]<-Sub_coords
+    }
+    ### See if the object is completed. 
+    new_ref<-Array_simul[1,,1]
+    Nb_filled_update<-length(which(!is.na(new_ref)==TRUE))
+    ### if True, stop the loop
+    if(Nb_filled_update==M){
+      Bool_filled<-TRUE
+    }
   }
   
-  ##### Compar simul of theta with the reality
-  scale_frechet_d<-Params_risk_Function[["scale_frechet_d"]]
-  plot(Excedents_lprime,log="xy",xlab=paste0("l(T(",l_name[1],"))"),
-       ylab=paste0("l(T(",l_name[2],"))"))
-  Theta_opt<-NA
-  if(Params_risk_Function[["parametric"]]==FALSE){
-    Sim_l<-Simul_RF_max_NP(Params_risk_Function = Params_risk_Function,
-                        M=M,Seuil_lprime = Seuil_lprime,
-                        Vect_l_function = Vect_l_function)
-  }else{ 
-    Theta_opt<-Estim_param_RF_homogeneous(Params_risk_Function= Params_risk_Function,
-                               Seuil_lprime= Seuil_lprime,
-                               Vect_l_function = Vect_l_function)
-    Sim_l<-Simulation_gParetoP(Params_risk_Function=Params_risk_Function,
-                               Threshold= Seuil_lprime,d=ncol(Vect_l_function),
-                               M=M,theta_opt=Theta_opt)
-    print(summary(Sim_l))
-    ### From Pareto to original.
-    # TAU<-0.95
-    # Sim_l<-sapply(X = c(1:ncol(Sim_l)),
-    #               FUN = function(x){
-    #                 result<-rep(NA,nrow(Sim_l))
-    #                 col_j<-Sim_l[,x]
-    #                 data_j<-Vect_l_orig[,x]
-    #                 Qj<-quantile(data_j,TAU)
-    #                 ### MEV produces vectors with Frechet margins.
-    #                 Unif_<-exp(-(col_j/Seuil_lprime)^(-1))
-    #                 print(summary(Unif))
-    #                 Inds_exts<-which(Unif_>TAU)
-    #                 Convert_todata<-Unif_
-    #                 Sub_non_exts<-Unif_[-Inds_exts]
-    #                 #return the corresponding data quantile.
-    #                 Convert_todata[-Inds_exts]<-sapply(X = Sub_non_exts,
-    #                                 function(x){return(quantile(data_j,x))})
-    #                 # Or use Pareto tail of the l(X)
-    #                 V<-(Unif_-TAU)/(1-TAU)
-    #                 Convert_todata[Inds_exts]<-Qj*(1-V)^(-1)
-    #                 return(Convert_todata)
-    #               })
-  }
-  Sim_l<-as.data.frame(Sim_l)
-  colnames(Sim_l)<-l_variables
-  points(Sim_l,col="red",cex=0.5)
-  LISTE_shapes<-list()
-  vect_found<-c()
-  LISTE_candidats<-list()
-  DF_simul_lprime<-c()
-  Z<-1
-  for(k in c(1:length(l_variables))){
-    nom_s<-l_variables[k]
-    L_prime_simul<-Sim_l[,k]
-    #Deconcatenate the Omega----------------
-    #####
-    Beg<-1+Length_T*(Z-1)
-    END<-Length_T*Z
-    Shape_forcing<-Shape_Omega_simul[,Beg:END]
-    L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norme_L2)
-    Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
-    LISTE_shapes[[nom_s]]<-Shape_forcing_std
-    Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
-    ### issue here with U sometimes...
-    LISTE_candidats[[nom_s]]<-Z_varj
-    DF_simul_lprime<-c(DF_simul_lprime,
-                       apply(X = Z_varj,MARGIN = 1,FUN = calcul_norme_L2))
-    indicatrice_pos<-which(apply(X=Z_varj,
-                                 FUN=fonction_trajectoire_positive,MARGIN = 1)==TRUE)
-    Unif<-exp(-Z_varj[indicatrice_pos,]^(-1))
-    PTO<-(1-Unif)^(-1)
-    seuil_marg<-1+10^(-5)
-    indicatrice_pos2<-which(apply(X=(PTO-seuil_marg),
-                                  FUN=fonction_trajectoire_positive,MARGIN = 1)==TRUE)
-    indicatrice_pos<-indicatrice_pos[indicatrice_pos2]
-    vect_found<-c(vect_found,indicatrice_pos)
-    Z<-Z+1
-  }
   # Conversion --------------------------------------------------------------
   # ------------------------------------------------------------------------
   LISTE_Frechet_SIMUL<-list()
-  Inds_final_chosen<-unique(vect_found[duplicated(vect_found)])
+  LISTE_simul<-list()
+  LISTE_obs_exts<-list()
   if(result_transformation[["type_transfo"]]=="Mixture_emp_GPD"){
-    print("beginning transformation")
-    for(name_variable_for_conv in l_variables){
-      Z_varj<-LISTE_candidats[[name_variable_for_conv]][Inds_final_chosen,]
-      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-Z_varj
-      Z_unif_j<-exp(-Z_varj^(-1))
-      Z_Pareto_j<-(1-Z_unif_j)^(-1)
-      
+    for(k in c(1:length(l_variables))){
+      name_variable_for_conv<-l_variables[k]
+      Simul_whole_kunif<-Array_simul[k,,]
+      ### Unif-->Frechet to compare in Frechet scale of obs.
+      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<--1/log(Simul_whole_kunif)
       INDICES_ACP<-1:nrow(Z_varj)
+      ### Unif--> Pareto for conversion
       NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
-                     df=Z_Pareto_j)
+                     df=(1-Simul_whole_kunif^(-1)))
       
       # Reconversion in the good scale--------------------------------------
       K<-Liste_all[[name_variable_for_conv]]$K
@@ -569,13 +640,14 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       LISTE_obs_exts[[name_variable_for_conv]]<-obs_ext
     }
   }else{
-    for(name_variable_for_conv in l_variables){
-      Z_varj<-LISTE_candidats[[name_variable_for_conv]][Inds_final_chosen,]
-      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-Z_varj
-      Z_unif_j<-exp(-Z_varj^(-1))
-      INDICES_ACP<-1:nrow(Z_unif_j)
+    for(k in c(1:length(l_variables))){
+      name_variable_for_conv<-l_variables[k]
+      Simul_whole_kunif<-Array_simul[k,,]
+      INDICES_ACP<-1:nrow(Simul_whole_kunif)
+      ### Unif-->Frechet to compare in Frechet scale of obs.
+      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<--1/log(Simul_whole_kunif)
       NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
-                     df=Z_unif_j)
+                     df=Simul_whole_kunif)
       
       # Reconversion in the good scale--------------------------------------
       Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
@@ -596,7 +668,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   return(list("Risk_MV"=l_prime[Indices_exts],
               "Param_found"=Theta_opt,"simul"=LISTE_simul,
               "obs_exts"=LISTE_obs_exts,"Indices_exts"=Indices_exts,
-              "coords_simul"=Coords_ech_orig, "coords_data"=Scores,
+              "coords_simul"=Coords_simul, "coords_data"=Scores,
               "Frechet_normal"=list("obs"=LISTE_Frechet_OBS,
                                     "simul"=LISTE_Frechet_SIMUL),
               "EIGEN_functions"= EIGEN_functions,"family_copula"=Modele_coords,
