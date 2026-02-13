@@ -13,8 +13,13 @@ source("functions_MV/function_simul_MV.R")
 W_chosen<-c(0.7,0.3)
 ### Max/q<-40
 ### Min/q<--40
-q<--2
-Name_riskF<-"Weighted_NQ"
+q<-20
+Name_riskF<-"max"
+if(Name_riskF=="max"){
+  Risk_f<-function(x){return(max(x))}
+  wFun<-NA
+  dwFun<-NA
+}
 if(Name_riskF=="sum"){
   Risk_f<-function(x){
     return(sum(x))}
@@ -34,20 +39,21 @@ if(Name_riskF=="sum_penalized"){
                             vect_w = W_chosen)
   }
 }
-
+# # ,
+# weights_nq = W_chosen
+#,weights_nq = W_chosen
+#,weights_nq = W_chosen
 if(Name_riskF=="Weighted_NQ"){
   Risk_f<-function(x){
-    return(Norm_q(x=x,q=q,
-                  weights_nq = W_chosen))
+    return(Norm_q(x=x,q=q,weights_nq = c(0.3,0.7)))
   }
   wFun<-function(x,u){
     return(weightFun_nq(x = x,u = u,
-                        q = q,
-                        weights_nq = W_chosen))
+                        q = q,weights_nq = c(0.3,0.7)))
   }
   dwFun<-function(x,u){
     return(DweightFun_nq(x = x,u = u,
-                         q = q,weights_nq = W_chosen))
+                         q = q,weights_nq = c(0.3,0.7)))
   }
 }
 
@@ -59,33 +65,77 @@ Define_Gamma_from_lambda<-function(lambda,d){
                      byrow = FALSE)
   return(mat_gamma)
 }
-model_used<-"log"
+model_used<-"bilog"
+if(model_used=="bilog"){
+  THETA<-c(0.50,0.55)
+}
 if(model_used=="log"){
-  THETA<-0.8
+  THETA<-0.80
 }
 if(model_used=="hr"){
   THETA<-Define_Gamma_from_lambda(lambda = 0.5,d = d)
 }
-THETA
-if(model_used=="log"){
-  MEV_FRECHET<-rmev(n=5000, d=d, param=1/ THETA, model='log', alg='ef')
-  INIT_THETA<-0.3
-}else{
-  MEV_FRECHET<-rmev(n=5000, d=d, sigma = THETA, model='hr')
-  INIT_THETA<-Define_Gamma_from_lambda(lambda = 0.3,d = d)
-  INIT_THETA<-INIT_THETA[t(utils::combn(x = c(1:d),m = 2))]
+if(model_used=="bilog"){
+  print("here")
+  MEV_FRECHET<-rmev(n=5000, d=d, param = THETA, 
+                    model=model_used, alg='ef')
+  INIT_THETA<-c(0.3,0.7)
 }
-Sub_theta<-INIT_THETA
+print(THETA)
+if(model_used=="log"){
+  MEV_FRECHET<-rmev(n=100, d=d, param=1/THETA, model='log', alg='ef')
+  INIT_THETA<-0.3
+}
+summary(MEV_FRECHET)
+goftest::ad.test(x =exp(-(MEV_FRECHET[,1])^(-1)),
+                 null="punif")
+# else{
+#   MEV_FRECHET<-rmev(n=5000, d=d, sigma = THETA, model='hr')
+#   INIT_THETA<-Define_Gamma_from_lambda(lambda = 0.3,d = d)
+#   INIT_THETA<-INIT_THETA[t(utils::combn(x = c(1:d),m = 2))]
+# }
+RF<-rowSums(MEV_FRECHET^2)^(1/2)
+summary(RF)
+Graphics_estimators_gamma(series =RF,
+                          vect_k = c(70:200),
+                          Title_graphic = "test RF of Frechet distrib")
+goftest::ad.test(RF,null = extRemes::"pevd",
+                 type="GEV",shape=1,scale=2,loc=2)
+TEST<-exp(-(MEV_FRECHET)^(-1))
+TEST<--log(1-TEST)
+MAX<-apply(X = TEST,MARGIN = 1,FUN = max)
+SEUIL_EXP<-quantile(MAX,0.98)
+INDS_exts<-which(MAX>SEUIL_EXP)
+goftest::ad.test(MAX[INDS_exts]-SEUIL_EXP,null = "pexp")
+SUB<-TEST[INDS_exts,]
+Simuls_<-Non_param_LEGRAND_RiskF(Data_scale_exp = SUB,
+                        nb_simul = 300,Threshold_EXP = SEUIL_EXP)
+GAP<-SUB
+Delta_i<-as.numeric(t(diff(t(GAP))))*(-1)
+head(Delta_i)
+head(GAP)
+nb_simul<-300
+Delta_tilde<-sample(Delta_i,size = nb_simul,
+                    replace = TRUE)
+IND_plus<-which(Delta_tilde>0)
+D<-2
+Delta_mat<-matrix(0,ncol = D,
+                  nrow=nb_simul)
+Delta_mat[-IND_plus,1]<-Delta_tilde[-IND_plus]
+Delta_mat[IND_plus,2]<--Delta_tilde[IND_plus]
+Simul_Z<-rexp(n=nb_simul)
+Simul_RiskF_value<-Simul_Z+Delta_mat+SEUIL_EXP
+plot(SUB)
+points(Simul_RiskF_value,col="red")
 
 List_Params_RF<-list("parametric"=TRUE,"name_RF"=Name_riskF,
                      "function"=Risk_f,"name_model"=model_used,
                      "Scale_Frechet"=c(1,1),"weightFunction"=wFun,
-                     "dWeightFunction"=dwFun,"init_opt_param"=Sub_theta)
+                     "dWeightFunction"=dwFun,"init_opt_param"=INIT_THETA)
 List_Params_RF
 summary(apply(MEV_FRECHET,MARGIN = 1,FUN = min))
 Sum_found<-apply(X = MEV_FRECHET,MARGIN = 1,FUN = Risk_f)
 
-summary(Sum_found)
 TS_param<-0.50
 k_metric<-mindist_update(data = Sum_found,ts = TS_param,
                          method = "ks")
@@ -97,60 +147,73 @@ abline(v=kZero_found,col="red")
 #                           vect_k = c(10:500),
 #                           Title_graphic = " ",
 #                           NB_years = NULL)
-Kfound<-200
-Q<-Kfound/length(Sum_found)
-Th<-quantile(x = Sum_found,probs = 1-Q)
-Risk_f_q<-function(x,Q_var){
-  return(Norm_q(x=x,q=Q_var,
-                weights_nq = W_chosen))
-}
-VEct_q<-seq.int(from = -10,to = 10,by = 1)
-Vect_diff_Q<-sapply(X = VEct_q,FUN=function(q){
-  Vect_for_oneQ<-apply(X = MEV_FRECHET,MARGIN = 1,FUN=function(x,Q){
-    return(Risk_f_q(x =x,Q_var=q))
-  },Q=q)
-  return(Vect_for_oneQ)
-})
-V_diffQ<-as.data.frame(Vect_diff_Q)
-colnames(V_diffQ)<-as.character(V_diffQ)
+Kfound<-150
+Q<-1-(Kfound/length(Sum_found))
+Th<-quantile(x = Sum_found,probs = Q)
+Inds_extremes<-which(Sum_found>Th)
 THETA_found<-Estim_param_RF_homogeneous(Params_risk_Function = List_Params_RF,
-                           Seuil_lprime =Th ,
                            Vect_l_function =MEV_FRECHET,
-                           d=d)
+                           d=d,Q_thresh = Q)
 THETA_found
-Gap<-abs(THETA_found-THETA)
+print(THETA)
+Gap<-abs(THETA_found$alpha-THETA)
 print(paste0("The absolute difference between the estimator and the true value is ",Gap))
-Inds<-which(Sum_found>Th)
-Exts_mev<-MEV_FRECHET[Inds,]
-if(sum(W_chosen)==1){
-  png(filename = paste0("functions_MV/Weighted_results_Lp=",q,".png"))
-  plot(MEV_FRECHET,log="xy",xlab="First dimension",ylab="Second dimension",
-       cex.lab=1.5)
-  abline(h=Th,v=Th,lty="dashed",col="blue")
-}else{
-  png(filename = paste0("functions_MV/results_Lp=",q,".png"))
-  plot(MEV_FRECHET,log="xy",xlab="First dimension",ylab="Second dimension",
-       cex.lab=1.5)
-  abline(h=Th,v=Th,lty="dashed",col="blue")
-}
-
+Exts_mev<-MEV_FRECHET[Inds_extremes,]
+# if(sum(W_chosen)==1){
+#   png(filename = paste0("functions_MV/Weighted_results_Lp=",q,".png"))
+#   plot(MEV_FRECHET,log="xy",xlab="First dimension",ylab="Second dimension",
+#        cex.lab=1.5)
+#   abline(h=Th,v=Th,lty="dashed",col="blue")
+# }else{
+#   png(filename = paste0("functions_MV/results_Lp=",q,".png"))
+#   plot(MEV_FRECHET,log="xy",xlab="First dimension",ylab="Second dimension",
+#        cex.lab=1.5)
+#   abline(h=Th,v=Th,lty="dashed",col="blue")
+# }
 ## Change the threshold used.
-# J_plot<-2
-# X_private<-Exts_mev[,-J_plot]
-# seq_x<-seq.int(from = 0.001,to =20,length.out =100)
-# seq_xj<-sapply(seq_x,FUN=Shape_boundary,
-#                j = J_plot,ul = Th,RiskF = Risk_f)
-# lines(seq_x,seq_xj,col="blue")
-M<-3000
+M<-2000
 #### Directly gives the lambda square coefficients for rgpapr != mev, gives the sigma...
-Simuls_gp<-Simulation_gParetoP(Params_risk_Function=List_Params_RF,
-                    Threshold= Th,d=ncol(MEV_FRECHET),
-                    M=M,theta_opt=THETA_found)
-THETA_found
-stats_obtained<-apply(Simuls_gp,MARGIN = 1,FUN = Risk_f)
-points(Simuls_gp,col="red",
+# Simuls_gp<-Simulation_gParetoP(Params_risk_Function=List_Params_RF,
+#                     Threshold= as.numeric(Th),d=ncol(MEV_FRECHET),
+#                     M=M,theta_opt=THETA_found)
+Simuls_gp<-mev::rgparp(n = M,shape = 1,thresh = as.numeric(Th),
+            risk = "max",d = ncol(MEV_FRECHET),
+            model = model_used,param = THETA,
+            scale =rep(1,ncol(MEV_FRECHET)),
+            loc=rep(1,ncol(MEV_FRECHET) ))
+#png("test.png")
+plot(Exts_mev,log="xy")
+points(Simuls_gp,col="red")
+data_forgg<-rbind.data.frame(Exts_mev,Simuls_gp)
+data_forgg$origin<-c(rep("obs",nrow(Exts_mev)),
+                     rep("simuls",nrow(Simuls_gp)))
+require(ggside)
+ggplot(data=data_forgg,aes(x=V1,y=V2,col=origin))+
+  geom_point()+
+  scale_x_continuous(transform="log10")+
+  scale_y_continuous(transform="log10")+
+  geom_xsidedensity(data=data_forgg,aes(fill=origin), 
+                    alpha = 0.5)+
+  geom_ysidedensity(data=data_forgg,aes(fill=origin), 
+                    alpha = 0.5)
+
+#dev.off()
+# Unif_scale_sim<-apply(X = Simuls_gp,MARGIN=2,FUN = evd::pgpd,loc=0,
+#       scale=1, shape=1)
+### Scale of data observations
+Unif_scale_exts<-exp(-(Exts_mev)^(-1))
+### Enigma) what is the distrib of MEV ? 
+#Unif_scale_sim<-exp(-Simuls_gp^(-1))
+Unif_scale_sim<-apply(Simuls_gp,MARGIN=2,FUN = evd::pgpd,loc=0,
+                     scale=1, shape=1)
+
+plot(Unif_scale_exts,log="xy")
+points(Unif_scale_sim,col="red",
        cex=0.5)
 dev.off()
+print("Kendall data vs simul")
+print(cor(x = Exts_mev[,1],y=Exts_mev[,2],method = "kendall"))
+print(cor(x=Simuls_gp[,1],y=Simuls_gp[,2],method="kendall"))
 
 if(List_Params_RF[["name_RF"]]!="max"){
   Evol_cost<-function(theta_candidate){

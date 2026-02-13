@@ -130,3 +130,57 @@
 #   }
 # 
 # }
+
+### Bootstrap confidence band
+# ######
+# NPY<-length(St)/37
+# period_years<-c(0.5,1,2,5,10,20,50,80,
+#                 100)
+# Qyears<-1-(period_years*NPY)^(-1)
+# Qdata<-quantile(St,probs = Qyears)
+# QEGPQ<-RL_EGPD_model1(gamma = gam_t,sigma_EGPD = sig_t,
+#                       order_quantiles = Qyears,Kappa = Kappa_t)
+# RLevel_param_bootstrap<-replicate(n = 100,RLevel_generations_EGPD(gamma = gam_t,
+#                                                                   sigma = sig_t,
+#                                                                   kappa =Kappa_t,M = length(St),
+#                                                                   order_quantiles = Qyears))
+# Rl_Bound_boot_mean<-rowMeans(RLevel_param_bootstrap)
+# Rl_Bound_boot_inf<-as.numeric(apply(RLevel_param_bootstrap,MARGIN = 1,FUN = function(x){
+#   return(as.numeric(quantile(x,0.025)))}))
+# Rl_Bound_boot_sup<-as.numeric(apply(RLevel_param_bootstrap,MARGIN = 1,FUN = function(x){
+#   return(as.numeric(quantile(x,0.975)))}))
+# Rlevel_years<-cbind.data.frame(period_years,Qdata,
+#                                Rl_Bound_boot_mean,Rl_Bound_boot_inf,
+#                                Rl_Bound_boot_sup)
+# colnames(Rlevel_years)<-c("rperiod",
+#                           "dataQ",
+#                           "egpdQ","Boundinf",
+#                           "Boundsup")
+# list_t[[nameV]]<-list("RL"=Rlevel_years,
+#                       "QQ"=dataQ)
+# 
+# }
+# list_for_plot_EGGPD[[t]]<-list_t
+# }
+
+### From Pareto to original.
+# TAU<-0.95
+# Sim_l<-sapply(X = c(1:ncol(Sim_l)),
+#               FUN = function(x){
+#                 result<-rep(NA,nrow(Sim_l))
+#                 col_j<-Sim_l[,x]
+#                 data_j<-Vect_l_function[,x]
+#                 Qj<-quantile(data_j,TAU)
+#                 ### MEV produces vectors with Frechet margins.
+#                 Unif_<-exp(-(col_j)^(-1))
+#                 Inds_exts<-which(Unif_>TAU)
+#                 Convert_todata<-Unif_
+#                 Sub_non_exts<-Unif_[-Inds_exts]
+#                 #return the corresponding data quantile for non extremes.
+#                 Convert_todata[-Inds_exts]<-sapply(X = Sub_non_exts,
+#                                                    function(x){return(quantile(data_j,x))})
+#                 # And use the Pareto tails for the extreme ones.
+#                 V<-(Unif_[Inds_exts]-TAU)/(1-TAU)
+#                 Convert_todata[Inds_exts]<-Seuil_lprime*(1-V)^(-1)
+#                 return(Convert_todata)
+#               })
