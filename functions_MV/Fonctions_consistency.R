@@ -31,6 +31,47 @@ F_automatic_ggplot_marg<-function(vect_time_choice,
          width=8,height = 6,
          plot = obj_cond)
 }
+F_automatic_ggplot_marg_Omega<-function(vect_time_choice,Obj_data,
+                                        Obj_sim,l_name){
+  t<-vect_time_choice[1]
+  s<-vect_time_choice[2]
+  U<-Obj_data[,t]
+  V<-Obj_data[,s]
+  DF_1<-cbind.data.frame(U,V)
+  DF_sim<-cbind.data.frame(Obj_sim[,t],Obj_sim[,s])
+  colnames(DF_1)<-sapply(c(1:2),function(x){return(paste0("V",x))})
+  colnames(DF_sim)<-colnames(DF_1)
+  df_combo<-rbind.data.frame(DF_1,DF_sim)
+  df_combo$Legend<-c(rep("data",nrow(DF_1)),
+                     rep("simulations",nrow(DF_sim)))
+  
+  name_first<-ifelse(t>37,l_name[2],l_name[1])
+  name_second<-ifelse(s>37,l_name[2],l_name[1])
+  tprime<-ifelse(t>37,yes=t-37,no=t)
+  sprime<-ifelse(s>37,yes = s-37,no = s)
+  Name_file<-paste0("/",CPLMT_graph_theta,"_",METHOD_ANGLE,
+                    "_Distrib_Omega_",name_first,"_t=",
+                    tprime,"_",name_second,"_s=",sprime,".png")
+  GG1<-ggplot(data=df_combo,aes(x=V1,y=V2,colour=Legend,shape=Legend),
+  )+
+    geom_point(aes(size=Legend))+
+    geom_xsidedensity(data=df_combo,aes(fill=Legend), alpha = 0.5)+
+    geom_ysidedensity(data=df_combo,aes(fill=Legend), alpha = 0.5)+
+    
+    scale_color_manual(values=cols_)+
+    scale_fill_manual(values=cols_)+
+    scale_shape_manual(values = c("simulations"=17,"data"=19))+
+    scale_size_manual(values=c("simulations"=0.75,"data"=1.5))+
+    guides(fill="none")+
+    theme(axis.title=element_text(size=15),
+          legend.text=element_text(size=10))+
+    xlab(paste0(name_first,"_",tprime))+
+    ylab(paste0(name_second,"_",sprime))
+  ggsave(filename = paste0(Theta_path,
+                           Name_file),
+         plot = GG1,
+         width=8,height=6)
+}
 #' Title
 #'
 #' @param gam_t 

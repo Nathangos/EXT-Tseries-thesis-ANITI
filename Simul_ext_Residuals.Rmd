@@ -514,6 +514,12 @@ plot(c(1:37),y = Mat_corr,
 lines(c(1:37),y = Mat_corr_simul,
       col="red")
 
+
+
+
+```
+
+```{r}
 # Marginal law ------------------------------------------------------------
 NB_times<-ncol(re$simul[[ind_var1]])
 KS_test_S<-rep(NA,NB_times)
@@ -526,11 +532,6 @@ for(t in c(1:NB_times)){
 }
 plot(KS_test_S)
 plot(KS_test_HS)
-
-
-```
-
-```{r}
 # Export ------------------------------------------------------------------
 ##################
 for(nameV in l_name){
@@ -634,47 +635,9 @@ write.csv(file=paste0(ROOT_export,"log=",USE_log,"_Theta_sim.csv"),
           x = Obj_sim)
 
 ### Work on distrib of Omega
-F_automatic_ggplot_marg_Omega<-function(vect_time_choice,Obj_data,
-                                        Obj_sim,l_name){
-  t<-vect_time_choice[1]
-  s<-vect_time_choice[2]
-  U<-Obj_data[,t]
-  V<-Obj_data[,s]
-  DF_1<-cbind.data.frame(U,V)
-  DF_sim<-cbind.data.frame(Obj_sim[,t],Obj_sim[,s])
-  colnames(DF_1)<-sapply(c(1:2),function(x){return(paste0("V",x))})
-  colnames(DF_sim)<-colnames(DF_1)
-  df_combo<-rbind.data.frame(DF_1,DF_sim)
-  df_combo$Legend<-c(rep("data",nrow(DF_1)),
-                     rep("simulations",nrow(DF_sim)))
- 
-  name_first<-ifelse(t>37,l_name[2],l_name[1])
-  name_second<-ifelse(s>37,l_name[2],l_name[1])
-  tprime<-ifelse(t>37,yes=t-37,no=t)
-  sprime<-ifelse(s>37,yes = s-37,no = s)
-  Name_file<-paste0("/",CPLMT_graph_theta,"_",METHOD_ANGLE,
-               "_Distrib_Omega_",name_first,"_t=",
-               tprime,"_",name_second,"_s=",sprime,".png")
-  GG1<-ggplot(data=df_combo,aes(x=V1,y=V2,colour=Legend,shape=Legend),
-  )+
-    geom_point(aes(size=Legend))+
-    geom_xsidedensity(data=df_combo,aes(fill=Legend), alpha = 0.5)+
-    geom_ysidedensity(data=df_combo,aes(fill=Legend), alpha = 0.5)+
-    
-    scale_color_manual(values=cols_)+
-    scale_fill_manual(values=cols_)+
-    scale_shape_manual(values = c("simulations"=17,"data"=19))+
-    scale_size_manual(values=c("simulations"=0.75,"data"=1.5))+
-    guides(fill="none")+
-    theme(axis.title=element_text(size=15),
-          legend.text=element_text(size=10))+
-    xlab(paste0(name_first,"_",tprime))+
-    ylab(paste0(name_second,"_",sprime))
-  ggsave(filename = paste0(Theta_path,
-                           Name_file),
-         plot = GG1,
-         width=8,height=6)
-}
+```
+
+```{r}
 ### RiskF analysis
 var_used<-"Surcote"
 data_rj<-List_RiskF_data[[var_used]]
@@ -697,8 +660,8 @@ list_pairs<-list("1"=c(1,37),
 sapply(list_pairs,F_automatic_ggplot_marg_Omega,
        Obj_sim=Obj_sim,Obj_data=Obj_data,
        l_name=l_name)
-
 ```
+
 
 ```{r}
 mu_Theta<-apply(X = Obj_data,MARGIN = 2,FUN = mean)
@@ -1136,8 +1099,6 @@ Mlt_copy$Time<-as.character(Mlt_copy$Time)
 
 ```
 
-
-
 ```{r}
 # Violin plot -------------------------------------------------------------
 ############
@@ -1205,6 +1166,11 @@ if(!Name_riskF%in%c("Weighted_NQ","max","min")){
   abline(h=re$threshold,v=re$threshold,col="blue")
 }
 dev.off()
+```
+
+
+```{r}
+
 
 ## originally
 Min_x2<-min(min(Vect_l_function[,1]),min(L2_pto_sur))
@@ -1333,12 +1299,6 @@ summary(Maximum)
 
 Maximum_obs<-apply(cbind(L2_P_S,L2_P_HS),MARGIN = 1,FUN = max)
 summary(Maximum_obs)
-
-
-df<-cbind(L2_P_HS,L2_P_S)
-M<-2000
-Unif_simul<-runif(M)
-z<-1
 
 fUl<-min(apply(cbind(L2_P_HS,L2_P_S),MARGIN = 1,FUN = max))
 cor(L2_P_HS,L2_P_S,method = "kendall")
