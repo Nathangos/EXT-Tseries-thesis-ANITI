@@ -22,7 +22,7 @@ require(tseries)
 ```{r}
 
 ### Source des fonctions. ####
-source("../fonctions/fonctions.R")
+source("fonctions/fonctions.R")
 F_names<-ls()
 nb_coeurs<-detectCores()-4
 coeurs<-makeCluster(nb_coeurs)
@@ -60,7 +60,6 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
   p<-d+2
   D<-ncol(Donnes)
   MATRIX_Mod_VAR<-matrix(NA,nrow=D*p,ncol=d)
-  print(dim(MATRIX_Mod_VAR))
   for(t in c(1:D)){
     Data_time_t<-matrix(NA,nrow = nrow(Donnes),
                         ncol=length(list_variable))

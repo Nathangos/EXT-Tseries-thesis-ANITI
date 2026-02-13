@@ -1,0 +1,356 @@
+```{r}
+rm(list=ls())
+set.seed(133)
+par(mfrow=c(1,1))
+
+#### Import des packages. #####
+
+require(dplyr)
+require(ggplot2)
+require(reshape2)
+require(FactoMineR)
+require(extRemes)
+require(fda)
+require(parallel)
+require(VineCopula)
+require(grid)
+require(gridExtra)
+require(mvPot)
+require(ggside)
+require(mev)
+require(scales)
+require(gamlss)
+
+### Source des fonctions. ####
+#Functions from univariate case. 
+source("../fonctions/fonctions_Pareto.R")
+source("../fonctions/fonctions.r")
+source("../fonctions/fonctions_r_pareto_EVOLTAU.r")
+
+#Specific multivariate functions. 
+source("functions_MV/function_simul_MV.r")
+source("functions_MV/F_simulations_cond.R")
+source("functions_MV/GenericEGPDg_carrer.R")
+# import G pareto ---------------------------------------------------------
+source("functions_MV/function_estim_simul_gPareto.R")
+
+# Consistency results -----------------------------------------------------
+source("functions_MV/Fonctions_consistency.R")
+F_names<-ls()
+nb_coeurs<-detectCores()-4
+
+# Ouverture des clusters --------------------------------------------------
+coeurs<-makeCluster(nb_coeurs)
+clusterExport(coeurs,varlist=F_names)
+
+# Lancement fonction ------------------------------------------------------
+# ------------------------------------------------------------------------
+
+l_root<-"residuals_MV/"
+l_name<-c("Surcote","Hs")
+TE<-"residus"
+STD_donnees<-TRUE
+```
+
+```{r}
+### Create sub folder
+sub_direct_graph_path<-paste0(getwd(),"Graphics_MV")
+try({
+  dir.create(file.path(sub_direct_graph_path))
+  dir.create(file.path(sub_direct_graph_path,"resid"))
+  dir.create(file.path(sub_direct_graph_path,"data"))
+  dir.create(file.path(sub_direct_graph_path,"asymp_dependencies"))
+})
+sub_direct_graph<-paste0(sub_direct_graph_path,"/")
+```
+
+
+```{r}
+# Import thresholds -------------------------------------------------------
+##############
+cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue",
+         "model"="red","Storm"="black", "exceedances"="red")
+SHS<-rep(0.10,37)
+Mat_weights<-cbind(rep(0.10,37),SHS,SHS)
+LPU<-Create_list_fromALL(l_name = l_name, 
+                         obj_source = Mat_weights)
+PL2<-0.05
+M<-2000
+show_EGPD<-TRUE
+file_dates<-"../ss_tend/HIVER/dates_prises.csv"
+
+# Running code ------------------------------------------------------------
+#######
+
+### Mixture results
+###############
+# source("Choice_auto_thresh/src/eqd.R")
+# source("Choice_auto_thresh/src/helper_functions.R")
+# NB_THRESH<-20
+# Mixture_results<-MarTransfo_TS_exts_Mixture(type_donnees = "hiver",
+#                            coeurs = coeurs,
+#                            lien_racine = l_root,
+#                            liste_noms = l_name,file_dates = file_dates,
+#                            n.dens = 2^(14),opt_Frech = opt_Frech,
+#                            type_entree = TE,
+#                            Nb_Threshs = NB_THRESH)
+```
+
+```{r}
+MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
+                                 liste_noms,opt_Frech,n.dens,type_entree,p_U,
+                                 file_dates,show_EGPD,
+                                 list_params_EGPD){
+  l_ALL<-list()
+  l_Orig_all<-list()
+  l_Orig<-list()
+  l_AD<-list()
+  LIST_SUB_orig<-list()
+  LIST_SUB_TRANSFO<-list()
+  j<-1
+  df<-list()
+  for(name_variable in liste_noms){
+    lien_donnees<-paste0(lien_racine,name_variable,"_residuals.csv")
+    if(type_entree=="clust"){
+      All<-read.csv(file=lien_donnees)[,2:39]
+      colnames(All)<-c(1:38)
+      Vrais_indices<-All[,38]
+      Donnes<-All[,c(1:37)]
+    }
+    else{
+      Donnes<-read.csv(file=lien_donnees)[,2:38]
+    }
+    colnames(Donnes)<-c(1:37)
+    rownames(Donnes)<-c(1:nrow(Donnes))
+    l_Orig_all[[name_variable]]<-Donnes
+    dates_import<-read.csv(file=file_dates)[,2]
+    dates_import<-dates_import[-1]
+    d_POIXCT<-as.POSIXct(dates_import, format="%d/%m/%Y")
+    Nb_annees<-diff(range(lubridate::year(d_POIXCT)))
+    NPY<-nrow(Donnes)/Nb_annees
+    AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
+                              nom=name_variable,type_entree=type_entree,
+                              dates_prises=dates_import,j_show = 19)
+    l_AD[[name_variable]]<-AN_GPD
+    if(type_entree=="donnees_brutes"){
+      return(TRUE)
+    }
+    
+    SUM_pos<-apply(Donnes>0,MARGIN = 1,FUN = sum)
+    IND_posj<-which(SUM_pos==ncol(Donnes))
+    if(j==1){
+      IND_select<-IND_posj
+    }
+    IND_select<-intersect(IND_select,IND_posj)
+    j<-j+1
+  }
+  for(name_variable in liste_noms){
+    Donnes<-l_Orig_all[[name_variable]]
+    colnames(Donnes)<-c(1:37)
+    rownames(Donnes)<-c(1:nrow(Donnes))
+    Vecteur_DIM<-c(1:ncol(Donnes))
+    # 1) Use GAM to analyse short-tail distribs ----------------------------------
+    Donnes_pos<-Donnes[IND_select,]
+    l_Orig[[name_variable]]<-Donnes_pos
+    Unif_EGPD<-matrix(NA,nrow = length(IND_select),
+                      ncol=ncol(Donnes))
+    ALL_results<-lapply(c(1:ncol(Donnes)),FUN =Convert_time_z,
+                        Data_pos=Donnes_pos,
+                        show_EGPD=show_EGPD,
+                        list_params_EGPD=list_params_EGPD)
+    Unif_EGPD<-cbind.data.frame(lapply(X = ALL_results,
+                            FUN = fct_extract_Transf))
+    Vect_egpd<-lapply(X = ALL_results,
+                      FUN = fct_extract_ParamsEGPD)
+    Vect_Init<-lapply(X = ALL_results,
+           FUN = fct_extract_InitEGPD)
+    Vect_fitting<-lapply(X = ALL_results,
+                         FUN = fct_extract_FittingEGPD)
+    
+    if(opt_Frech){
+      FINAL_transfo<--1/log(Unif_EGPD)
+    }else{
+      FINAL_transfo<-(1/(1-Unif_EGPD))-1
+    }
+    l_ALL[[name_variable]]<-list("transf"=FINAL_transfo,
+                                "params_transfo"=Vect_egpd,
+                                "Fitting"=Vect_fitting,
+                                "INIT"=Vect_Init)
+    df[[name_variable]]<-apply(X = FINAL_transfo,MARGIN = 1,
+                  FUN = calcul_norme_L2)
+
+    }
+    return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
+            "orig"=l_Orig,"orig_all"=l_Orig_all,
+            "SUB_set"=IND_select,"type_transfo"="EXTGPD"
+            ))
+}
+```
+
+
+```{r}
+### EXTGP results
+##############
+## Step length is useful to aid convergence
+## if the parameter has a fully param model.
+## not theoretically justified if one or more 
+## smoothing term.
+## https://arxiv.org/html/2404.08331v1, update each parameter 
+## with a step length.
+
+list_params_EGPD<-list("n.cyc"=300,"nu.step"=0.1,
+                       "tau.step"=0.1,"sigma.step"=0.1,
+                       "mu.step"=0.1)
+Result_MV<-MarTransfo_TS_EXTGP_MV(type_donnees = "hiver",
+                coeurs = coeurs,lien_racine = l_root,
+                liste_noms = l_name,opt_Frech = list_params_EGPD,
+                opt_Frech,type_entree = TE,p_U = LPU, 
+                n.dens=2^(14),file_dates =file_dates,
+                 show_EGPD=show_EGPD, list_params_EGPD=list_params_EGPD)
+
+```
+
+```{r}
+S<-Result_MV$resume$Surcote
+t<-37
+
+Theta<-S$params_transfo[[t]]
+lambda<-Theta$sigma
+alpha<-Theta$nu
+
+Orig_S<-Result_MV$orig$Surcote[,t]
+ExpExp_Unif<-(1-exp(-Orig_S/lambda))^(alpha)
+Exp_Exp_Pto<-(1-ExpExp_Unif)^(-1)
+Graphics_estimators_gamma(series = Exp_Exp_Pto,
+                          vect_k = c(50:300),
+                          Title_graphic = " ")
+```
+
+
+```{r}
+S$INIT[[t]]
+### Comparing with former result.
+NL2<-apply(X = S$transf,MARGIN = 1,FUN = calcul_norme_L2)
+Graphics_estimators_gamma(series = NL2,
+                          vect_k = c(50:300),
+                          Title_graphic = " ")
+```
+
+
+```{r}
+Pto_version<-Result_MV$df
+plot(Pto_version[,c(1,2)],log="xy")
+plot(Pto_version[,c(1,2)],log="xy")
+plot(Pto_version[,c(2,2)],log="xy")
+```
+
+
+```{r}
+### AD versus AI
+png(filename = paste0(sub_direct_graph,"Angle_W_AD_AI.png"),height=800,
+    width=1200)
+par(mfrow=c(1,3))
+I<-1
+J<-2
+Sub_pto<-Pto_version[,c(I,J)]
+Min_ij<-apply(X=Sub_pto,MARGIN = 1,FUN = min)
+GG1<-Graphics_estimators_gamma(Min_ij,
+                          vect_k = c(80:300),
+                          Title_graphic = paste0("min(",
+                                                 l_name[I],",",
+                                                 l_name[J],")"))
+R<-rowSums(Sub_pto)
+Vth<-quantile(R,0.95)
+Inds_exts<-which(R>Vth)
+W<-Sub_pto[,1]/R
+plot(density(acos(W[Inds_exts])),
+     main=paste0("Angle component ",l_name[I] ,
+                 "_",l_name[J]))
+abline(v=(pi/2),col="red")
+abline(v=0,col="red")
+if(ncol(Pto_version)>2){
+  I<-2
+  J<-3
+  Sub_pto<-Pto_version[,c(I,J)]
+  Min_ij<-apply(X=Sub_pto,MARGIN = 1,FUN = min)
+  GG2<-Graphics_estimators_gamma(Min_ij,
+                                 vect_k = c(80:300),
+                                 Title_graphic = paste0("min(",
+                                                        l_name[I],",",
+                                                        l_name[J],")"))
+  R<-rowSums(Sub_pto)
+  Vth<-quantile(R,0.95)
+  Inds_exts<-which(R>Vth)
+  W<-t(Sub_pto[,1]%*%diag(R^(-1)))
+  plot(density(acos(W[Inds_exts])),
+       main=paste0("Angle component ",l_name[I] ,
+                   "_",l_name[J]))
+  abline(v=(pi/2),col="red")
+  abline(v=0,col="red")
+  
+  I<-1
+  J<-3
+  Sub_pto<-Pto_version[,c(I,J)]
+  Min_ij<-apply(X=Sub_pto,MARGIN = 1,FUN = min)
+  GG3<-Graphics_estimators_gamma(Min_ij,
+                                 vect_k = c(80:300),
+                                 Title_graphic = paste0("min(",
+                                                        l_name[I],",",
+                                                        l_name[J],")"))
+  R<-rowSums(Sub_pto)
+  Vth<-quantile(R,0.95)
+  Inds_exts<-which(R>Vth)
+  W<-t(Sub_pto[,1]%*%diag(R^(-1)))
+  plot(density(acos(W[Inds_exts])),
+       main=paste0("Angle component ",l_name[I] ,
+                   "_",l_name[J]))
+  abline(v=(pi/2),col="red")
+  abline(v=0,col="red")
+  par(mfrow=c(1,1))
+  dev.off()
+  top_row<-(GG1 + GG2)
+  require(patchwork)
+  Second_row<-plot_spacer() + GG3 + plot_spacer()+ 
+    plot_layout(widths = c(0.5, 1,0.5))
+  AD_AI_SY<-top_row/Second_row
+  
+  ggsave(filename = paste0(sub_direct_graph,"AD_AI_summary.png"),
+         height = 6,width = 8,plot = AD_AI_SY)
+  
+}
+
+
+```
+
+
+```{r}
+#### Export for future conversion
+path <- paste0(getwd(),"/residuals_MV")
+newfolder <- "Conversion"
+try({
+  dir.create(file.path(path, newfolder))
+})
+path_conversion<-paste0(path,"/",newfolder,"/")
+Result_MV$SUB_set
+for(nameV in l_name){
+  ROOT_<-Result_MV$resume[[nameV]]
+  DATA_j<-Result_MV$orig[[nameV]]
+  PARAMS_EGPD<-ROOT_$params_transfo
+  MAT_params_EGPD<-matrix(unlist(PARAMS_EGPD),
+         nrow =37,ncol=3,byrow = TRUE) 
+  Transf<-ROOT_$transf
+  write.csv(file = paste0(path_conversion,nameV,"_EGPD_transf.csv"),
+           x =Transf )
+  write.csv(file = paste0(path_conversion,"inds_egpd.csv"),
+            x =as.vector(Result_MV$SUB_set))
+  write.csv(file = paste0(path_conversion,nameV,"_data_ref.csv"),
+            x =DATA_j)
+  write.csv(file = paste0(path_conversion,nameV,"_EDPD_params.csv"),
+            x = MAT_params_EGPD)
+}
+```
+
+```{r}
+### End of the code
+```
+
