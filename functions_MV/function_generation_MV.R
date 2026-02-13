@@ -61,7 +61,7 @@ Generator_TSERIES_MV<-function(coeurs,type_donnees,list_variable,
     N_data<-nrow(Donnes)
     C_data<-ncol(Donnes)
     l_RiskF[[name_variable]]<-apply(X = Donnes,MARGIN = 1,
-                                    FUN = calcul_norme_L2)
+                                    FUN = calcul_norm_L2)
     # 1) Import Resid data -------------------------------------------------------
     Epsi_data<-read.csv(file=paste0(link_import_residuals,
                                     name_variable,"_residuals.csv"))[,c(2:38)]
@@ -72,7 +72,7 @@ Generator_TSERIES_MV<-function(coeurs,type_donnees,list_variable,
     l_Epsi_data[[name_variable]]<-Epsi_data
     l_RiskF_Epsi_Data[[name_variable]]<-apply(X = Epsi_data,
                                               MARGIN = 1,
-                                              FUN=calcul_norme_L2)
+                                              FUN=calcul_norm_L2)
     
     # 2)Import Resid simulated ------------------------------------------------------------
     Epsi_Sim<-read.csv(file = paste0(link_g_chosen,
@@ -82,7 +82,7 @@ Generator_TSERIES_MV<-function(coeurs,type_donnees,list_variable,
     l_Epsi_Sim[[name_variable]]<-Epsi_Sim
     l_RiskF_Epsi_Sim[[name_variable]]<-apply(X = Epsi_Sim,
                                              MARGIN = 1,
-                                             FUN = calcul_norme_L2)
+                                             FUN = calcul_norm_L2)
   }
   # 2) Import indexes of exceedances -------------------------------------------
   Indexes_exceed<-read.csv(file=paste0(link_g_chosen,

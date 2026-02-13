@@ -3,8 +3,8 @@ rm(list=ls())
 
 ##################
 set.seed(133)
-source("../fonctions/fonctions_perfs_ML.R")
-source("../fonctions/fonctions.R")
+source("fonctions/fonctions_perfs_ML.R")
+source("fonctions/fonctions.R")
 source("functions_MV/Fonctions_consistency.R")
 source("functions_MV/function_estim_simul_gPareto.R")
 require(reshape2)
@@ -19,7 +19,7 @@ require(patchwork)
 require(viridis)
 # Import residuals --------------------------------------------------------
 cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue")
-variable<-"Surcote"
+variable<-"Surge"
 
 ```
 
@@ -84,7 +84,7 @@ if(Name_riskF=="Weighted_NQ"){
 }
 ANALYSIS_for_resid<-TRUE
 type_donnees<-"HIVER"
-L_nameV<-c("Surcote","Hs")
+L_nameV<-c("Surge","Hs")
 
 ```
 
@@ -95,7 +95,7 @@ if(ANALYSIS_for_resid){
   path <- paste0(getwd(),"/residuals_MV/")
   ROOT_import<-paste0(path,Name_riskF2,"/")
   CPLMT<-"_resid"
-  path_graph<-paste0(getwd(),"/graphiques_MV/resid")
+  path_graph<-paste0(getwd(),"/Graphics_MV/resid")
  
 }else{
   l_root<-"../ss_tend/"
@@ -105,7 +105,7 @@ if(ANALYSIS_for_resid){
   path <- paste0(getwd(),"/Generated_extremes/")
   ROOT_import<-paste0(path,Name_riskF2,"/")
   CPLMT<-"_data"
-  path_graph<-paste0(getwd(),"/graphiques_MV/data")
+  path_graph<-paste0(getwd(),"/Graphics_MV/data")
 }
 path_graph
 ### New directories to export graphics
@@ -273,6 +273,41 @@ if(ANALYSIS_for_resid){
 
 ```
 
+```{r}
+# Plots with more than 1 forcing condition --------------------------------
+##########
+Link_RF<-paste0("residuals_MV/",Name_riskF2,"/")
+Unit_variable<-list("Surcote"="(m)","U"="(m/s)",
+                    "Hs"="(m)")
+list_simul<-list()
+list_obs<-list()
+Obs_taken<-sample(c(1:nrow(Reals)),size = 100,
+                  replace = FALSE)
+Simul_taken<-sample(c(1:Nsim),size = 100,
+                    replace = FALSE)
+Simul_taken
+# Params for extremo computation 
+# Extremogram -------------------------------------------------------------
+Matrix_couples<-list()
+L<-ncol(Reals)
+z<-1
+vecteur_distances<-c()
+for(j in 1:L){
+  #condition imposée sur le deuxième temps.
+  valeurs_t_plus_h<-j:L
+  for (i in valeurs_t_plus_h){
+    Matrix_couples[[z]]<-c(i,j)
+    vecteur_distances<-c(vecteur_distances,abs(i-j))
+    z<-z+1
+  }
+}
+q_chosen<-0.70
+Times_chosen<-c(19,13,25,31)
+periods_years<-c(2,5,10,20,50,80,
+                 100,120,200,400)
+NB_years<-37
+Qtile_per_year<-0.90
+```
 
 ```{r}
 # Correlation values ------------------------------------------------------
@@ -463,41 +498,6 @@ for(name_variable_analyze in L_nameV){
 ```
 
 
-```{r}
-# Plots with more than 1 forcing condition --------------------------------
-##########
-Link_RF<-paste0("residuals_MV/",Name_riskF2,"/")
-Unit_variable<-list("Surcote"="(m)","U"="(m/s)",
-                    "Hs"="(m)")
-list_simul<-list()
-list_obs<-list()
-Obs_taken<-sample(c(1:nrow(Reals)),size = 100,
-                  replace = FALSE)
-Simul_taken<-sample(c(1:Nsim),size = 100,
-                    replace = FALSE)
-Simul_taken
-# Params for extremo computation 
-# Extremogram -------------------------------------------------------------
-Matrix_couples<-list()
-L<-ncol(Reals)
-z<-1
-vecteur_distances<-c()
-for(j in 1:L){
-  #condition imposée sur le deuxième temps.
-  valeurs_t_plus_h<-j:L
-  for (i in valeurs_t_plus_h){
-    Matrix_couples[[z]]<-c(i,j)
-    vecteur_distances<-c(vecteur_distances,abs(i-j))
-    z<-z+1
-  }
-}
-q_chosen<-0.70
-Times_chosen<-c(19,13,25,31)
-periods_years<-c(2,5,10,20,50,80,
-                 100,120,200,400)
-NB_years<-37
-Qtile_per_year<-0.90
-```
 
 
 ```{r}

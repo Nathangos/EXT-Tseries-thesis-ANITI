@@ -23,9 +23,9 @@ require(gamlss)
 
 ### Source des fonctions. ####
 #Functions from univariate case. 
-source("../fonctions/fonctions_Pareto.R")
-source("../fonctions/fonctions.r")
-source("../fonctions/fonctions_r_pareto_EVOLTAU.r")
+source("fonctions/fonctions_Pareto.R")
+source("fonctions/fonctions.r")
+
 
 #Specific multivariate functions. 
 source("functions_MV/function_simul_MV.r")
@@ -37,8 +37,8 @@ source("functions_MV/Stat_test_MV.R")
 source("functions_MV/Hidden_RV_functions.R")
 
 # Choice of threshold -----------------------------------------------------
-source("Choice_auto_thresh/src/eqd.R")
-source("Choice_auto_thresh/src/helper_functions.R")
+# source("Choice_auto_thresh/src/eqd.R")
+# source("Choice_auto_thresh/src/helper_functions.R")
 
 # Consistency results -----------------------------------------------------
 source("functions_MV/Fonctions_consistency.R")
@@ -52,7 +52,7 @@ cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue",
          "model"="red")
 l_root<-"residuals_MV/"
 path <- paste0(getwd(),"/residuals_MV")
-l_name<-c("Surcote","Hs")
+l_name<-c("Surge","Hs")
 newfolder <- "Conversion"
 METHOD_ANGLE<-"GaussMixture"
 Name_model<-"hr"
@@ -70,14 +70,13 @@ DF_RF<-list()
 DF_orig<-list()
 ALL_transf<-list()
 Shape_chosen<-1/3
-
 for(nameV in l_name){
   DF_transf<-read.csv(file = paste0(path_conversion,nameV,"_EGPD_transf.csv"))[,c(2:38)]
   colnames(DF_transf)<-c(1:37)
   ### Convert_to_Pareto(pow_transform)
   DF_transf<-(DF_transf+1)^(Shape_chosen)-1
   
-  rf_j<-apply(X = DF_transf,MARGIN = 1,FUN = calcul_norme_L2)
+  rf_j<-apply(X = DF_transf,MARGIN = 1,FUN = calcul_norm_L2)
   DF_RF[[nameV]]<-rf_j 
   Orig_j<-read.csv(file = paste0(path_conversion,nameV,"_data_ref.csv"))[,c(2:38)]
   colnames(Orig_j)<-c(1:37)
@@ -98,7 +97,7 @@ for(nameV in l_name){
 ### Shape param transformation
 for(nameV in l_name){
   df_transf<-SUMMARY[[nameV]]$transf
-  NL2_TF<-apply(X = df_transf,MARGIN = 1,FUN = calcul_norme_L2)
+  NL2_TF<-apply(X = df_transf,MARGIN = 1,FUN = calcul_norm_L2)
   GG_var<-Graphics_estimators_gamma(series = NL2_TF,
                                     vect_k = c(50:300),
                                     Title_graphic = " ",
@@ -109,12 +108,9 @@ for(nameV in l_name){
 df_surge<-SUMMARY[["Surcote"]]$transf
 t<-37
 var_t<-df_surge[,t]
-Graphics_estimators_gamma(series = var_t,
-                          vect_k = c(50:300),
-                          Title_graphic = " ")
 
-Inds_dates_pos<-read.csv(file=paste0(path_conversion,"inds_egpd.csv"))[,2]
-Inds_dates_pos
+Inds_dates_pos<-read.csv(
+  file=paste0(path_conversion,"inds_egpd.csv"))[,2]
 Result_MV<-list("resume"=SUMMARY,"orig"=DF_orig,
                 "df"=as.data.frame(DF_RF),
                 "type_transfo"="EXTGPD")
@@ -124,9 +120,8 @@ t1<-1
 t2<-37
 couple<-cbind(Result_MV$orig[[namei]][,t1],
               Result_MV$orig[[namej]][,t2])
-Filename<-paste0("Graphics_MV/asymp_dependencies/ext_dep_",namei,"_t=",t1,
-                 "_",namej,"_tprime=",t2,".png")
-png(filename = Filename,
+Filename<-paste0("Graphics_MV/asymp_dependencies/ext_dep_",namei,"_t=",t1,"_",namej,"_tprime=",t2,".png")
+png(filename= Filename,
     width=800,height=600)
 par(mfrow = c(1, 2),  # 1 row, 2 plots
     cex.lab = 1,    # axis label size
@@ -564,7 +559,7 @@ for(name in l_name){
   Deb<-Z*ncol(U_sim_frech)+1
   END<-(Z+1)*ncol(U_sim_frech)
   Df_sim<-Root_sim[[Z+1]]
-  L2_sim<-apply(Df_sim,MARGIN = 1,FUN = calcul_norme_L2)
+  L2_sim<-apply(Df_sim,MARGIN = 1,FUN = calcul_norm_L2)
   List_RiskF[[name]]<-L2_sim
   Theta_sim<-t(t(Df_sim)%*%diag(L2_sim^(-1)))
   print(summary(Theta_sim))
@@ -572,7 +567,7 @@ for(name in l_name){
   rood<-Root_data[[Z+1]]
   colnames(rood)<-c(1:length(names(rood)))
   Df_data<-as.matrix(rood)
-  L2_data<-apply(Df_data,MARGIN = 1,FUN = calcul_norme_L2)
+  L2_data<-apply(Df_data,MARGIN = 1,FUN = calcul_norm_L2)
   List_RiskF_data[[name]]<-L2_data
   Theta_data<-t(t(Df_data)%*%diag(L2_data^(-1)))
   Obj_data[,c(Deb:END)]<-Theta_data
@@ -702,8 +697,8 @@ bound_minus975<-apply(Tend_Theta[4,,],MARGIN = 1,
 bound_plus975<-apply(Tend_Theta[4,,],MARGIN = 1,
                      FUN = function(x){return(quantile(x,0.975))})
 matplot(t(re$simul[[l_name[1]]]),type="l")
-L2_s<-apply(X = re$simul[[l_name[1]]],MARGIN = 1,FUN = calcul_norme_L2)
-L2_U<-apply(X = re$simul[[l_name[2]]],MARGIN = 1,FUN = calcul_norme_L2)
+L2_s<-apply(X = re$simul[[l_name[1]]],MARGIN = 1,FUN = calcul_norm_L2)
+L2_U<-apply(X = re$simul[[l_name[2]]],MARGIN = 1,FUN = calcul_norm_L2)
 
 ```
 
@@ -770,7 +765,6 @@ ggsave(plot = GG_percent,
        filename =paste0(Theta_path,"/",l_name[2],"/",CPLMT_graph_theta,"_",
                         METHOD_ANGLE,"_Percent_theta_",l_name[2],
                         ".png"),width=8,height = 6)
-dev.off()
 j_coord<-1
 j_nl2<-1
 pval_indep<-cor.test(re$coords_data[,j_coord],
@@ -1118,22 +1112,22 @@ ggsave(filename=paste0(ROOT_export_graph,"Tend/",CPLMT_graph_theta,"_",METHOD_AN
 par(mfrow=c(1,1))
 Pareto_S<-Result_MV$resume[[ind_var1]]$transf
 Pareto_Hs<-Result_MV$resume[[ind_var2]]$transf
-L2_P_S<-apply(Pareto_S[re$Indices_exts,],MARGIN = 1,FUN = calcul_norme_L2)
-L2_P_HS<-apply(Pareto_Hs[re$Indices_exts,],MARGIN = 1,FUN = calcul_norme_L2)
+L2_P_S<-apply(Pareto_S[re$Indices_exts,],MARGIN = 1,FUN = calcul_norm_L2)
+L2_P_HS<-apply(Pareto_Hs[re$Indices_exts,],MARGIN = 1,FUN = calcul_norm_L2)
 ks.test(L2_P_HS,L2_P_S)
 wilcox.test(L2_P_HS,L2_P_S)
 
 L2_pto_sur<-apply(re$Frechet_normal$simul[[ind_var1]],MARGIN = 1,
-                  FUN = calcul_norme_L2)
+                  FUN = calcul_norm_L2)
 L2_pto_Hs<-apply(re$Frechet_normal$simul[[ind_var2]],MARGIN = 1,
-                 FUN = calcul_norme_L2)
+                 FUN = calcul_norm_L2)
 DF_data_vectL<-matrix(NA,ncol=length(names(re$Frechet_normal$simul)),
                       nrow =length(re$Indices_exts))
 for(j in c(1:length(l_name))){
   name_j<-names(Result_MV$resume)[j]
   PTO_j<-Result_MV$resume[[name_j]]$transf
   Output_j<-apply( PTO_j[re$Indices_exts,],MARGIN = 1,
-                   FUN = calcul_norme_L2)
+                   FUN = calcul_norm_L2)
   DF_data_vectL[,j]<-Output_j
 }
 
@@ -1181,114 +1175,114 @@ Max_y2<-max(max(Vect_l_function[,2]),max(L2_pto_Hs))
 plot(Vect_l_function,xlim=c(Min_x2,Max_x2),
      ylim=c(Min_y2,Max_y2),log="xy")
 
-DATES<-read.csv(file = "../ss_tend/HIVER/dates_prises.csv")[,2]
-
-Inds_2008<-which(DATES=="10/03/2008")
-Dates_storm<-c("10/03/2008","28/02/2010","10/02/2009",
-               "27/10/2004","07/02/2001","10/01/2001")
-Cplmt_dates_1<-c("26/02/2010","08/03/2008","08/02/2009",
-                 "25/10/2004","05/02/2001","08/01/2001")
-
-Cplmt_dates_2<-c("09/03/2008","27/02/2010","09/02/2009",
-                 "26/10/2004","06/02/2001","09/01/2001")
-Inds_storm<-union(which(substr(DATES,1,10)%in%Dates_storm),
-                  which(substr(DATES,1,10)%in%Cplmt_dates_1)
-) 
-Inds_storm<-union(Inds_storm,
-                  which(substr(DATES,1,10)%in%Cplmt_dates_2)
-)
-DATES[Inds_storm]
-ind_Joh<-which(substr(DATES,1,10)=="10/03/2008")
-DATA_pos_neg<-read.csv(file = paste0(l_root,l_name[1],"_residuals.csv"))[,c(2:38)]
-DATA_pos_neg[ind_Joh,]
-ind_storm_found<-intersect(Inds_storm,
-                           Result_MV$SUB_set)
-Storms_seen<-DATES[ind_storm_found]
-F_return_index<-function(x){
-  return(Result_MV$SUB_set[x])
-}
-Index_storm<-which( Result_MV$SUB_set%in%ind_storm_found)
-Correspondg_vectors<-Vect_l_function[Index_storm,]
-df_sim<-cbind.data.frame(L2_pto_sur,L2_pto_Hs)
-colnames(df_sim)<-sapply(c(1:length(l_name)),
-                         FUN=function(x){
-                           return(paste0("V",x))
-                         })
-VECT2<-Vect_l_function
-colnames(VECT2)<-colnames(df_sim)
-Correspondg_vectors
-X_storms<-Correspondg_vectors[,1]
-Y_storms<-Correspondg_vectors[,2]
-ANOTATE_data<-data.frame(x=X_storms,y=Y_storms,
-                         label=rep("storm",length(Index_storm)))
-
-GG_data_and_exceed<-ggplot(data=VECT2,aes(x=V1,y=V2))+
-  geom_point()+
-  geom_point(data = ANOTATE_data, 
-             aes(x, y,col="storm"), size = 4,
-             shape=0) +
-  annotate("text", x = (X_storms)*(8/10), y = Y_storms*(9/10), 
-           label=Storms_seen,colour = "red", 
-           size = 5)+
-  scale_y_continuous(transform="log",
-                     labels = label_number(accuracy = 0.1))+
-  scale_x_continuous(transform="log",
-                     labels = label_number(accuracy = 0.1))+
-  theme(axis.title=element_text(size=15),
-        legend.text=element_text(size=14),
-        legend.title = element_text(size=15),
-        axis.text = element_text(size=14))+
-  geom_hline(aes(yintercept = re$threshold,col="exceedances"),
-             linetype="dashed")+
-  geom_vline(aes(xintercept=re$threshold,col="exceedances"),
-             linetype="dashed")+
-  scale_color_manual(values=c("exceedances"="red",
-                              "storm"="black"))+
-  labs(col="Legend")+
-  xlab(paste0("Norm of T(",l_name[1],") (.)"))+
-  ylab(paste0("Norm of T(",l_name[2],") (.)"))
-
-ggsave(plot = GG_data_and_exceed,
-       filename = paste0(Lg_path,"/norm_ext",opt_used,".png"),
-       width = 8,height = 8)
-DF_sim_vs_obs<-rbind.data.frame(VECT2,df_sim)
-DF_sim_vs_obs$origin<-c(rep("data",nrow(VECT2)),
-                        rep("simulations",nrow(df_sim)))
-
-GG_repre_exts_norms<-ggplot(data=DF_sim_vs_obs,aes(x=V1,y=V2))+
-  geom_point(aes(col=origin,size=origin))+
-  geom_point(data = ANOTATE_data, 
-             aes(x, y,col=label),size=4,shape=0) +
-  annotate("text", x = (X_storms)*(8/10), y = Y_storms*(9/10), 
-           label=Storms_seen,colour = "red", 
-           size = 5)+
-  scale_y_continuous(transform="log",
-                     labels = label_number(accuracy = 0.1))+
-  scale_x_continuous(transform="log",
-                     labels = label_number(accuracy = 0.1))+
-  theme(axis.title=element_text(size=15),
-        legend.text=element_text(size=14),
-        legend.title = element_text(size=15),
-        axis.text = element_text(size=14))+
-  geom_hline(aes(yintercept = re$threshold,col="exceedances"),
-             linetype="dashed",)+
-  geom_vline(aes(xintercept=re$threshold,col="exceedances"),
-             linetype="dashed")+
-  scale_color_manual(values=c("data"="blue",
-                              "simulations"="orange",
-                              "storm"="black",
-                              "exceedances"="red"))+
-  scale_size_manual(values=c("data"=2,
-                             "simulations"=1))+
-  labs(col="Legend")+
-  guides(size="none")+
-  xlab(paste0("Norm of T(",l_name[1],") (.)"))+
-  ylab(paste0("Norm T(",l_name[2],") (.)"))
-
-ggsave(plot = GG_repre_exts_norms,
-       filename = paste0(Lg_path,"/ext_simuls_RM",opt_used
-                         ,".png"),
-       width = 8,height = 8)
+# DATES<-read.csv(file = "../ss_tend/HIVER/dates_prises.csv")[,2]
+# 
+# Inds_2008<-which(DATES=="10/03/2008")
+# Dates_storm<-c("10/03/2008","28/02/2010","10/02/2009",
+#                "27/10/2004","07/02/2001","10/01/2001")
+# Cplmt_dates_1<-c("26/02/2010","08/03/2008","08/02/2009",
+#                  "25/10/2004","05/02/2001","08/01/2001")
+# 
+# Cplmt_dates_2<-c("09/03/2008","27/02/2010","09/02/2009",
+#                  "26/10/2004","06/02/2001","09/01/2001")
+# Inds_storm<-union(which(substr(DATES,1,10)%in%Dates_storm),
+#                   which(substr(DATES,1,10)%in%Cplmt_dates_1)
+# ) 
+# Inds_storm<-union(Inds_storm,
+#                   which(substr(DATES,1,10)%in%Cplmt_dates_2)
+# )
+# DATES[Inds_storm]
+# ind_Joh<-which(substr(DATES,1,10)=="10/03/2008")
+# DATA_pos_neg<-read.csv(file = paste0(l_root,l_name[1],"_residuals.csv"))[,c(2:38)]
+# DATA_pos_neg[ind_Joh,]
+# ind_storm_found<-intersect(Inds_storm,
+#                            Result_MV$SUB_set)
+# Storms_seen<-DATES[ind_storm_found]
+# F_return_index<-function(x){
+#   return(Result_MV$SUB_set[x])
+# }
+# Index_storm<-which( Result_MV$SUB_set%in%ind_storm_found)
+# Correspondg_vectors<-Vect_l_function[Index_storm,]
+# df_sim<-cbind.data.frame(L2_pto_sur,L2_pto_Hs)
+# colnames(df_sim)<-sapply(c(1:length(l_name)),
+#                          FUN=function(x){
+#                            return(paste0("V",x))
+#                          })
+# VECT2<-Vect_l_function
+# colnames(VECT2)<-colnames(df_sim)
+# Correspondg_vectors
+# X_storms<-Correspondg_vectors[,1]
+# Y_storms<-Correspondg_vectors[,2]
+# ANOTATE_data<-data.frame(x=X_storms,y=Y_storms,
+#                          label=rep("storm",length(Index_storm)))
+# 
+# GG_data_and_exceed<-ggplot(data=VECT2,aes(x=V1,y=V2))+
+#   geom_point()+
+#   geom_point(data = ANOTATE_data, 
+#              aes(x, y,col="storm"), size = 4,
+#              shape=0) +
+#   annotate("text", x = (X_storms)*(8/10), y = Y_storms*(9/10), 
+#            label=Storms_seen,colour = "red", 
+#            size = 5)+
+#   scale_y_continuous(transform="log",
+#                      labels = label_number(accuracy = 0.1))+
+#   scale_x_continuous(transform="log",
+#                      labels = label_number(accuracy = 0.1))+
+#   theme(axis.title=element_text(size=15),
+#         legend.text=element_text(size=14),
+#         legend.title = element_text(size=15),
+#         axis.text = element_text(size=14))+
+#   geom_hline(aes(yintercept = re$threshold,col="exceedances"),
+#              linetype="dashed")+
+#   geom_vline(aes(xintercept=re$threshold,col="exceedances"),
+#              linetype="dashed")+
+#   scale_color_manual(values=c("exceedances"="red",
+#                               "storm"="black"))+
+#   labs(col="Legend")+
+#   xlab(paste0("Norm of T(",l_name[1],") (.)"))+
+#   ylab(paste0("Norm of T(",l_name[2],") (.)"))
+# 
+# ggsave(plot = GG_data_and_exceed,
+#        filename = paste0(Lg_path,"/norm_ext",opt_used,".png"),
+#        width = 8,height = 8)
+# DF_sim_vs_obs<-rbind.data.frame(VECT2,df_sim)
+# DF_sim_vs_obs$origin<-c(rep("data",nrow(VECT2)),
+#                         rep("simulations",nrow(df_sim)))
+# 
+# GG_repre_exts_norms<-ggplot(data=DF_sim_vs_obs,aes(x=V1,y=V2))+
+#   geom_point(aes(col=origin,size=origin))+
+#   geom_point(data = ANOTATE_data, 
+#              aes(x, y,col=label),size=4,shape=0) +
+#   annotate("text", x = (X_storms)*(8/10), y = Y_storms*(9/10), 
+#            label=Storms_seen,colour = "red", 
+#            size = 5)+
+#   scale_y_continuous(transform="log",
+#                      labels = label_number(accuracy = 0.1))+
+#   scale_x_continuous(transform="log",
+#                      labels = label_number(accuracy = 0.1))+
+#   theme(axis.title=element_text(size=15),
+#         legend.text=element_text(size=14),
+#         legend.title = element_text(size=15),
+#         axis.text = element_text(size=14))+
+#   geom_hline(aes(yintercept = re$threshold,col="exceedances"),
+#              linetype="dashed",)+
+#   geom_vline(aes(xintercept=re$threshold,col="exceedances"),
+#              linetype="dashed")+
+#   scale_color_manual(values=c("data"="blue",
+#                               "simulations"="orange",
+#                               "storm"="black",
+#                               "exceedances"="red"))+
+#   scale_size_manual(values=c("data"=2,
+#                              "simulations"=1))+
+#   labs(col="Legend")+
+#   guides(size="none")+
+#   xlab(paste0("Norm of T(",l_name[1],") (.)"))+
+#   ylab(paste0("Norm T(",l_name[2],") (.)"))
+# 
+# ggsave(plot = GG_repre_exts_norms,
+#        filename = paste0(Lg_path,"/ext_simuls_RM",opt_used
+#                          ,".png"),
+#        width = 8,height = 8)
 cor(L2_P_S,L2_P_HS,method = "kendall")
 cor(L2_pto_sur,L2_pto_Hs
     ,method = "kendall")

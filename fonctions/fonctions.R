@@ -111,6 +111,19 @@ pgp_craft<-function(x,sigma,xi){
   }
 }
 
+# Qualite transformation --------------------------------------------------
+#' test_Uniforme
+#'
+#' @param collection 
+#'
+#' @return p_valeur du test d'adequation a une uniforme(-1,0).
+#' @export
+#'
+#' @examples
+test_Uniforme<-function(collection_dimension){
+  KSTESTunif<-ks.test(collection_dimension,"punif",min=-1,max=0)
+  return(KSTESTunif$p.value)
+}
 ##### Calculer la norme de chaque série temporelle. #####
 
 #' calcul_norm_L2
@@ -124,7 +137,7 @@ pgp_craft<-function(x,sigma,xi){
 calcul_norm_L2<-function(series){
   L<-length(series)
   pas<-(1/(L-1))
-
+  
   # Positivity indicator -----------------------------------------------
   Sigma<-sum(subset(series,series>0)**2)
   norme_carree<-Sigma*pas
@@ -169,6 +182,27 @@ fonction_calcul_norme<-function(df,nom_colonne){
 f_nom_variable<-function(file,nom_var){
   
   return(file[,nom_var])
+}
+#' fonction_renvoi_angle
+#'
+#' @param df 
+#' @param nom_colonne 
+#'
+#' @return the angular component of a series. 
+#' @export
+#'
+#' @examples
+fonction_renvoi_angle<-function(donnees){
+  
+  norme<-calcul_norm_L2(donnees)
+  if (norme>0){
+    angle<-donnees/norme
+    return(angle)
+  }
+  else{
+    return(donnees)
+  }
+  
 }
 
 ####### Obtenir les résidus d'un modèle ARIMA. ####
@@ -272,11 +306,11 @@ function_ML_extRemes<-function(k,data_d,typeML="GP",NB_years=NULL){
     q_plus<-r[2,3]
     liste_r<-list("q_minus"=q_minus,"q_plus"=q_plus,"estimator"=estimator)
     return(liste_r)
-    },
-    error=function(e){
-      estimator<-theta_k$results$par[[2]]
-      liste_r<-list("q_minus"=NA,"q_plus"=NA,"estimator"=estimator)
-      return(liste_r)}
+  },
+  error=function(e){
+    estimator<-theta_k$results$par[[2]]
+    liste_r<-list("q_minus"=NA,"q_plus"=NA,"estimator"=estimator)
+    return(liste_r)}
   )
 }
 #' fonction_MLplot_resume
@@ -289,28 +323,44 @@ function_ML_extRemes<-function(k,data_d,typeML="GP",NB_years=NULL){
 #' @export
 #'
 #' @examples
-fonction_MLplot_resume<-function(resultatML,vecteur_k,nom_variable,lims_Y=c(-2,2)){
+fonction_MLplot_resume<-function(resultatML,vecteur_k,nom_variable,lims_Y=c(-2,2),
+                                 dims_elt_text =c(14,11,
+                                                  10,10)){
   
   intermed<-t(resultatML)
   mink<-min(vecteur_k)
   maxk<-max(vecteur_k)
   bilan<-as.data.frame(apply(intermed,MARGIN = 2,FUN=unlist))
-  nom_plot<-paste("Evolution du gamma pour",nom_variable)
-  GA_plot<-ggplot(data=bilan,aes(x=vecteur_k,y=estimator,col="estimateur"))+
-    geom_line()+
-    ggtitle(nom_plot)
+  #nom_plot<-paste("Evolution du gamma pour",nom_variable)
+  cols_scale<-c("confidence_band"="darkblue","estimator"="blue")
+  GA_plot<-ggplot(data=bilan,aes(x=vecteur_k,y=estimator,col="estimator"))+
+    geom_line()
   if (all(!is.na(bilan))==TRUE){
     GA_plot<-GA_plot+
-      geom_line(aes(x=vecteur_k,y = q_minus,col="borne inferieure"))+
-      geom_line(aes(x=vecteur_k,y = q_plus,col="borne superieure"))+
+      geom_ribbon(mapping = aes(ymin=q_minus,ymax=q_plus,col="confidence_band"),alpha=0.15,
+                  fill="grey", linetype = "dashed")+
       ylim(lims_Y)
   }
   GA_plot<-GA_plot+
-    labs(caption=paste("k going from",mink,"to",maxk),colour="Legend",x="Valeur de k")
-
-  return(GA_plot) 
+    scale_color_manual(values=cols_scale)+
+    theme(axis.title=element_text(size=dims_elt_text[1]),
+          legend.title = element_text(size=dims_elt_text[2]),
+          legend.text=element_text(size=dims_elt_text[3]),
+          axis.text=element_text(size=dims_elt_text[4]))+
+    ylab(expression(gamma))+
+    xlab("Number of exceedances")+
+    labs(col="Legend")
+  print(GA_plot) 
 }
 
+# Ajouter points/reconstruction -------------------------------------------
+f_approx_interpol<-function(series)
+{
+  nb<-length(series)
+  vecteur_temps<-c(1:nb)*1/nb
+  Interpol_resultat<-approx(vecteur_temps,series)
+  return(Interpol_resultat$y)
+}
 
 #### Calculer les scores ###
 
@@ -413,6 +463,60 @@ f_marginales_uniforme<-function(variable,p_u,n.dens){
   return(as.vector(vecteur_unif_decalage))
 }
 
+#' fonc_norm_inv
+#'
+#' @param variable : vector(float).
+#'
+#' @return Float. 
+#' @export
+#'
+#' @examples
+fonc_norm_inv<-function(variable){
+  vecteur_variable_transformee<-as.numeric(-(variable)^(-1))
+  valeur_norme<-calcul_norm_L2(vecteur_variable_transformee)
+  valeur_norme_geo<-(-1/valeur_norme)
+  return(valeur_norme_geo)
+}
+#' f_NWatson
+#'
+#' @param vecteur_x : vector(float). Time coordinates ("training" sample).
+#' @param x : float. The new input. 
+#' @param vecteur_y : vector(float). Output values ("training" sample)
+#' @param h : float. Bandwidth. 
+#'
+#' @return Float. Value of the Nadaraya-Watson estimator. 
+#' @export
+#'
+#' @examples
+f_NWatson<-function(vecteur_x,x,vecteur_y,h){
+  
+  numerateur<-sum(vecteur_y*dnorm((vecteur_x-x/h)))
+  denominateur<-sum(dnorm((vecteur_x-x)/h))
+  return(numerateur/denominateur)
+}
+#' f_lissage
+#'
+#' @param donnees 
+#' @param M : int. Number of replicas. 
+#' @param h : float. The value of the bandwidth. 
+#'
+#' @return Vector(float). Results from N-Watson estimator. 
+#' @export
+#'
+#' @examples
+f_lissage<-function(donnees,M,h){
+  
+  L<-length(donnees)
+  vecteur_x<-seq.int(from = 0,to=1,length.out = L)
+  echantillon_plus_fin<-seq.int(from=0,to=1,length.out = M)
+  nouvelles_donnees<-sapply(echantillon_plus_fin,FUN = f_NWatson,vecteur_x=vecteur_x,vecteur_y=donnees,h=h)
+  return(nouvelles_donnees)
+}
+fonc_Median_inv<-function(x){
+  inverse<--1/x
+  R<--1/median(inverse)
+  return(R)
+}
 f_quantile<-function(donnees,l_tau){
   P<-ncol(donnees)
   liste_t<-c(1:P)
@@ -448,6 +552,8 @@ fonction_quantile_tau<-function(coeurs,nom_variable,df,opt_diff,liste_t,l_tau){
   return(vecteur_pu)
 }
 
+
+# Fonction_qualite ajustement ---------------------------------------------
 APPEL_KS_AD<-function(indice,donnees,l_seuil){
   seuil<-l_seuil[indice]
   echantillon<-donnees[,indice]
@@ -477,6 +583,145 @@ Generation_Pareto_std<-function(u_pareto){
   
   return(1/(1-u_pareto))
 }
+fnct_cov_par_temps<-function(t,s,f_variogram,f_sigma){
+  cov_ts<-(f_sigma(h=t)+f_sigma(h=s))-f_variogram(t=t,s=s)
+  return(cov_ts)
+}
+
+
+Generation_Sigma<-function(f_variogram,f_sigma,Vecteur_temps){
+  L<-length(Vecteur_temps)
+  vecteur_zero<-rep(0,L*L)
+  Matrice_cov_moitie<-matrix(vecteur_zero,byrow = TRUE,nrow=L)
+  for(j in 1:L){
+    vecteur_autres_temps<-Vecteur_temps[c(1:j)]
+    Ligne<-sapply(vecteur_autres_temps,FUN=fnct_cov_par_temps,f_variogram=f_variogram,f_sigma=f_sigma,s=Vecteur_temps[j])
+    Matrice_cov_moitie[j,c(1:j)]<-Ligne    
+  }
+  Matrice_cov_reste<-t(Matrice_cov_moitie)
+  Matrice_cov<-Matrice_cov_moitie+Matrice_cov_reste
+  diag(Matrice_cov)<-diag(Matrice_cov)/2
+  return(Matrice_cov)
+}
+Trajectoire_gp<-function(f_variogram,f_sigma,Vecteur_temps,nb,Parametres){
+  coord <- Vecteur_temps
+  Sigma<-Generation_Sigma(f_variogram = f_variogram,f_sigma=f_sigma,Vecteur_temps = Vecteur_temps)
+  Sigma_racine_caree<-chol(Sigma)
+  Realisations_GP<-mvtnorm::rmvnorm(n=nb,sigma = Sigma,method="chol")
+  return(Realisations_GP)
+}
+Log_norm_transf<-function(une_traject_GP,f_sigma,param_alpha,Vecteur_temps){
+  liste_sigma<-sapply(Vecteur_temps,f_sigma)
+  log_norm_process<-exp((1/param_alpha)*(une_traject_GP-(liste_sigma)))
+  return(log_norm_process)
+}
+
+# Produce conditional simul of BR--simul of standard residuals -----------------------------------------
+#' fonction_simul_BR_accept_reject
+#'
+#' @param NB_BR : desired number of simulations
+#' @param modele_BR : output of fitmaxstab for the BR model
+#' @param seuil_Frech : threshold used to identify extreme residuals 
+#'
+#' @return Df of standard residuals.
+#' @export
+#'
+#' @examples
+fonction_simul_BR_accept_reject<-function(NB_BR,modele_BR,seuil_Frech){
+  J<-0
+  Sorties<-matrix(NA,nrow = NB_BR,ncol = 37)
+  deb<-1
+  while(J<NB_BR){
+    Simul<-SpatialExtremes::rmaxstab(NB_BR-J,Locations,cov.mod="brown",
+                                     range=modele_BR$param[1], 
+                                     smooth=modele_BR$param[2])
+    L2<-apply(X = Simul,MARGIN = 1,FUN = calcul_norm_L2)
+    inds_taken<-which(L2<seuil_Frech)
+    end<-length(inds_taken)+deb-1
+    indices_base<-c(deb:end)
+    Sorties[indices_base,]<-Simul[inds_taken,]
+    deb<-end+1
+    J<-end
+  }
+  return(Sorties)
+}
+
+Trajectoire_log_norm<-function(f_variogram,f_sigma,Vecteur_temps,nb,alpha){
+  GP<-Trajectoire_gp(f_variogram=f_variogram,Vecteur_temps=Vecteur_temps,nb=nb,f_sigma=f_sigma)
+  LOG_Norm_Ensemble<-apply(GP,MARGIN=1,FUN =Log_norm_transf,f_sigma=f_sigma,param_alpha=alpha,Vecteur_temps=Vecteur_temps)
+  return(LOG_Norm_Ensemble)
+}
+#' Procedure_MHastings
+#'
+#' @param echantillons_log_norm : Dataframe. Trajectoires d'un processus log-normal.
+#' @param Longueur_echantillon 
+#'
+#' @return list. M Processus de forme W/l(W). 
+#' @export
+#'
+#' @examples
+Procedure_MHastings<-function(echantillons_log_norm,Longueur_echantillon){
+  
+  L<-nrow(echantillons_log_norm)
+  liste_sigma_l<-list()
+  premiere_traject<-echantillons_log_norm[1,]
+  premiere_norme<-calcul_norm_L2(premiere_traject)
+  liste_realisation_MH<-list()
+  liste_realisation_MH[[1]]<-premiere_traject
+  liste_lforme<-list()
+  liste_lforme[[1]]<-(premiere_traject/premiere_norme)
+  Q<-c()
+  Moy_Moy<-c()
+  Moy_Max<-c()
+  for(i in (2:L)){
+    passe<-(i-1)
+    #MH a verifier. L'expression est différente de ce qu'on voit d'habitude. 
+    rapport<-(calcul_norm_L2(echantillons_log_norm[i,])/calcul_norm_L2(series = liste_realisation_MH[[passe]]))
+    p_n<-min(rapport,1)
+    if(p_n==1){
+      U1<-1
+    }
+    else{
+      u<-runif(n = 1)
+      U1<-as.numeric(u<=p_n)
+    }
+    if(U1==0){
+      Q<-c(Q,0)
+      trajectoire_conservee<-liste_realisation_MH[[passe]]
+    }
+    else{
+      Q<-c(Q,1)
+      trajectoire_conservee<-echantillons_log_norm[i,]
+    }
+    Norme<-calcul_norm_L2(trajectoire_conservee)
+    liste_realisation_MH[[i]]<-trajectoire_conservee
+    candidat_theta<-(trajectoire_conservee/Norme)
+    Moy<-mean(candidat_theta)
+    Max_conv<-max(candidat_theta)
+    Moy_Max<-c(Moy_Max,Max_conv)
+    Moy_Moy<-c(Moy_Moy,Moy)
+    liste_lforme[[i]]<-candidat_theta
+  }
+  # graphique convergence ---------------------------------------------------
+  plot(cummean(Q),type="l",xlab="Iteration",ylab="Moyenne cumulee",main=paste0("Evolution de la probabilité d'acceptation pour ",L," simulations"))
+  plot(cummean(Moy_Moy),type="l",xlab="Iteration",ylab="Moyenne cumulee",main=paste0("Evolution du niveau moyen pour ",L," simulations" ))
+  plot(cummean(Moy_Max),type="l",xlab="Iteration",ylab="Moyenne cumulee",main=paste0("Evolution du maximum pour ",L," simulations"))
+  indices_pris<-(L-Longueur_echantillon)+1
+  indice_fin<-L
+  return(liste_lforme[c(indices_pris:indice_fin)])
+}
+
+variogram_alpha_lambda<-function(ALPHA,lambda,t,s){
+  h<-(t-s)
+  rapport<-(abs(h)/lambda)
+  semi_vario<-rapport^(ALPHA)
+  return(semi_vario)
+}
+sigma_alpha_lambda<-function(ALPHA,lambda,t){
+  rapport<-(t/lambda)
+  semi_vario<-rapport^(ALPHA)
+  return(semi_vario)
+}
 
 estim_Pearson_tidal_cycle<-function(Matrice_couples,individus_select,type_corr){
   Pearson_empirique<-sapply(Matrice_couples,FUN=Pearson_t_s,
@@ -491,10 +736,6 @@ Pearson_t_s<-function(functional_inds,couples_indices,type_corr){
              method = type_corr))
 }
 
-inv_extremogram_empirique<-function(Matrice_couples,individus_select,Tau){
-  PIST_empirique<-sapply(Matrice_couples,FUN = pi_s_t,functional_inds=individus_select,vecteur_u=Tau)
-  return(PIST_empirique)
-}
 pi_s_t<-function(functional_inds,vector_u,couples_indices){
   t<-couples_indices[1]
   s<-couples_indices[2]
@@ -540,12 +781,11 @@ function_reconstitution_trajectory_std<-function(Vector_coords,Base_functions_p,
     }
     Shape_ACP<-Simulations%*%diag(sd_t)+Mat_mean
   }
-  
   return(Shape_ACP)
 }
 
 
-#' function_Structure_Matrix
+#' function_Structure_Matrice
 #'
 #' @param NB_dim : int. Number of coordinates
 #'
@@ -553,7 +793,7 @@ function_reconstitution_trajectory_std<-function(Vector_coords,Base_functions_p,
 #' @export
 #'
 #' @examples
-function_Structure_Matrix<-function(NB_dim){
+function_Structure_Matrice<-function(NB_dim){
   
   Matrix_C <- c()
   for(j in c(1:NB_dim)){
@@ -591,6 +831,38 @@ FNCT_percentile_ppourcent<-function(series,debut,pas){
   mu_t<-mean(series)
   return(c(mu_t,ecart_type,vecteur_quantile))
 }
+###############
+#' calcul S_theta
+#'
+#' @param ALPHA (float): parametre
+#' @param LAMBDA (float) : parametre
+#' @param L (int) : pas des observations
+#' @param individus_select (df) : individus selectiones
+#' @param Tau (vecteur) : vecteur des seuils GP. 
+#'
+#' @return float. Somme des erreurs au carre entre théorie et réalité.
+#' @export
+#'
+#' @examples
+fonction_Stheta<-function(theta,Matrice_couples,L,PIST_empirique,fonction_theorique){
+  vecteur_temps<-(1:L)/L
+  #Theorique
+  if(theta[2]>2){return(1e50)}
+  f_variog<-function(x,y){
+    h<-abs(x-y)
+    return(fonction_theorique(h,theta))
+  }
+  PIST_theorique<-sapply(Matrice_couples,FUN=pi_s_t_theorique,vecteur_temps=vecteur_temps,f_variogram=f_variog)
+  S_theta<-mean((PIST_theorique-PIST_empirique)^(2))
+  return(S_theta)
+}
+pi_s_t_theorique<-function(couples_indices,vecteur_temps,f_variogram){
+  t<-vecteur_temps[couples_indices[1]]
+  s<-vecteur_temps[couples_indices[2]]
+  valeur_aleatoire<-(f_variogram(t,s)/2)^(1/2)
+  pist_theorique<-2*(1-pnorm(valeur_aleatoire))
+  return(pist_theorique)
+}
 
 fonction_creation_matrice<-function(M){
   vecteur<-1:M
@@ -607,6 +879,26 @@ fonction_trajectoire_positive<-function(individu){
   return(resultat_test)
 }
 
+# fonctions_MV_clust ------------------------------------------------------
+
+fnct_simul_one<-function(vecteur_sigma,vecteur_mu,prob_classe){
+  u<-rbinom(n = 1,size = 1,prob=prob_classe[1])
+  if(u==1){
+    realisation<-rnorm(1,mean=vecteur_mu[1],sd = vecteur_sigma[1])
+  }
+  else{
+    realisation<-rnorm(1,mean=vecteur_mu[2],sd = vecteur_sigma[2])
+  }
+  return(realisation)
+}
+fnct_simul_MV_MCLUST<-function(objetMCLUST,M){
+  PARAMS_MC<-objetMCLUST$parameters
+  vecteur_mu<-PARAMS_MC$mean
+  probabilite_classes<-PARAMS_MC$pro
+  vecteur_sigma<-sapply(PARAMS_MC$variance$sigmasq,sqrt)
+  realisations<-replicate(M,expr = fnct_simul_one(vecteur_sigma = vecteur_sigma,vecteur_mu = vecteur_mu,prob_classe = probabilite_classes))
+  return(realisations)
+}
 Qpareto<-function(x){
   numerateur<-(1-x)^(-1)-1
   denom<-1
@@ -624,14 +916,52 @@ graphique_qlog<-function(series_base,series_simulations,nom_variable,debut_prop,
   lower<-obj_qqplot$qdata$lower
   indices<-which((is.na(lower)==FALSE)&(is.na(upper)==FALSE))
   # probabilites autre base. 
+  
+  # f_emp<-ecdf(x =series_simulations)
+  # P<-sort(f_emp(series_simulations))
+  # ind_tronc<-which(P>=debut_prop)
   estimateur<-as.numeric(quantile(debut,probabilites))
   up_quantile<-as.numeric(quantile(upper[indices],probabilites))
   low_quantile<-as.numeric(quantile(lower[indices],probabilites))
   Min_logy<-min(c(min(low_quantile),min(up_quantile),min(estimateur),min(series_simulations)))
   Max_logy<-max(c(max(low_quantile),max(up_quantile),max(estimateur),max(series_simulations)))
   series_simul2<-as.numeric(quantile(series_simulations,probabilites))
+  # plot(probabilites,estimateur,log="xy",type="o",ylab=paste0(nom_variable," (échelle log)"),ylim=c(Min_logy,Max_logy),main=paste0("QQplot de la ",nom_variable," (log-log)"),xlab="probabilité de non-dépassement",col=1)
+  # points(probs_trouvees,series_simul2,col=2,type="l")
+  # lines(probabilites,up_quantile,lty=2,col=3)
+  # lines(probabilites,low_quantile,lty=2,col=3)
+  # legend("topleft",legend = c("Observations","Bandes de confiance (KS)",paste0("Simulations (",origine_simul,")")),col = c(1,2,3),lty=c(1,1,2),title = "Variable",cex=0.8)
   resume<-list(probs=probabilites,"Percentile_95_KS"=up_quantile,"Percentile_5_KS"=low_quantile,"Simulations"=series_simul2,"estimateur_données"=estimateur,"origine"=origine_simul)
   return(resume)
+}
+
+#' Title
+#'
+#' @param matrice_1 : premiere matrice
+#' @param matrice_2 : seconde matrice. 
+#' @param nom_variable : str. Nom de la fonctionnelle étudiée. 
+#'
+#' @return Matrice des p valeurs de Mann-Whitney et de KS. 
+#' @export
+#'
+#' @examples
+f_p_valeur_KS_MW<-function(matrice_1,matrice_2,nom_variable, nom_methode){
+  
+  vecteur_colonnes<-c(1:ncol(matrice_1))
+  resultat<-sapply(X = vecteur_colonnes,function(t,Mat,Mat2){
+    mwt<-wilcox.test(Mat[,t],Mat2[,t])
+    kst<-ks.test(Mat[,t],Mat2[,t])
+    return(list("KS"=kst$p.value,"MW"=mwt$p.value))},Mat=matrice_1,Mat2=matrice_2)
+  Df<-as.data.frame(t(resultat))
+  Df<-melt(sapply(Df,unlist))
+  colnames(Df)<-c("Temps","Type","p.valeur")
+  GGmarg<-ggplot2::ggplot(data=Df,aes(x = Temps,y = p.valeur,col=Type,group=interaction(Type)))+
+    geom_point()+
+    geom_line()+
+    ylim(0,1)+
+    geom_hline(yintercept = 0.05,show.legend = TRUE)+
+    ggtitle(paste0("Test des marginales pour la variable (",nom_variable,") avec ",nom_methode))
+  print(GGmarg)
 }
 
 #' Title
@@ -684,6 +1014,7 @@ Analyse_extreme_proj<-function(base_RV,nb_scores,stand_,nom_variable,L,NB_year,M
   par(mfrow=c(1,1))
 }
 
+
 #' Graphics_estimators_gamma
 #'
 #' @param series : vector(float). Variable studied.
@@ -698,8 +1029,9 @@ Analyse_extreme_proj<-function(base_RV,nb_scores,stand_,nom_variable,L,NB_year,M
 #'
 #' @examples
 Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,NB_years=NULL,
-                                    dims_elt_text=c(14,11,
-                                                    10,10)){
+                                    dims_elt_text=c(20,14,
+                                                    13,12),
+                                    y_lims=NULL){
   
   NPY<-length(series)/NB_years
   TUNITS<-paste0(NPY,"/year")
@@ -709,13 +1041,26 @@ Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,NB_years=NULL,
   Hill_gamma<-sapply(X = vect_k,FUN = function_estimator_hill,series_=series)
   Moments_gamma<-sapply(X = vect_k,FUN=function_estimator_moment,series_=series)
   ML_gamma<-unlist(ML_extRemes[3,])
+  Bounds<-as.data.frame(t(ML_extRemes[c(1:2),]))
+  Q_minus<-unlist(Bounds[,1])
+  Q_plus<-unlist(Bounds[,2])
   data_estimator<-cbind(Moments_gamma,Hill_gamma,
                         ML_gamma)
   Gam<-as.data.frame(melt(t(data_estimator)))
-  
+  Gam$bound_inf<-Q_minus[Gam$Var2]
+  Gam$bound_sup<-Q_plus[Gam$Var2]
   Gam$Var2<-vect_k[Gam$Var2]
-  colnames(Gam)<-c("source","number_excesses","gamma_estimed")
-  GGothers<-ggplot(data=Gam,aes(x=number_excesses,y =gamma_estimed,col=source,
+  colnames(Gam)<-c("source","number_excesses","gamma_estimed",
+                   "bound_inf","bound_sup")
+  COLS_chosen<-c("Moments_gamma"="red",
+                 "Hill_gamma"="green",
+                 "ML_gamma"="blue",
+                 "confidence_band"="darkblue")
+  LINETYPE_chosen<-c("Moments_gamma"=1,
+                     "Hill_gamma"=2,
+                     "ML_gamma"=4,
+                     "confidence_band"=5)
+  GGothers<-ggplot(data=Gam,aes(x=number_excesses,y =gamma_estimed,color=source,
                                 group=interaction(source),
                                 linetype=source))+
     geom_line()+
@@ -725,15 +1070,24 @@ Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,NB_years=NULL,
           legend.title = element_text(size=dims_elt_text[2]),
           legend.text=element_text(size=dims_elt_text[3]),
           axis.text=element_text(size=dims_elt_text[4]))+
-    labs(linetype="Legend")+
-    guides(colour="none")+
-    ggtitle(Title_graphic)
-  #
-  #caption=paste0("k going from ",min(vect_k)," to ",max(vect_k))
-  print(GGothers)
+    geom_ribbon(mapping = aes(ymin=bound_inf,ymax=bound_sup,
+                              col="confidence_band",
+                              linetype = "confidence_band"),alpha=0.15,
+                fill="grey")+
+    labs(col="Legend", linetype = "Legend")+
+    ggtitle(Title_graphic)+
+    scale_color_manual(values=COLS_chosen)+
+    scale_linetype_manual(values = LINETYPE_chosen)+
+    theme_bw()
+  if(!is.null(y_lims)){
+    GGothers<-GGothers+
+      ylim(y_lims[1],y_lims[2])
+  }
+  return(GGothers)
 }
 
 empirical_extremogram<-function(Matrix_couples,inds_select,Tau){
+  
   PIST_empirique<-sapply(Matrix_couples,FUN = pi_s_t,
                          functional_inds=inds_select,vector_u=Tau)
   return(PIST_empirique)
@@ -772,7 +1126,7 @@ fonction_analyse_convergence<-function(Obs,K){
   LISTE_convergence<-c()
   for(l in c(1:8)){
     fonction_obtenue<-fonction_propre_j(vecteur_temps =vecteur_temps,j=l )
-
+    
     # approx de Rieman --------------------------------------------------------
     coordonnees<-(FORME_d%*%fonction_obtenue)*(pas_x)
     LISTE_convergence<-c(LISTE_convergence,mean(abs(coordonnees)))
@@ -809,7 +1163,7 @@ Outils_POT_graphique<-function(seuil,Q1,Q2,series,dates,titre_variable){
   colnames(df_time_variable)<-c("time","obs")
   
   df_time_variable$time<-dates
-
+  
   # Attention au saut comme on passe d'hiver en hiver -----------------------
   df_time_variable$time<-as.POSIXct(df_time_variable$time, format="%d/%m/%Y")
   
@@ -826,7 +1180,6 @@ Outils_POT_graphique<-function(seuil,Q1,Q2,series,dates,titre_variable){
   par(mfrow=c(1,1))
 }
 
-
 fnct_estim_extremo_resample<-function(B,inds_ext,Tau,Matrix_couples,vector_distances){
   N<-nrow(inds_ext)
   Indices_B<-sample(x = c(1:N),size = B,replace = TRUE)
@@ -835,7 +1188,6 @@ fnct_estim_extremo_resample<-function(B,inds_ext,Tau,Matrix_couples,vector_dista
                                              Tau = Tau)
   df<-cbind.data.frame(Estimation_resample,vector_distances)
   colnames(df)<-c("val_data","delta")
-  
   result_delta<-df %>% group_by(delta) %>% summarise(resample=mean(val_data))
   return(result_delta$resample)
 }
@@ -857,8 +1209,8 @@ Fnct_bootstrap_param<-function(B,nb_sample,GPD_liste,p,alpha){
     scale_ech<-as.numeric(modele$results$par[[1]])
     shape_ech<-as.numeric(modele$results$par[[2]])
     quantiles_ech<-sapply(p,FUN=function(x){
-                  return(qgp_craft(x,sigma = scale_ech,xi = shape_ech)+mu)}
-                  )
+      return(qgp_craft(x,sigma = scale_ech,xi = shape_ech)+mu)}
+    )
     return(quantiles_ech)
   }
   fct_estim_params<-function(echantillon,indice_param){
@@ -873,7 +1225,7 @@ Fnct_bootstrap_param<-function(B,nb_sample,GPD_liste,p,alpha){
                        ncol = 1)
   }
   Qinf<-apply(X =Niv_retour,MARGIN = 1,FUN=function(x)
-    {return(quantile(x,alpha/2))})
+  {return(quantile(x,alpha/2))})
   Qsup<-apply(X =Niv_retour,MARGIN = 1,FUN=function(x)
   {return(quantile(x,1-alpha/2))})
   estimateur<-qgp_craft(x = p,xi = shape_estim,sigma = sigma_estim)+mu
@@ -884,16 +1236,137 @@ Fnct_bootstrap_param<-function(B,nb_sample,GPD_liste,p,alpha){
   
   # shape -------------------------------------------------------------------
   Estim_scale<-apply(X = Simulations_GP,MARGIN =2,
-                    FUN=fct_estim_params,indice_param=1)
+                     FUN=fct_estim_params,indice_param=1)
   Estim_shape<-apply(X = Simulations_GP,MARGIN =2,
                      FUN=fct_estim_params,indice_param=2)
   return(list("niv_retour"=df,"shape"=Estim_shape,"scale"=Estim_scale))
 }
 
+# Utilisation des lois bivariees ------------------------------------------
 
+#' Title
+#'
+#' @param s : int. Time. 
+#' @param t : int. Second time. 
+#' @param quantiles_seuil : vector. Set of tail weight.  
+#' @param observations : df. Dataframe of observations
+#' @param model_bv : str. Bivariate model used. 
+#' @param alpha_init : float. Init parameter of the model
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Fonction_ext_bivariee<-function(s,t,quantiles_seuil,observations, 
+                                model_bv,alpha_init=NULL){
+  series_s<-observations[,s]
+  series_t<-observations[,t]
+  # chargement quantiles ----------------------------------------------------
+  qs<-quantile(series_s,1-quantiles_seuil[s])
+  qt<-quantile(series_t,1-quantiles_seuil[t])
+  if(is.null(alpha_init)==FALSE){
+    modele_bv<-POT::fitbvgpd(cbind(series_s,series_t),
+                             c(qs,qt), 
+                             model = model_bv,alpha=alpha_init)
+  }
+  else{
+    modele_bv<-POT::fitbvgpd(cbind(series_s,series_t),
+                             c(qs,qt), 
+                             model = model_bv)
+  }
+  
+  # estimation --------------------------------------------------------------
+  return(modele_bv)
+}
 
+#' Title
+#'
+#' @param Number_realisations : number of jumps to do.
+#' @param lambda : parameter of the exponential law.
+#' @param number_years : integer. Number of years in the original dataframe
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Generator_PP_wake_up<-function(Number_realisations,lambda){
+  Times_jump<-rep(NA,Number_realisations)
+  for(j in c(1:Number_realisations)){
+    # A(x,y)=0 when y>x+1 so only one possibility -----------------------------
+    time_jump_j<-rexp(n =1,rate=lambda)
+    # Moment of the jth jump --------------------------------------------------
+    Times_jump[j]<-time_jump_j
+  }
+  return(cumsum(Times_jump))
+}
+fnct_jump_adapt_value<-function(estims_modele,series_values,NYear){
+  Temps<-c()
+  Longueur<-length(series_values)
+  while(length(Temps)!=Longueur){
+    liste_lambda<-sapply(series_values,function(x){(1+(estims_modele[[3]])*(x-estims_modele[[1]])/estims_modele[[2]])**(-1/estims_modele[[3]])})
+    temps_simul<-sapply(liste_lambda,function(x){return(rexp(1,rate=x))})
+    Temps<-c(Temps,min(temps_simul))
+    indice<-which(temps_simul==min(temps_simul))
+    series_values<-series_values[-indice]
+  }
+  return(Temps)
+}
 
-Analyse_threshd_GPD<-function(dates_taken,data,fonction_threshd,n.dens,name,j_show){
+#' fonction_simul_HTawn
+#'
+#' @param x : premiere coordonnee.
+#' @param y : seconde coordonnee. 
+#' @param seuil_x : seuil pour x.  
+#' @param seuil_y : seuil pour y. 
+#' @param vecteur_x_reg : nouvelles valeurs pour regression (HTawn)
+#'
+#' @return
+#' @export
+#'
+#' @examples
+fonction_simul_HTawn<-function(x,y,seuil_x,seuil_y,vecteur_x_reg){
+  
+  P_u<-mean(as.numeric(x<seuil_x))
+  P_seuil_Y<-mean(as.numeric(y<seuil_y))
+  modele_texmex<-texmex::mex(cbind(x,y),which = 1,mth = c(seuil_x,seuil_y))
+  noms_liste<-names(modele_texmex$margins$models)
+  params_Y0<-modele_texmex$margins$models$y$par
+  sigma_Y0<-exp(params_Y0[1])
+  gamma_Y0<-params_Y0[2]
+  
+  params_epsi<-modele_texmex$margins$models$x$par
+  sigma_epsi<-exp(params_epsi[1])
+  gamma_epsi<-params_epsi[2]
+  simul_epsi_realisations<-1-(1-P_u)*texmex::pgpd(q =vecteur_x_reg,sigma = sigma_epsi, 
+                                                  xi = gamma_epsi, u = seuil_x, 
+                                                  lower.tail = FALSE)
+  Laplace_epsi<-modele_texmex$dependence$margins$p2q(simul_epsi_realisations)
+  Errors<-modele_texmex$dependence$Z
+  Sample_inds<-sample(1:length(Errors),size = length(vecteur_x_reg), 
+                      replace = TRUE)
+  Errors_sampled<-Errors[Sample_inds,]
+  a_estim<-modele_texmex$dependence$coefficients[1]
+  b_estim<-modele_texmex$dependence$coefficients[2]
+  Pred_Laplace_Y<-a_estim*(Laplace_epsi)+(Laplace_epsi^b_estim)*Errors_sampled
+  Pred_Unif_Y<-modele_texmex$dependence$margins$q2p(Pred_Laplace_Y)
+  # Deux cas : au-dessus ou en dessous du seuil -----------------------------
+  indices_non_ext_YO<-which(Pred_Unif_Y<P_seuil_Y)
+  indices_ext_Y0<-which(Pred_Unif_Y>=P_seuil_Y)
+  Tirage_non_ext<-quantile(y,
+                           Pred_Unif_Y[indices_non_ext_YO])
+  poids_queue<-(1-P_seuil_Y)
+  Q<-(Pred_Unif_Y[indices_ext_Y0]-P_seuil_Y)/poids_queue
+  Tirage_ext<-qgp_craft(x =Q, 
+                        sigma = sigma_Y0, 
+                        xi = gamma_Y0)+seuil_y
+  value_predicted<-rep(NA,length(vecteur_x_reg))
+  value_predicted[indices_non_ext_YO]<-Tirage_non_ext
+  value_predicted[indices_ext_Y0]<-Tirage_ext
+  return(value_predicted)
+}
+
+Analyse_seuil_GPD<-function(dates_prises,donnees,fonction_seuil,n.dens,nom,
+                            type_entree,j_show){
   P_valeur_AD_excedent_GPD<-c()
   P_valeur_KS_excedent_GPD<-c()
   
@@ -903,19 +1376,20 @@ Analyse_threshd_GPD<-function(dates_taken,data,fonction_threshd,n.dens,name,j_sh
   Vect_scale<-c()
   Vect_seuil<-c()
   vect_gamma_Moment<-c()
-  plot(c(1:37),fonction_threshd,ylim = c(0,0.30),
-       main = paste0("Poids mis sur la queue de distribution pour ",name))
+  plot(c(1:37),fonction_seuil,ylim = c(0,0.30),
+       main = paste0("Poids mis sur la queue de distribution pour ",nom))
   
   par(mfrow=c(3,3))
   for(t in c(1:37)){
-    p_ut<-fonction_threshd[t]
+    p_ut<-fonction_seuil[t]
     # ML_loi excedents --------------------------------------------------------
-    variable_ech_original<-data[,t]
+    variable_ech_original<-donnees[,t]
     seuil_t<-quantile(variable_ech_original,1-p_ut)
-    name_graph<-ifelse(name=="Surcote","S",name)
+    nom_graph<-ifelse(nom=="Surcote","S",nom)
+    #paste0(nom_graph," at t=",t," (",type_entree,")")
     if(t%in%j_show){
       Outils_POT_graphique(series=variable_ech_original,seuil=seuil_t,Q1=0.50,Q2=0.98,
-                           dates=dates_taken,
+                           dates=dates_prises,
                            titre_variable="")
     }
     
@@ -933,8 +1407,8 @@ Analyse_threshd_GPD<-function(dates_taken,data,fonction_threshd,n.dens,name,j_sh
         return(part1+seuil_t)
       }
       numerateur<-(1-x)^(-gamma_t)-1
-      dename<-gamma_t
-      y<-((numerateur/dename)*sigma_t)+seuil_t
+      denom<-gamma_t
+      y<-((numerateur/denom)*sigma_t)+seuil_t
       return(y)
     }
     
@@ -945,8 +1419,8 @@ Analyse_threshd_GPD<-function(dates_taken,data,fonction_threshd,n.dens,name,j_sh
                                               series_ = variable_ech_original)
     vect_gamma_Moment<-c(vect_gamma_Moment,gamma_moment_t)
     
-    # Return level -------------------------------------------------------
-    Dates_converted<-lubridate::decimal_date(as.POSIXct(dates_taken, format="%d/%m/%Y"))
+    # Niveaux de retour -------------------------------------------------------
+    Dates_converted<-lubridate::decimal_date(as.POSIXct(dates_prises, format="%d/%m/%Y"))
     Dates_converted<-floor(Dates_converted)
     time.rec<-range(Dates_converted)
     NB_annees<-diff(time.rec)
@@ -954,7 +1428,7 @@ Analyse_threshd_GPD<-function(dates_taken,data,fonction_threshd,n.dens,name,j_sh
     
     # simulationsGPD<-QGPDpareto(ppoints(n = N_excedents))
     # extRemes::qqplot(queue_distrib,simulationsGPD,xlab = "Quantiles empiriques",ylab="Quantiles théoriques")
-    # mtext(paste0("Comparaison de ",name_variable," en t=",t," avec une GPD(",round(seuil_t,1),",",round(sigma_t,1),",",round(gamma_t,1),")"))
+    # mtext(paste0("Comparaison de ",nom_variable," en t=",t," avec une GPD(",round(seuil_t,1),",",round(sigma_t,1),",",round(gamma_t,1),")"))
     Vect_gamma<-c(Vect_gamma,gamma_t)
     Vect_scale<-c(Vect_scale,sigma_t)
     Vect_seuil<-c(Vect_seuil,seuil_t)
@@ -978,32 +1452,32 @@ Analyse_threshd_GPD<-function(dates_taken,data,fonction_threshd,n.dens,name,j_sh
     geom_point(aes(y=AD,col="AD"))+
     geom_line(aes(y=AD,col="AD"))+
     ylim(c(0,1))+
-    ggtitle(paste0("p valeur des tests ",name,"(t)|",name,"(t)>u(t)~GPD(u(t)",",","\u03C3","(t),","\u03B3","(t))"))+
+    ggtitle(paste0("p valeur des tests ",nom,"(t)|",nom,"(t)>u(t)~GPD(u(t)",",","\u03C3","(t),","\u03B3","(t))"))+
     xlab(label = "t")+
     ylab(label="p valeur")+
     geom_hline(yintercept = 0.05,show.legend = TRUE)+
     scale_color_manual("Test",values = c("red","blue"))+
-    labs(caption = paste0("n=",nrow(data),", n.dens=",n.dens))
+    labs(caption = paste0("n=",nrow(donnees),", n.dens=",n.dens))
   print(GG_TEST_GPD)
   
   
-  # Keep in memory EV by time ------------------------------------------
+  # Garder en memoire EV par temps ------------------------------------------
   df_EV_evol<-cbind.data.frame(Vect_seuil,Vect_scale,Vect_gamma,
-                               Vect_Theta,fonction_threshd,P_valeur_AD_excedent_GPD)
+                               Vect_Theta,fonction_seuil,P_valeur_AD_excedent_GPD)
   colnames(df_EV_evol)<-c("seuil_t","échelle_t","forme_t",
                           "Theta_t","p_u_t","p_val_ADarling")
   
   # Export de la table ------------------------------------------------------
-  write.csv(x=df_EV_evol,file=paste0("Work_RVariations/EVA_",name,".csv"))
+  write.csv(x=df_EV_evol,file=paste0("EVA_",nom,"_",type_entree,".csv"))
   return(P_valeur_AD_excedent_GPD)
 }
 
-Analyse_Pareto_per_time<-function(data_Pareto,name,n.dens){
+Analyse_Pareto_par_temps<-function(donnees_Pareto,nom,n.dens){
   P_valeur<-c()
   P_valeur_AD<-c()
   par(mfrow=c(3,3))
   for(t in c(1:37)){
-    variable_t<-data_Pareto[,t]
+    variable_t<-donnees_Pareto[,t]
     TEST_ks_pareto<-ks.test(x = variable_t,extRemes::"pevd",threshold=1,scale=1,shape=1,type="GP")
     P_valeur<-c(P_valeur,TEST_ks_pareto$p.value)
     TEST_AD_pareto<-goftest::ad.test(x = variable_t,extRemes::"pevd",threshold=1,scale=1,shape=1,type="GP")
@@ -1018,7 +1492,7 @@ Analyse_Pareto_per_time<-function(data_Pareto,name,n.dens){
     geom_point(aes(y=AD,col="AD"))+
     geom_line(aes(y=AD,col="AD"))+
     ylim(c(0,1))+
-    ggtitle(paste0("p valeur des tests T(",name,")(t)~Pareto(1)"))+
+    ggtitle(paste0("p valeur des tests T(",nom,")(t)~Pareto(1)"))+
     xlab(label = "t")+
     ylab(label="p valeur")+
     geom_hline(yintercept = 0.05,show.legend = TRUE)+
@@ -1051,7 +1525,7 @@ Sample_window<-function(x_simul,x_window,y,size_window){
   if(L<(size_window/2)){
     beg<-length(series_sort)-size_window+1
     defs_window<-c(beg:
-                      length(series_sort))
+                     length(series_sort))
   }
   else if(index_minimum<size_window/2){
     end<-size_window
@@ -1072,6 +1546,11 @@ Sample_window<-function(x_simul,x_window,y,size_window){
   }
   #order gives the initial index used
   L_window<-length(defs_window)
+  #ponderate by distance, relative gap ?
+  # Wk<-abs(series_sort[defs_window]-x_simul)^(-1)/(x_simul)
+  # Wk<-Wk/sum(Wk)
+  # summary(Wk)
+  #,prob = Wk
   Chosen<-sample(c(1:L_window),size=1)
   index_sample_f<-defs_window[Chosen]
   index_sample<-order(x_window)[index_sample_f]
@@ -1083,17 +1562,17 @@ Sample_window<-function(x_simul,x_window,y,size_window){
 #' @param obs_eve : vector(float). The values obtained at each time step for the 
 #' previous observation X(M-1).  
 #' @param epsilon_t_plus1 : vector(float). Simulated residual.
-#' @param model_ar_per_t : df. Summary of the arima model at each time t. 
+#' @param Modele_ar_par_t : df. Summary of the arima model at each time t. 
 #'
 #' @return vector(float). Simulated extreme time series X(M). 
 #' @export
 #'
 #' @examples
-Function_AR_p<-function(j,obs_eve,epsilon_t_plus1,model_ar_per_t){
+Function_AR_p<-function(j,obs_eve,epsilon_t_plus1,Modele_ar_par_t){
   
-  End<-ncol(model_ar_per_t)-1
-  vect_regression<-model_ar_per_t[j,c(1:End)]
-  Constant<-c(unlist(model_ar_per_t$Intercept)[j]%*%(1-sum(unlist(vect_regression))))
+  End<-ncol(Modele_ar_par_t)-1
+  vect_regression<-Modele_ar_par_t[j,c(1:End)]
+  Constant<-c(unlist(Modele_ar_par_t$Intercept)[j]%*%(1-sum(unlist(vect_regression))))
   X_projection<-as.matrix(obs_eve[j])%*%unlist(vect_regression)+Constant
   return(X_projection+epsilon_t_plus1[j])
 }
@@ -1111,15 +1590,363 @@ custom_labels <- function(x) {
 }
 
 
-RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,titre,
-                    name_variable,plus_simul=FALSE,series_simul=NULL,
-                    cols_ggplot=NULL,alpha=0.05, 
-                    methode_ci="normal",ylim_opt=NULL, 
-                    unit_used,Individuals_exts){
+RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
+                             nom_variable,plus_simul=FALSE,series_simul=NULL,
+                             cols_ggplot=NULL,alpha=0.05, 
+                             methode_ci="normal",ylim_opt=NULL,Individus_exts,
+                             unit_used){
   rate_exceedance<-round(mean(as.numeric(series>seuil)),2)
   series_extreme<-subset(series,series>seuil)
   modele_ev<-fevd( x =series,threshold = seuil,type="GP",
                    time.units = paste0(NPY,"/year"))
+  scale<-modele_ev$results$par[[1]]
+  shape<-modele_ev$results$par[[2]]
+  r<-distillery::ci(modele_ev,type = "parameter")
+  q_moins<-r[2,1]
+  q_plus<-r[2,3]
+  indice_value_twenty<-which(period_years==20)
+  pdf(NULL)
+  RL_plot<-plot(modele_ev,type = "rl",
+                main=paste0("Niveau de retour par EVA pour ",nom_variable),
+                rperiods=c(period_years))
+  dev.off()
+  empirique<-RL_plot$empirical
+  # Methode delta par defaut -------------------------------------------------
+  #############
+  
+  Modele_vs_emp<-ci(x = modele_ev,alpha = alpha,
+                    return.period=period_years,
+                    method=methode_ci)
+  Base<-cbind.data.frame(Modele_vs_emp[,1],Modele_vs_emp[,2],Modele_vs_emp[,3])
+  rvalue_predicted<-Base[indice_value_twenty,2]
+  # cas où négatif ----------------------------------------------------------
+  colnames(Base)<-c("borne_inf","estimateur","borne_sup")
+  Base$borne_inf<-ifelse(Base$borne_inf>0,Base$borne_inf,0)
+  if(plus_simul==TRUE){
+    m<-period_years*NPY
+    Prop<-m*rate_exceedance
+    entree<-1-(1/Prop)
+    
+    # analyse extremes simul --------------------------------------------------
+    Estimation_probs<-sapply(X = as.numeric(Base$estimateur),
+                             cdf_cond_value,
+                             simul_ext=series_simul,
+                             series=series,seuil=seuil,
+                             inds_exts=Individus_exts)
+    # Return_obtained_simul ---------------------------------------------------
+    C<-NPY*rate_exceedance
+    R_simul<-(C*(1-Estimation_probs))^(-1)
+    New_return<-cbind.data.frame(R_simul,Base$estimateur)
+    colnames(New_return)<-c("p_years","simul_niveau")
+    
+  }
+  Xbottom<-"Period P (years)"
+  yleft <- paste0("return level (",unit_used,")")
+  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+    geom_line()+
+    geom_line(linetype=0)+
+    annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
+             size = 4,shape=3)+
+    annotate("text", x = 19, y = rvalue_predicted-0.05, 
+             label=as.character(round(rvalue_predicted,2)),colour = "red", 
+             size = 4)+
+    geom_ribbon(mapping = aes(ymin=borne_inf,ymax=borne_sup,col="confidence_band"),alpha=0.15,
+                fill="grey", linetype = "dashed")+
+    geom_point(data=empirique,aes(x=transformed.period,
+                                  y=sorted.level,col="data"))+
+    xlab(Xbottom)+
+    ylab(yleft)
+  
+  
+  # Use ylim in limits if scale used ------------------------------------------------
+  # is not applied otherwise.
+  if(plus_simul==TRUE){
+    GG_RL<-GG_RL+
+      geom_point(data=New_return,aes(x=p_years,y=simul_niveau,col="simulations"),pch=17)
+    
+  }
+  if(is.null(ylim_opt)==FALSE){
+    GG_RL<-GG_RL+
+      scale_y_continuous(limits = ylim_opt,transform="log",
+                         labels = label_number(accuracy = 0.001))
+  }
+  else{
+    GG_RL<-GG_RL+
+      scale_y_continuous(transform="log",
+                         labels = label_number(accuracy = 0.001))
+  }
+  GG_RL<-GG_RL+
+    scale_x_continuous(labels = custom_labels,transform = "log")+
+    labs(colour="Legend")+
+    theme(axis.title=element_text(size=20),
+          legend.text=element_text(size=14),
+          legend.title = element_text(size=15),
+          axis.text = element_text(size=14))
+  
+  if(is.null(cols_ggplot)==FALSE){
+    GG_RL<-GG_RL+
+      scale_color_manual(values=cols_ggplot)
+  }
+  
+  return(list("plot_RL"=RL_plot,"modele_ev"=modele_ev,
+              "GG_plot"=GG_RL))
+}
+RL_ggplot_uniroot_ext<-function(series,seuil,period_years,NPY,
+                                nom_variable,plus_simul=FALSE,series_simul=NULL,
+                                cols_ggplot=NULL,alpha=0.05, 
+                                methode_ci="normal",ylim_opt=NULL,Individus_exts,
+                                unit_used){
+  rate_exceedance<-round(mean(as.numeric(series>seuil)),2)
+  series_extreme<-subset(series,series>seuil)
+  modele_ev<-fevd( x =series,threshold = seuil,type="GP",
+                   time.units = paste0(NPY,"/year"))
+  scale<-modele_ev$results$par[[1]]
+  shape<-modele_ev$results$par[[2]]
+  r<-distillery::ci(modele_ev,type = "parameter")
+  q_moins<-r[2,1]
+  q_plus<-r[2,3]
+  indice_value_twenty<-which(period_years==20)
+  pdf(NULL)
+  RL_plot<-plot(modele_ev,type = "rl",
+                main=paste0("Niveau de retour par EVA pour ",nom_variable),
+                rperiods=c(period_years))
+  dev.off()
+  empirique<-RL_plot$empirical
+  # Methode delta par defaut -------------------------------------------------
+  #############
+  
+  Modele_vs_emp<-ci(x = modele_ev,alpha = alpha,
+                    return.period=period_years,
+                    method=methode_ci)
+  Base<-cbind.data.frame(Modele_vs_emp[,1],Modele_vs_emp[,2],Modele_vs_emp[,3])
+  rvalue_predicted<-Base[indice_value_twenty,2]
+  # cas où négatif ----------------------------------------------------------
+  
+  colnames(Base)<-c("borne_inf","estimateur","borne_sup")
+  Base$borne_inf<-ifelse(Base$borne_inf>0,Base$borne_inf,0)
+  if(plus_simul==TRUE){
+    m<-period_years*NPY
+    Prop<-m*rate_exceedance
+    entree<-1-(1/Prop)
+    
+    # analyse extremes simul --------------------------------------------------
+    # with simul
+    Estimated_quantiles<-sapply(entree,
+                                Uniroot_cond_proba,
+                                simul_ext=series_simul,
+                                series=series,seuil=seuil,
+                                inds_exts=Individus_exts)
+    # Return_obtained_simul ---------------------------------------------------
+    New_return<-cbind.data.frame(period_years,Estimated_quantiles)
+    colnames(New_return)<-c("p_years","simul_niveau")
+    
+    
+  }
+  Xbottom<-"Period P (years)"
+  yleft <- paste0("return level (",unit_used,")")
+  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+    geom_line()+
+    geom_line(linetype=0)+
+    annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
+             size = 4,shape=3)+
+    annotate("text", x = 19, y = rvalue_predicted-0.05, 
+             label=as.character(round(rvalue_predicted,2)),colour = "red", 
+             size = 4)+
+    geom_ribbon(mapping = aes(ymin=borne_inf,ymax=borne_sup,col="confidence_band"),alpha=0.15,
+                fill="grey", linetype = "dashed")+
+    geom_point(data=empirique,aes(x=transformed.period,
+                                  y=sorted.level,col="data"))+
+    xlab(Xbottom)+
+    ylab(yleft)
+  
+  # Use ylim in limits if scale used ------------------------------------------------
+  if(plus_simul==TRUE){
+    GG_RL<-GG_RL+
+      geom_point(data=New_return,aes(x=p_years,y=simul_niveau,col="simulations"),pch=17)
+    
+  }
+  if(is.null(ylim_opt)==FALSE){
+    GG_RL<-GG_RL+
+      scale_y_continuous(limits = ylim_opt,transform="log",
+                         labels = label_number(accuracy = 0.001))
+  }
+  else{
+    GG_RL<-GG_RL+
+      scale_y_continuous(transform="log",
+                         labels = label_number(accuracy = 0.001))
+  }
+  GG_RL<-GG_RL+
+    scale_x_continuous(labels = custom_labels,transform = "log")+
+    labs(colour="Legend")+
+    theme(axis.title=element_text(size=20),
+          legend.text=element_text(size=14),
+          legend.title = element_text(size=15),
+          axis.text = element_text(size=14))
+  
+  if(is.null(cols_ggplot)==FALSE){
+    GG_RL<-GG_RL+
+      scale_color_manual(values=cols_ggplot)
+  }
+  return(list("plot_RL"=RL_plot,"modele_ev"=modele_ev,
+              "GG_plot"=GG_RL))
+}
+cdf_cond_value<-function(quantile_emp,simul_ext,series,seuil,inds_exts){
+  ## inds_exts = extreme time series (L2 norm) --------------------------------
+  ## A) probability being above quantile.
+  ## B) probability being above threshold.
+  ## C) probability of being an extreme time series
+  # prob B
+  Inds_B<-which(series>seuil)
+  prop_b<-length(Inds_B)/length(series)
+  
+  # prob (C|B)
+  # With data
+  prop_b_c<-length(intersect(inds_exts,Inds_B))/length(series)
+  prop_c_knownb<-prop_b_c/prop_b
+  # With simul
+  # prob_b_known_c<-mean(as.numeric(simul_ext>seuil))
+  # prob_c<-length(inds_exts)/length(series)
+  # Bayes
+  # prop_c_knownb<-prob_b_known_c*(prob_c/prop_b)
+  
+  # prob(A|C,B)
+  series_tronq<-subset(simul_ext,simul_ext>seuil)
+  prop_ext_estim<-mean(as.numeric((series_tronq<quantile_emp)))
+  
+  # prob A,C|B
+  first_elt<-prop_ext_estim*prop_c_knownb
+  
+  #prob C^(c)|B
+  inds_non_exts<-c(1:length(series))[-inds_exts]
+  prop_b_cT<-length(intersect(inds_non_exts,Inds_B))/length(series)
+  prop_cT_knowb<-prop_b_cT/prop_b
+  
+  # prob(A|C^(c),B) -----------------------------------------------------------------
+  series_above_nonext<-subset(series[-inds_exts],
+                              series[-inds_exts]>seuil)
+  prop_non_ext_estim<-mean(as.numeric(series_above_nonext<quantile_emp))
+  
+  # prob A,C^(c)|B
+  second_elt<-prop_non_ext_estim*(prop_cT_knowb)
+  
+  # prob A|B
+  return(first_elt+second_elt)
+}
+
+diff_prob_quantile<-function(quantile_emp,simul_ext,series,seuil,inds_exts,u_given){
+  v<-cdf_cond_value(quantile_emp = quantile_emp,
+                    simul_ext = simul_ext,series = series,
+                    seuil = seuil,inds_exts = inds_exts)
+  return(v-u_given)
+}
+
+Uniroot_cond_proba<-function(u_given,simul_ext,series,
+                             seuil,inds_exts){
+  
+  # Find a coherent level of quantile level ---------------------------------
+  # knowing what we give as entry (u_given) -------------------------------------------
+  m<-min(simul_ext)
+  M<-max(simul_ext)
+  return(uniroot(f = diff_prob_quantile,interval = c(m,
+                                                     M),
+                 simul_ext=simul_ext,
+                 u_given=u_given,inds_exts=inds_exts,
+                 seuil=seuil,series=series
+  )$root)
+}
+
+
+#' Resamples_trends
+#'
+#' @param extremes_indus : observed extreme time series. 
+#' @param B : int. Number of resamples. 
+#' @param list_Q : vector(float). Vector of quantiles analysed
+#'
+#' @return vector(float). Percent value found at each time
+#' @export
+#'
+#' @examples
+Resamples_trends<-function(extremes_indus,B,list_Q){
+  N<-nrow(extremes_indus)
+  Indexes_B<-sample(x = c(1:N),size = B,replace = TRUE)
+  ech<-extremes_indus[Indexes_B,]
+  LIST_results<-matrix(NA,ncol=ncol(ech),nrow = length(list_Q))
+  for(l in c(1:length(list_Q))){
+    Q<-list_Q[l]
+    result_q<-apply(ech,function(x){return(quantile(x,Q))},
+                    MARGIN=2)
+    LIST_results[l,]<-result_q
+  }
+  return(LIST_results)
+}
+
+
+# Functions_graphic -------------------------------------------------------
+
+# Short-cut for graphics using the scores/variance ------------------------
+
+# function_expression_prop_variance_j<-function(j,prop_variance,term="C"){
+#   first_object<-expression(term[j])
+#   first_object<-do.call("substitute", 
+#                         list(first_object[[1]], list(j = j,
+#                                                      term=term)))
+#   expr_j<-expression(first_object~" ("~prop1~"% of the variance)")
+#   return_obj<-do.call("substitute", 
+#                       list(expr_j[[1]], list(prop1 = prop_variance[j],
+#                                              first_object=first_object)))
+#   return(return_obj)
+# }
+function_expression_prop_variance_j <- function(j, prop_variance, term="C") {
+  # Convert term to a symbol to allow Greek letters like xi, beta, etc.
+  term_symbol <- as.symbol(term)
+  
+  # Build the expression for the Greek letter with subscript j
+  first_object <- substitute(term_symbol[j], list(term_symbol = term_symbol, j = j))
+  
+  # Create the final expression with the percentage variance
+  expr_j <- substitute(expr ~ " (" ~ prop1 ~ "% of the variance)", 
+                       list(expr = first_object, prop1 = prop_variance[j]))
+  
+  return(expr_j)
+}
+function_expression_chi <- function(j,term="C") {
+  # Convert term to a symbol to allow Greek letters like xi, beta, etc.
+  term_symbol <- as.symbol(term)
+  
+  # Build the expression for the Greek letter with subscript j
+  first_object <- substitute(term_symbol[j], 
+                             list(term_symbol = term_symbol, j = j))
+  
+  # Create the final expression with the percentage variance
+  expr_j <- substitute(expr, 
+                       list(expr = first_object))
+  
+  return(expr_j)
+}
+#' Title
+#'
+#' @param series : vector.
+#' @param seuil : float. 
+#' @param period_years : int. 
+#' @param NPY : int. 
+#' @param titre :str. 
+#' @param nom_variable : str. 
+#' @param plus_simul : Bool. 
+#'
+#' @return RL plot with ggplot. 
+#' @export
+#'
+#' @examples
+RL_ggplot<-function(series,seuil,period_years,NPY,titre,
+                    nom_variable,plus_simul=FALSE,series_simul=NULL,
+                    cols_ggplot=NULL,alpha=0.05, 
+                    methode_ci="normal",ylim_opt=NULL, 
+                    unit_used){
+  rate_exceedance<-round(mean(as.numeric(series>seuil)),2)
+  series_extreme<-subset(series,series>seuil)
+  modele_ev<-fevd( x =series,threshold = seuil,type="GP",
+                   time.units = paste0(NPY,"/year"))
+  print(modele_ev$results$par)
   scale<-modele_ev$results$par[[1]]
   shape<-modele_ev$results$par[[2]]
   r<-distillery::ci(modele_ev,type = "parameter")
@@ -1134,12 +1961,11 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,titre,
   print(" p value Anderson Darling test")
   print(p_val)
   indice_value_twenty<-which(period_years==20)
-  pdf(NULL)
   RL_plot<-plot(modele_ev,type = "rl",
-                main=paste0("Niveau de retour par EVA pour ",name_variable),
+                main=paste0("Niveau de retour par EVA pour ",nom_variable),
                 rperiods=c(period_years))
-  dev.off()
   empirique<-RL_plot$empirical
+  
   # Methode delta par defaut -------------------------------------------------
   #############
   
@@ -1163,26 +1989,31 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,titre,
     entree<-1-(1/Prop)
     
     # analyse extremes simul --------------------------------------------------
-    # with simul
-    #with data
-    #series_data_ext<-series[Individuals_exts]
-    #series_tronq<-subset(series_data_ext,series_data_ext>seuil)
-    # Estimated_quantiles<-sapply(entree,
-    #                          fonction_melange_cond,
-    #                          series_tronq=series_tronq,
-    #                          series=series,seuil=seuil,
-    #                          inds_exts=Individuals_exts)
-    Estimation_probs<-sapply(X = Base$estimateur,
-                               cdf_cond_value,
-                               simul_ext=series_simul,
-                               series=series,seuil=seuil,
-                               inds_exts=Individuals_exts)
-    # Return_obtained_simul ---------------------------------------------------
-    C<-NPY*rate_exceedance
-    R_simul<-(C*(1-Estimation_probs))^(-1)
-    New_return<-cbind.data.frame(R_simul,Base$estimateur)
-    #New_return<-cbind.data.frame(period_years,Estimated_quantiles)
-    colnames(New_return)<-c("p_years","simul_niveau")
+    series_tronq<-subset(series_simul,series_simul>seuil)
+    
+    # plot(-1/log(xp2)[sdat > seuil]/(NPY*rate_exceedance), sdat[sdat >
+    #                                          seuil])
+    simulations<-extRemes::revd(n =length(series_tronq),threshold = seuil,
+                                scale = scale, shape = shape,
+                                type = "GP")
+    df_simul_versus_tronq<-cbind.data.frame(series_tronq, 
+                                            simulations)
+    colnames(df_simul_versus_tronq)<-c("tronq","simulations_GPD")
+    # GG_dens<-ggplot(data=df_simul_versus_tronq,aes(x=tronq))+
+    #   geom_density(alpha=0.20,col="blue")+
+    #   geom_density(aes(x=simulations_GPD),alpha=0.20,col="yellow")+
+    #   ggtitle("Comparaison simul et loi GPD")
+    # print(GG_dens)
+    Niveaux_empiriques_simul<-as.numeric(quantile(x = series_tronq,entree))
+    indices_pris<-sapply(Niveaux_empiriques_simul , function(x,ref){
+      return(which.min(abs(x-ref)))
+    },ref=series_tronq)
+    # enlever valeurs égales.
+    #simul_<-cbind.data.frame(-1/log(xp2)[sdat > seuil]/(NPY*rate_exceedance),
+    #                         sdat[sdat >
+    #                               seuil])
+    simul_<-cbind.data.frame(period_years,Niveaux_empiriques_simul)
+    colnames(simul_)<-c("p_years","simul_niveau")
     
     # phrase caption ----------------------------------------------------------
     phrase_caption<-paste0(phrase_caption,", number_simul=",length(series_simul))
@@ -1202,127 +2033,209 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,titre,
                                   y=sorted.level,col="data"))+
     ylab(paste0("return level (",unit_used,")"))+
     
-    xlab("Period P (years)")
+    xlab("Period P (years)")+
+    theme(axis.title=element_text(size=15))
   
   # Use ylim in limits if scale used ------------------------------------------------
   # is not applied otherwise.
   if(plus_simul==TRUE){
     GG_RL<-GG_RL+
-      geom_point(data=New_return,aes(x=p_years,y=simul_niveau,col="simulations"),pch=17)
+      geom_point(data=simul_,aes(x=p_years,y=simul_niveau,col="simulations"),pch=17)
     
   }
   if(is.null(ylim_opt)==FALSE){
     GG_RL<-GG_RL+
-      scale_y_continuous(limits = ylim_opt,transform="log",
-                         labels = label_number(accuracy = 0.001))
+      scale_y_continuous(limits = ylim_opt,transform="log")
   }
   else{
     GG_RL<-GG_RL+
-      scale_y_continuous(transform="log",
-                         labels = label_number(accuracy = 0.001))
+      scale_y_continuous(transform="log")
   }
   GG_RL<-GG_RL+
-    scale_x_continuous(labels = custom_labels,transform = "log")+
-    labs(colour="Legend")+
-    theme(axis.title=element_text(size=15),
-          legend.text=element_text(size=10))
-   ## ggtitle(paste0(titre, " (log-log plot)"))
+    scale_x_continuous(transform="log")+
+    labs(colour="Legend")
+  #ggtitle(paste0(titre, " (log-log plot)"))
+  #,caption=phrase_caption
   
   if(is.null(cols_ggplot)==FALSE){
     GG_RL<-GG_RL+
       scale_color_manual(values=cols_ggplot)
+    
   }
   
   print(GG_RL)
   return(list("plot_RL"=RL_plot,"modele_ev"=modele_ev))
 }
-cdf_cond_value<-function(quantile_emp,simul_ext,series,seuil,inds_exts){
-  # # inds_exts = extreme time series (L2 norm) --------------------------------
-  ## A) probability being above quantile.
-  ## B) probability being above threshold.
-  ## C) probability of being an extreme time series
-  # prob B
-  Inds_B<-which(series>seuil)
-  prop_b<-length(Inds_B)/length(series)
+
+RL_ggplot_boot_opitz<-function(series,seuil,period_years,NPY,titre,
+                               nom_variable,plus_simul=FALSE,series_simul=NULL,liste_ML,
+                               B,cols_ggplot=NULL,alpha=0.05, 
+                               unit_used){
   
-  # prob (C|B)
-  prop_b_c<-length(intersect(inds_exts,Inds_B))/length(series)
-  prop_c_knownb<-prop_b_c/prop_b
+  # Empirique ---------------------------------------------------------------
+  xp2 <- ppoints(n = length(series), a = 0)
+  sdat <- sort(series) 
+  tf_period<-(-1/log(xp2)[sdat > seuil])/NPY
+  value_emp<-sdat[sdat>seuil]
+  empirique<-cbind.data.frame(tf_period,
+                              value_emp)
+  colnames(empirique)<-c("transformed.period","sorted.level")
+  rate_exceedance<-round(mean(as.numeric(series>seuil)),2)
+  m<-period_years*NPY
+  Prop<-m*rate_exceedance
+  entree<-1-(1/Prop)
+  indice_value_twenty<-which(period_years==20)
+  print(indice_value_twenty)
   
-  # prob(A|C,B)
-  series_tronq<-subset(simul_ext,simul_ext>seuil)
-  prop_ext_estim<-mean(as.numeric((series_tronq<quantile_emp)))
+  # Estim bootstrap ---------------------------------------------------------
+  Estim_bootstrap<-Fnct_bootstrap_param(B = B,nb_sample = length(which(series>seuil)),
+                                        GPD_liste =liste_ML,p =entree,alpha = alpha)
+  Base<-data.frame(Estim_bootstrap$niv_retour)
+  Base$borne_inf<-ifelse(Base$borne_inf>0,Base$borne_inf,0)
+  rvalue_predicted<-Base$estimateur[indice_value_twenty]
   
-  # prob A,B|C
-  first_elt<-prop_ext_estim*prop_c_knownb
+  series_tronq<-subset(series_simul,series_simul>seuil)
+  Niveaux_empiriques_simul<-as.numeric(quantile(x = series_tronq,entree))
+  simul_<-cbind.data.frame(period_years,
+                           Niveaux_empiriques_simul)
+  colnames(simul_)<-c("p_years","simul_niveau")
   
-  #prob C^c|B
-  inds_non_exts<-c(1:length(series))[-inds_exts]
-  prop_b_cT<-length(intersect(inds_non_exts,Inds_B))/length(series)
+  # GGplot ------------------------------------------------------------------
   
-  # non_ext -----------------------------------------------------------------
-  series_above_nonext<-subset(series[-inds_exts],
-                              series[-inds_exts]>seuil)
-  prop_non_ext_estim<-mean(as.numeric(series_above_nonext<quantile_emp))
-  second_elt<-prop_non_ext_estim*(prop_b_cT/prop_b)
-  return(first_elt+second_elt)
-}
-
-
-fonction_melange_cond<-function(u_given,series_tronq,series,seuil,inds_exts){
-
-  # find a coherent level of quantile level ---------------------------------
-
-  # knowing what we give as entry (u_given) -------------------------------------------
-
-  
-  return(uniroot(f = cdf_melange_cond,interval = c(0,10),
-                 series_tronq=series_tronq,
-                 u_given=u_given,inds_exts=inds_exts,
-                 seuil=seuil,series=series
-                 )$root)
-}
-
-
-#' Resamples_tendencies
-#'
-#' @param extremes_indus : observed extreme time series. 
-#' @param B : int. Number of resamples. 
-#' @param list_Q : vector(float). Vector of quantiles analysed
-#'
-#' @return vector(float). Percent value found at each time
-#' @export
-#'
-#' @examples
-Resamples_tendencies<-function(extremes_indus,B,list_Q){
-  N<-nrow(extremes_indus)
-  Indexes_B<-sample(x = c(1:N),size = B,replace = TRUE)
-  ech<-extremes_indus[Indexes_B,]
-  LIST_results<-matrix(NA,ncol=ncol(ech),nrow = length(list_Q))
-  for(l in c(1:length(list_Q))){
-    Q<-list_Q[l]
-    result_q<-apply(ech,function(x){return(quantile(x,Q))},
-                               MARGIN=2)
-    LIST_results[l,]<-result_q
+  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+    geom_line()+
+    geom_line(linetype=0)+
+    annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
+             size = 4,shape=3)+
+    annotate("text", x = 19, y = rvalue_predicted-0.05, 
+             label=as.character(round(rvalue_predicted,2)),colour = "red", 
+             size = 4)+
+    geom_ribbon(mapping = aes(ymin=borne_inf,ymax=borne_sup,col="confidence_band"),alpha=0.15,
+                fill="grey", linetype = "dashed")+
+    geom_point(data=empirique,aes(x=transformed.period,
+                                  y=sorted.level,col="data"))+
+    ylab(paste0("return level (",unit_used,")"))+
+    xlab("Period P (years)")  
+  GG_RL<-GG_RL+
+    geom_point(data=simul_,aes(x=p_years,y=simul_niveau,col="simulations"),pch=17)+
+    scale_y_continuous(transform = "log")+
+    scale_x_continuous(transform="log")+
+    labs(colour="Legend")+
+    theme(axis.title=element_text(size=15))
+  if(is.null(cols_ggplot)==FALSE){
+    GG_RL<-GG_RL+
+      scale_color_manual(values=cols_ggplot)
   }
-  return(LIST_results)
+  print(GG_RL)
+}
+Simul_from_MixtureGauss<-function(Object_dens_clust){
+  Params<-Object_dens_clust$parameters
+  Tau_k<-Params$pro
+  ind_cl<-sample(c(1:length(Tau_k)),prob = Tau_k,size = 1)
+  Mu_k<-Params$mean[,ind_cl]
+  Sigma_k<-as.matrix(Params$variance$sigma[,,ind_cl])
+  MV_gauss<-mvtnorm::rmvnorm(n = 1,mean=Mu_k,sigma = Sigma_k )
+  return(MV_gauss)
+}
+estim_corr_tidal_cycle<-function(Matrix_couples,functional_inds,
+                                 type_corr){
+  Coor_empirique<-sapply(Matrix_couples,FUN=Corr_t_s,
+                         functional_inds=functional_inds,
+                         type_corr=type_corr)
+  return(Coor_empirique)
+}
+fnct_estim_corr_resample<-function(inds_ext,Matrix_couples,
+                                   type_corr,
+                                   vector_distances){
+  N<-nrow(inds_ext)
+  Indices_B<-sample(x = c(1:N),size = N,replace = TRUE)
+  Coor_empirique_resample<-estim_corr_tidal_cycle(functional_inds =inds_ext[Indices_B,],
+                                                  Matrix_couples =Matrix_couples,type_corr = type_corr)
+  df<-cbind.data.frame(Coor_empirique_resample,
+                       vector_distances)
+  colnames(df)<-c("val_data","delta")
+  
+  result_delta<-df %>% group_by(delta) %>% summarise(resample=mean(val_data))
+  return(result_delta$resample)
+}
+Corr_t_s<-function(functional_inds,couples_indices,type_corr){
+  t<-couples_indices[1]
+  s<-couples_indices[2]
+  return(cor(x = functional_inds[,t],y=functional_inds[,s],
+             method = type_corr))
+}
+Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
+                             dims_elt_text =c(14,11,
+                                              10,10)){
+  require(patchwork)
+  Rad_comp<-apply(X = Df_time_series,MARGIN = 1,
+                  FUN =fct_rad)
+  Theta<-t(t(Df_time_series)%*%diag(Rad_comp^(-1)))
+  Series_Z<-melt(t(Df_time_series))
+  Series_Omega<-melt(t(Theta))
+  colnames(Series_Z)<-c("Time", 
+                        "individual", 
+                        "value")
+  colnames(Series_Omega)<-colnames(Series_Z)
+  Series_Z$individual<-as.character(Series_Z$individual)
+  Series_Z$Time<-(Series_Z$Time-19)/6
+  Series_Omega$individual<-Series_Z$individual
+  Series_Omega$Time<-Series_Z$Time
+  shared_xlab <- grid::textGrob("Time (hour) with respect to tidal peak", 
+                                gp = grid::gpar(fontsize = 20))
+  L<-length(Rad_comp)
+  DF_rad<-cbind.data.frame(c(1:L),
+                           Rad_comp,
+                           rep(0,L))
+  colnames(DF_rad)<-c("individual","rad",
+                      "time")
+  DF_rad$individual<-as.character(DF_rad$individual)
+  GG_TS<-ggplot(data=Series_Z,
+                aes(x=Time,y=value,col=individual,
+                    group=interaction(individual), 
+                ))+geom_line()+
+    ylab(paste0("Series of ",y_label))+
+    theme(axis.title.x = element_blank())+
+    theme(axis.title=element_text(size=dims_elt_text[1]),
+          legend.title = element_text(size=dims_elt_text[2]),
+          legend.text=element_text(size=dims_elt_text[3]),
+          axis.text=element_text(size=dims_elt_text[4]))+
+    guides(col="none")
+  # annotate(geom = "point",x=rep(0,length(Rad_comp)),y=Rad_comp)
+  GG_Theta<-ggplot(data=Series_Omega,
+                   aes(x=Time,y=value,col=individual,
+                       group=interaction(individual), 
+                   ))+
+    geom_line()+ylab(paste0("Angle series of ",y_label))+
+    theme(axis.title.x = element_blank())+
+    theme(axis.title=element_text(size=dims_elt_text[1]),
+          legend.title = element_text(size=dims_elt_text[2]),
+          legend.text=element_text(size=dims_elt_text[3]),
+          axis.text=element_text(size=dims_elt_text[4]))+
+    guides(col="none")
+  combined<-(GG_TS|GG_Theta) 
+  All_orig_ext<-patchwork::wrap_elements(full = combined) / patchwork::wrap_elements(shared_xlab) +
+    plot_layout(heights = c(1, 0.05))
+  print(All_orig_ext)
 }
 
-
-# Functions_graphic -------------------------------------------------------
-
-# Short-cut for graphics using the scores/variance ------------------------
-
-function_expression_prop_variance_j <- function(j, prop_variance, term="C") {
-  # Convert term to a symbol to allow Greek letters like xi, beta, etc.
-  term_symbol <- as.symbol(term)
-  
-  # Build the expression for the Greek letter with subscript j
-  first_object <- substitute(term_symbol[j], list(term_symbol = term_symbol, j = j))
-  
-  # Create the final expression with the percentage variance
-  expr_j <- substitute(expr ~ " (" ~ prop1 ~ "% of the variance)", 
-                       list(expr = first_object, prop1 = prop_variance[j]))
-  
-  return(expr_j)
+FIT_cop<-function(u1,u2,fam){
+  fit <- tryCatch({
+    VineCopula::BiCopEst(u1, u2, family = fam)
+  }, error = function(e) return(NULL))
+  results<-list()
+  if (!is.null(fit)) {
+    k <- length(fit$par) + length(fit$par2)  # total number of parameters
+    loglik <- fit$logLik
+    aic <- 2 * k - 2 * loglik
+    BIC<-fit$BIC
+    results$FamilyName <- VineCopula::BiCopName(fam,short = FALSE)
+    results$LogLik <- loglik
+    results$par<-fit$par
+    results$par2<-fit$par2
+    results$AIC <- aic
+    results$BIC<-BIC
+    
+  }
+  return(results)
 }

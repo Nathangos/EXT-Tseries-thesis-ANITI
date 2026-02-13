@@ -17,7 +17,7 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
     LIST_Frechet_OBS[[nom_v]]<-DF_nom
     colnames(DF_nom)<-c(1:ncol(DF_nom))
     Excedents_l<-apply(X = DF_nom,MARGIN = 1,
-                       FUN = calcul_norme_L2)
+                       FUN = calcul_norm_L2)
     FORME_v<-f_transf(t(t(DF_nom)%*%diag(Excedents_l^(-1))))
     ## With log transformation
     Mu_<-colMeans(FORME_v)
@@ -85,7 +85,7 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
     LIST_Frechet_OBS[[nom_v]]<-DF_nom
     colnames(DF_nom)<-c(1:ncol(DF_nom))
     Excedents_l<-apply(X = DF_nom,MARGIN = 1,
-                       FUN = calcul_norme_L2)
+                       FUN = calcul_norm_L2)
     FORME_v<-t(t(DF_nom)%*%diag(Excedents_l^(-1)))
     Omega[,c(Beg:End)]<-f_transf(FORME_v)
   }
@@ -217,7 +217,7 @@ Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,L,d,
   }
   ###  NL2_per_var
   Squared_norms<-apply(X = Mat,MARGIN = 2,
-        FUN = calcul_norme_L2)**2
+        FUN = calcul_norm_L2)**2
   
   ### Scalar_product
   vect_pair<-list()
@@ -354,14 +354,14 @@ Conv_scalar_product<-function(list_TS,Nb_inds_exts,l_name_variables,
                               g_function){
   L<-length(l_name_variables)
   L2_d1<-apply(list_TS[[l_name_variables[1]]],MARGIN = 1,
-               FUN = calcul_norme_L2)
+               FUN = calcul_norm_L2)
   M<-length(L2_d1)
   Base_l<-matrix(NA,nrow = M,
                  ncol=L)
   Base_l[,1]<-L2_d1
   for(j in c(2:L)){
     L2_dj<-apply(list_TS[[l_name_variables[j]]],MARGIN = 1,
-                 FUN = calcul_norme_L2)
+                 FUN = calcul_norm_L2)
     Base_l[,j]<-L2_dj
   }
   Lg<-apply(X = Base_l,

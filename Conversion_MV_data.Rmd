@@ -23,9 +23,8 @@ require(gamlss)
 
 ### Source des fonctions. ####
 #Functions from univariate case. 
-source("../fonctions/fonctions_Pareto.R")
-source("../fonctions/fonctions.r")
-source("../fonctions/fonctions_r_pareto_EVOLTAU.r")
+source("fonctions/fonctions_Pareto.R")
+source("fonctions/fonctions.r")
 
 #Specific multivariate functions. 
 source("functions_MV/function_simul_MV.r")
@@ -45,16 +44,16 @@ clusterExport(coeurs,varlist=F_names)
 
 # Lancement fonction ------------------------------------------------------
 # ------------------------------------------------------------------------
-
 l_root<-"residuals_MV/"
-l_name<-c("Surcote","Hs")
+l_name<-c("Surge","Hs")
 TE<-"residus"
 STD_donnees<-TRUE
+opt_Frech<-FALSE
 ```
 
 ```{r}
 ### Create sub folder
-sub_direct_graph_path<-paste0(getwd(),"Graphics_MV")
+sub_direct_graph_path<-paste0(getwd(),"/Graphics_MV")
 try({
   dir.create(file.path(sub_direct_graph_path))
   dir.create(file.path(sub_direct_graph_path,"resid"))
@@ -123,19 +122,19 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
     colnames(Donnes)<-c(1:37)
     rownames(Donnes)<-c(1:nrow(Donnes))
     l_Orig_all[[name_variable]]<-Donnes
-    dates_import<-read.csv(file=file_dates)[,2]
-    dates_import<-dates_import[-1]
-    d_POIXCT<-as.POSIXct(dates_import, format="%d/%m/%Y")
-    Nb_annees<-diff(range(lubridate::year(d_POIXCT)))
-    NPY<-nrow(Donnes)/Nb_annees
-    AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
-                              nom=name_variable,type_entree=type_entree,
-                              dates_prises=dates_import,j_show = 19)
-    l_AD[[name_variable]]<-AN_GPD
+    # dates_import<-read.csv(file=file_dates)[,2]
+    # dates_import<-dates_import[-1]
+    # d_POIXCT<-as.POSIXct(dates_import, format="%d/%m/%Y")
+    # Nb_annees<-diff(range(lubridate::year(d_POIXCT)))
+    # NPY<-nrow(Donnes)/Nb_annees
+    # AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,
+    #                 fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
+    #                           nom=name_variable,type_entree=type_entree,
+    #                           dates_prises=dates_import,j_show = 19)
+    # l_AD[[name_variable]]<-AN_GPD
     if(type_entree=="donnees_brutes"){
       return(TRUE)
     }
-    
     SUM_pos<-apply(Donnes>0,MARGIN = 1,FUN = sum)
     IND_posj<-which(SUM_pos==ncol(Donnes))
     if(j==1){
@@ -177,7 +176,7 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
                                 "Fitting"=Vect_fitting,
                                 "INIT"=Vect_Init)
     df[[name_variable]]<-apply(X = FINAL_transfo,MARGIN = 1,
-                  FUN = calcul_norme_L2)
+                  FUN = calcul_norm_L2)
 
     }
     return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
@@ -203,10 +202,11 @@ list_params_EGPD<-list("n.cyc"=300,"nu.step"=0.1,
                        "mu.step"=0.1)
 Result_MV<-MarTransfo_TS_EXTGP_MV(type_donnees = "hiver",
                 coeurs = coeurs,lien_racine = l_root,
-                liste_noms = l_name,opt_Frech = list_params_EGPD,
-                opt_Frech,type_entree = TE,p_U = LPU, 
+                liste_noms = l_name,opt_Frech = opt_Frech,
+                type_entree = TE,p_U = LPU, 
                 n.dens=2^(14),file_dates =file_dates,
                  show_EGPD=show_EGPD, list_params_EGPD=list_params_EGPD)
+
 
 ```
 
@@ -219,21 +219,21 @@ lambda<-Theta$sigma
 alpha<-Theta$nu
 
 Orig_S<-Result_MV$orig$Surcote[,t]
-ExpExp_Unif<-(1-exp(-Orig_S/lambda))^(alpha)
-Exp_Exp_Pto<-(1-ExpExp_Unif)^(-1)
-Graphics_estimators_gamma(series = Exp_Exp_Pto,
-                          vect_k = c(50:300),
-                          Title_graphic = " ")
+# ExpExp_Unif<-(1-exp(-Orig_S/lambda))^(alpha)
+# Exp_Exp_Pto<-(1-ExpExp_Unif)^(-1)
+# Graphics_estimators_gamma(series = Exp_Exp_Pto,
+#                           vect_k = c(50:300),
+#                           Title_graphic = " ")
 ```
 
 
 ```{r}
-S$INIT[[t]]
-### Comparing with former result.
-NL2<-apply(X = S$transf,MARGIN = 1,FUN = calcul_norme_L2)
-Graphics_estimators_gamma(series = NL2,
-                          vect_k = c(50:300),
-                          Title_graphic = " ")
+# S$INIT[[t]]
+# ### Comparing with former result.
+# NL2<-apply(X = S$transf,MARGIN = 1,FUN = calcul_norm_L2)
+# Graphics_estimators_gamma(series = NL2,
+#                           vect_k = c(50:300),
+#                           Title_graphic = " ")
 ```
 
 
@@ -331,7 +331,6 @@ try({
   dir.create(file.path(path, newfolder))
 })
 path_conversion<-paste0(path,"/",newfolder,"/")
-Result_MV$SUB_set
 for(nameV in l_name){
   ROOT_<-Result_MV$resume[[nameV]]
   DATA_j<-Result_MV$orig[[nameV]]
