@@ -1355,6 +1355,5 @@ ggsave(filename = paste0(ROOT_export_graph,CPLMT_graph_theta,"_",METHOD_ANGLE,"_
 #End of the code ----------------------------------------------------------------
 ###################
 stopCluster(coeurs)
-
 ```
 
