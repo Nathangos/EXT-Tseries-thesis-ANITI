@@ -19,7 +19,7 @@ Create_list_fromALL<-function(l_name,obj_source){
 } 
 Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs){
   Qtiles_candidates<-seq.int(0,0.95,
-                   length.out=nb_threshs)
+                             length.out=nb_threshs)
   thresholds1 <- quantile(var_t,Qtiles_candidates)
   Metric_result<-eqd(var_t, 
                      thresh = thresholds1)
@@ -31,8 +31,8 @@ Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs){
 Choice_automatic_thresh_per_variable<-function(df,
                                                nb_threshs){
   return(apply(X = df,MARGIN = 2,FUN =
-          Choice_automatic_thresh_per_variable_time,
-          nb_threshs=nb_threshs))
+                 Choice_automatic_thresh_per_variable_time,
+               nb_threshs=nb_threshs))
 }
 
 #' MarTransfo_TS_exts_Mixture
@@ -80,7 +80,7 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
     ### Choice of threshold using metric
     ########using full/10.1080/00401706.2024.2421744
     p_U[[name_variable]]<-Choice_automatic_thresh_per_variable(df = Donnes,
-                    nb_threshs = Nb_Threshs)
+                                                               nb_threshs = Nb_Threshs)
     return(p_U)
     AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,
                               fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
@@ -106,12 +106,12 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
       Vtransf<--1/log(Vunif)
     }
     l_ALL[[name_variable]]<-list("transf"=Vtransf,"K"=K,
-                                "LEVT"=L_EVT)
+                                 "LEVT"=L_EVT)
     if(name_variable==liste_noms[1]){
       df<-matrix(NA,ncol=length(liste_noms),
                  nrow=nrow(Vtransf))
     }
-    df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norm_L2)
+    df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norme_L2)
     j<-j+1
   }
   # Pareto ------------------------------------------------------------------
@@ -163,8 +163,8 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
   #Th<-0
   #FIT_pos<-mev::gp.fit(xdat = Col_pos_t,threshold =Th)$est
   FIT_pos<-extRemes::fevd(x = Col_pos_t,threshold = Th,
-                 method = "Lmoments",
-                 type = "GP")$results
+                          method = "Lmoments",
+                          type = "GP")$results
   # GG_shapeorig<-Graphics_estimators_gamma(series = Col_pos_t,
   #                           vect_k = c(50:300),
   #                           Title_graphic = paste0("result time ",z))
@@ -268,11 +268,11 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
                         show_EGPD=show_EGPD,
                         list_params_EGPD=list_params_EGPD)
     Unif_EGPD<-cbind.data.frame(lapply(X = ALL_results,
-                            FUN = fct_extract_Transf))
+                                       FUN = fct_extract_Transf))
     Vect_egpd<-lapply(X = ALL_results,
                       FUN = fct_extract_ParamsEGPD)
     Vect_Init<-lapply(X = ALL_results,
-           FUN = fct_extract_InitEGPD)
+                      FUN = fct_extract_InitEGPD)
     Vect_fitting<-lapply(X = ALL_results,
                          FUN = fct_extract_FittingEGPD)
     
@@ -282,17 +282,17 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
       FINAL_transfo<-(1/(1-Unif_EGPD))-1
     }
     l_ALL[[name_variable]]<-list("transf"=FINAL_transfo,
-                                "params_transfo"=Vect_egpd,
-                                "Fitting"=Vect_fitting,
-                                "INIT"=Vect_Init)
+                                 "params_transfo"=Vect_egpd,
+                                 "Fitting"=Vect_fitting,
+                                 "INIT"=Vect_Init)
     df[[name_variable]]<-apply(X = FINAL_transfo,MARGIN = 1,
-                  FUN = calcul_norm_L2)
-
-    }
-    return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
-            "orig"=l_Orig,"orig_all"=l_Orig_all,
-            "SUB_set"=IND_select,"type_transfo"="EXTGPD"
-            ))
+                               FUN = calcul_norme_L2)
+    
+  }
+  return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
+              "orig"=l_Orig,"orig_all"=l_Orig_all,
+              "SUB_set"=IND_select,"type_transfo"="EXTGPD"
+  ))
 }
 
 
@@ -463,23 +463,23 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     Theta<-PWM_EXTGP$fit$pwm
     Name_file_plot<-paste0(root_for_export,"RisKfunctions/",nameV,"_EGPD_fitting_RiskF.png")
     MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,init=Theta,
-                   method="mle",R=20)$fit$mle
+                              method="mle",R=20)$fit$mle
     UNIF_extgp<-sapply(VECT_lj,mev::pextgp,kappa=MLE_EXTGP[["kappa"]],
-                            sigma = MLE_EXTGP[["sigma"]],
-                            xi=MLE_EXTGP[["xi"]])
+                       sigma = MLE_EXTGP[["sigma"]],
+                       xi=MLE_EXTGP[["xi"]])
     Quantile_LEVELS<-c(1:length(VECT_lj))/(length(VECT_lj)+1)
     ### Confidence bound
     Result_boot<-Bootstrap_conf_band(M = 500,
-                        n = length(VECT_lj),
-                        theta_egpd = MLE_EXTGP,
-                        order_quantiles = Quantile_LEVELS,
-                        alpha = 0.05)
+                                     n = length(VECT_lj),
+                                     theta_egpd = MLE_EXTGP,
+                                     order_quantiles = Quantile_LEVELS,
+                                     alpha = 0.05)
     DF_egpd_emp<-Result_boot
     DF_egpd_emp$emp<-sort(VECT_lj)
     DF_egpd_emp$Levels<-Quantile_LEVELS
     DF_egpd_emp<-as.data.frame(DF_egpd_emp)
     GG_fit_vect_R<-ggplot(data=DF_egpd_emp,aes(x=emp,y=mean,
-                col="model"))+
+                                               col="model"))+
       geom_point()+
       geom_line(aes(x=emp,y=emp,col="data"))+
       geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
@@ -487,9 +487,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                   linetype="dashed",alpha=0.15,
                   fill="grey")+
       theme(axis.title=element_text(size=20),
-              legend.title = element_text(size=14),
-              legend.text=element_text(size=13),
-              axis.text=element_text(size=13))+
+            legend.title = element_text(size=14),
+            legend.text=element_text(size=13),
+            axis.text=element_text(size=13))+
       scale_color_manual(values=cols_)+
       labs(col="Legend")+
       xlab("Empirical quantiles")+
@@ -502,14 +502,14 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     Frechet_j<-(-log(UNIF_extgp))**(-1)
     print(paste0("Frechet test for conversion of l(",nameV,")"))
     print(goftest::ad.test(Frechet_j,null = extRemes::"pevd",
-                     shape=1,scale=1,loc=1,type="GEV")$p.value)
+                           shape=1,scale=1,loc=1,type="GEV")$p.value)
     L_Convert[[nameV]]<-Frechet_j
   }
   Vect_l_transf<-as.data.frame(L_Convert)
   ### Regular variations hypothesis
   Simple_MRV_HRV_analysis(couple_UV =  Vect_l_transf,
                           root_graphics = paste0(root_for_export,
-                            "RisKfunctions/"),
+                                                 "RisKfunctions/"),
                           Vect_k = c(20:500),
                           l_name = l_variables,q = 0.80)
   Vect_lunif<-exp(-Vect_l_transf^(-1))
@@ -518,7 +518,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   print(test_asy)
   ### What would be the copula
   Select_cop_fam<-VineCopula::BiCopSelect(Vect_lunif[,1],
-                          Vect_lunif[,2])
+                                          Vect_lunif[,2])
   FAMILY_set<-c(1:40,104,114,
                 124,134,204,214,
                 224,234)
@@ -541,12 +541,12 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   DF$par2<-round(as.numeric(DF$par2),2)
   Sort_df<-head(DF[order(DF$AIC),c(1:6) ],5)
   write.csv(x = Sort_df,file = paste0(root_for_export,
-                   dir_AIC,"_",
-                   Approach,".csv"))
+                                      dir_AIC,"_",
+                                      Approach,".csv"))
   ### 
   Vect_Pareto_margins<-apply(Vect_lunif,
-                    MARGIN=2,FUN = evd::qgpd,loc=0,
-                              scale=1, shape=1)
+                             MARGIN=2,FUN = evd::qgpd,loc=0,
+                             scale=1, shape=1)
   l_prime<-apply(Vect_l_transf,MARGIN = 1,
                  FUN = List_Params_RF[["function"]])
   TS_param<-0.30
@@ -559,9 +559,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   print(Q_alt)
   vect_k<-c(50:200)
   GG_gam<-Graphics_estimators_gamma(series = l_prime,
-                            vect_k = vect_k,
-                            Title_graphic = "Shape parameter of gol",
-                            NB_years = 37)
+                                    vect_k = vect_k,
+                                    Title_graphic = "Shape parameter of gol",
+                                    NB_years = 37)
   print(GG_gam)
   l_Pareto<-apply(Vect_Pareto_margins,MARGIN = 1,
                   FUN = List_Params_RF[["function"]])
@@ -572,9 +572,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   Indices_exts<-which(l_prime>Seuil_lprime)
   Seuil_Margins_Pareto<-quantile(l_Pareto,
                                  Q_thresh)
-  
   Excedents_lprime<-Vect_l_transf[Indices_exts,]
-
+  
   # Export radial extreme elts ----------------------------------------------
   Ext_cat<-as.character(as.numeric(l_prime>Seuil_lprime))
   Df_rad_ext<-cbind.data.frame(Vect_l_function,Ext_cat)
@@ -597,6 +596,40 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                            l_variables[2],".png"),
          plot = GG_rad_ext_bool,
          width = 8,height=6)
+  
+  Theta_obtained<-atan(Vect_Pareto_margins[,2]/Vect_Pareto_margins[,1])
+  png(filename= paste0(root_for_export,
+                       "/RisKfunctions/ang_dens_R_",
+                       l_variables[1],"_",
+                       l_variables[2],".png"),
+      width=600,height=800)
+  plot(density(Theta_obtained),
+       main="Angular density of the risk functions",
+       cex.lab = 1.5,
+       cex.main=1.5)
+  abline(v=0,col="red")
+  abline(v=pi/2,col="red")
+  dev.off()
+  ### Distribution of angular comp for exceedances
+  Exced_PTO_marg<-Vect_Pareto_margins[Indices_exts,]
+  l_exts<-l_Pareto[Indices_exts]
+  Angle_exceeds<-t(t(Exced_PTO_marg)%*%diag(l_exts^(-1)))
+  
+  df_angle_exceeds<-as.data.frame(Angle_exceeds)
+  colnames(df_angle_exceeds)<-c("V1","V2")
+  GG_dens_Ang<-ggplot(data = df_angle_exceeds,aes(x=V1,y=V2))+
+    geom_point(col="blue")+
+    geom_xsidedensity(alpha=0.5)+
+    geom_ysidedensity(alpha=0.5)+
+    xlab(paste0("Angular component for risk of ",
+                l_name[1]))+
+    ylab(paste0("Angular component for risk of ",
+                l_name[2]))
+  ggsave(filename = paste0(root_for_export,
+                           "/RisKfunctions/Angular_val_exts_",
+                           l_variables[1],"_",
+                           l_variables[2],".png"),
+         plot = GG_dens_Ang,width=6,height=8)
   
   Excesses_maximum<-l_prime[Indices_exts]
   # Anderson-Darling test for the maximum -- Pareto ?  ----------------------
@@ -712,7 +745,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     dev.off()
     ### Summary of results
     Asymp_test<-MVN::mvn(Vect_l_norm, mvn_test="mardia",
-                   bootstrap = FALSE)
+                         bootstrap = FALSE)
     print(Asymp_test$multivariate_normality)
     print("### MVN test")
     Mardia_test<-round(MVN::mardia(Vect_l_norm)$p.value,2)
@@ -748,8 +781,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     ### probability of being in each case
     #Vect_l_marg
     Q_from_mixt<-apply(Vect_log,
-                          MARGIN = 2,FUN = function(x){
-                            return(mean(as.numeric(x>Mu_marg)))})
+                       MARGIN = 2,FUN = function(x){
+                         return(mean(as.numeric(x>Mu_marg)))})
     DQU_each_scenario<-1-Q_from_mixt
     ### Choose the du used during modelling step.
     # Use the one used for future simulations
@@ -762,42 +795,17 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     MQU<-0.70
     DQU_modeling_Htawn<-Params_risk_Function[["HTAWN_params"]]
     for(j in c(1:d)){
-
+      
       ### Diagnostic choice of qu
       #(1) stability of theta + (2) independence_test
       cond_var<-j
       #Vect_l_marg
-      Result_several_theta<-sapply(Qtile_candidates,
-            Params_HTawn_one_dqu,
-             mqu=MQU,vect_l=Vect_log,
-             ind_ref=cond_var)
-      ### Drop NA results
-      Sub_indresults<-which(!is.na(Result_several_theta[1,])==TRUE)
-      Sub_results<-Result_several_theta[,Sub_indresults]
-      Sub_Q<-Qtile_candidates[Sub_indresults]
-      png(filename = paste0(root_for_export,"RiskFunctions/",
-                            l_name[1],"_",l_name[2],"stab_params_",
-                            j,".png"),
-          width=1000,height=500)
-      par(mfrow=c(1,2))
-      plot(Sub_Q,
-           Sub_results[1,],
-           main=paste0("Evolution of a parameter--ref",cond_var),
-           xlab="Quantile order",ylab="parameter",
-           type="o-")
-      abline(v=DQU_modeling_Htawn[j],
-             col="red")
-      plot(Sub_Q,
-           Sub_results[2,],
-           main=paste0("Evolution of b parameter--ref",cond_var),
-           xlab="Quantile order",ylab="parameter",
-           type="o-")
-      abline(v=DQU_modeling_Htawn[j],
-             col="red")
-      dev.off()
-      par(mfrow=c(1,1))
+      Graphics_diags<-Analysis_diag_HTawn_evol_DQU(cond_var = cond_var,
+                                                   vect_dqu = Qtile_candidates,
+                                                   MQU =MQU,
+                                                   Vect_obs = Vect_log)
     }
-
+    
     ### HTawn modelling
     # vect_l_marg
     Model_Htawn_all<-texmex::mexAll(Vect_log,
@@ -805,11 +813,20 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                                     dqu = DQU_modeling_Htawn)
     Theta_opt<-Model_Htawn_all
     list_GG_cases<-list()
+    list_GG_for_hull<-list()
     for(Z in c(1:d)){
       HTawn_z<-Theta_opt[[Z]]
+      Modelboot_z<-texmex::bootmex(x = HTawn_z)
+      ### Boot run
+      j<-1
+      Results<-t(sapply(Modelboot_z$boot,function(x){
+        y<-x$dependence
+        return(c(y[1,j],y[2,j]))
+      }))
+      list_GG_for_hull[[Z]]<-as.data.frame(Results)
       png(filename = paste0(root_for_export,"RiskFunctions/",
-            l_name[1],"_",l_name[2],"modHtawn_",
-            Z,"_diag.png"))
+                            l_name[1],"_",l_name[2],"modHtawn_",
+                            Z,"_diag.png"))
       par(mfcol=c(2,2))
       plot(Theta_opt[[Z]])
       dev.off()
@@ -821,9 +838,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       })
       Th_used_j<-as.numeric(HTawn_z$dependence$dth)
       Data_tfed$inds_exts_Z<-as.character(
-          as.numeric(Data_tfed[,Z]>Th_used_j))
+        as.numeric(Data_tfed[,Z]>Th_used_j))
       GG_z_model<-ggplot(data = Data_tfed,aes(x=V1,y=V2,
-                    col=inds_exts_Z))+
+                                              col=inds_exts_Z))+
         geom_point()
       if(Z==1){
         GG_z_model<-GG_z_model+
@@ -838,13 +855,42 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
         ylab(paste0("Norm of T(",l_variables[2],")"))
       list_GG_cases[[Z]]<-GG_z_model
     }
+    ### Convex graph
+    Combinaison_for_hull<-as.data.frame(matrix(t(data.frame(list_GG_for_hull)),
+                                               ncol = 2))
+    B_rep<-nrow(Combinaison_for_hull)/length(l_name)
+    
+    colnames(Combinaison_for_hull)<-c("a","b")
+    Combinaison_for_hull$variable_cond<-as.character(c(sapply(X = c(1:length(l_name)),
+                                                              FUN = function(x){return(rep(x,B_rep))}))
+    )
+    Chull<-Combinaison_for_hull %>% 
+      group_by(variable_cond) %>% 
+      slice(chull(a, b))
+    
+    GG_hull<-ggplot(Combinaison_for_hull, 
+                    aes(a, b)) +
+      geom_point() +
+      geom_polygon(data =Chull, alpha = 0.3,aes(fill=variable_cond)) +
+      theme_minimal()+labs(fill="Legend")+
+      theme(axis.title=element_text(size=25),
+            legend.text=element_text(size=14),
+            legend.title = element_text(size=15),
+            axis.text = element_text(size=12),
+            strip.text = element_text(size = 12))
+    ggsave(plot = GG_hull,filename = paste0(root_for_export,"RiskFunctions/",
+                                            l_name[1],"_",l_name[2],
+                                            "_Convex_huls_Htawn.png"),
+           width=8,height=8)
+    
+    ### RiskFunctions
     Object_cases_HTAWN<-list_GG_cases[[1]]+list_GG_cases[[2]]+
       plot_layout(axis_titles = "collect") 
     
     ggsave(plot = Object_cases_HTAWN,
            filename = paste0(root_for_export,"RiskFunctions/",
                              l_name[1],"_",l_name[2],
-                      "_pts_input_HT.png"),
+                             "_pts_input_HT.png"),
            width=8,height=8)
     ### Simulation step
     prop_cl<-Q_from_mixt
@@ -859,10 +905,10 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   if(Approach=="Laplace"){
     Vect_Laplace<-apply(X = Vect_lunif,
                         FUN = function(x){
-                    return(L1pack::qlaplace(x))},
+                          return(L1pack::qlaplace(x))},
                         MARGIN = 2)
     g_Laplace<-apply(Vect_Laplace,MARGIN = 1,
-                   FUN = List_Params_RF[["function"]])
+                     FUN = List_Params_RF[["function"]])
     Mu_Laplace<-as.numeric(quantile(g_Laplace,Q_thresh))
     Model_ALD<-L1pack::LaplaceFit(x = Vect_Laplace)
   }
@@ -870,16 +916,16 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     d<-ncol(Vect_l_norm)
     model_univariate<-ghyp::ghyp()
     Norm_std<-apply(Vect_lunif,MARGIN=2,FUN = Convert_marg,
-                  model_univ=model_univariate)
+                    model_univ=model_univariate)
     Model_HGD<-ghyp::fit.VGmv(data = Norm_std,
-               gamma=rep(0,d),
-               lambda = 1,opt.pars = c(lambda=TRUE,
-                                       mu=TRUE,gamma=FALSE,
-                                       sigma=TRUE),
-               symmetric = TRUE,
-               sigma=cov(Norm_std),
-               mu=rep(0,d),
-               standardize=TRUE)
+                              gamma=rep(0,d),
+                              lambda = 1,opt.pars = c(lambda=TRUE,
+                                                      mu=TRUE,gamma=FALSE,
+                                                      sigma=TRUE),
+                              symmetric = TRUE,
+                              sigma=cov(Norm_std),
+                              mu=rep(0,d),
+                              standardize=TRUE)
     # Model_HGD<-Fit_HGD_from_Laplace(Lap_vectors = Vect_Laplace,
     #           Model_Lap_inits = Model_ALD)
   }
@@ -926,11 +972,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   }
   if(M_Theta=="BetaCop"){
     Modele_coords<-copula::empCopula(X = Unif_coord,
-                      smoothing = "beta")
+                                     smoothing = "beta")
   }
   if(M_Theta=="GaussMixture"){
     Mod_Gauss<-mclust::densityMclust(Scores,
-                                    plot=FALSE)
+                                     plot=FALSE)
   }
   Bool_filled<-FALSE
   N_sim<-M
@@ -991,16 +1037,16 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
         ### Warning) definition by continuity if null values are given
         Sim_l<-Sim_l*Seuil_Margins_Pareto
         Sim_l_tf<-apply(Sim_l,MARGIN=2,FUN = evd::pgpd,loc=0,
-              scale=1, shape=1)
+                        scale=1, shape=1)
       }
     }
     if(Approach=="Gauss"){
       ### To do: correct Sample_cond_g
       Sim_l<-t(replicate(n =N_sim,
-              expr = Sample_cond_g_Rjection_Sampling(Mu_vector = Mu_vector,
-                    Cov_mat = Cov_mat,
-                    g=List_Params_RF[["function"]],
-                    Th_g=Mu_Gauss)))
+                         expr = Sample_cond_g_Rjection_Sampling(Mu_vector = Mu_vector,
+                                                                Cov_mat = Cov_mat,
+                                                                g=List_Params_RF[["function"]],
+                                                                Th_g=Mu_Gauss)))
       ### Conversion to uniform margins.
       print("here")
       Sim_l_tf<-apply(Sim_l,MARGIN=2,
@@ -1012,9 +1058,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Sim_l<-t(replicate(n =N_sim,
                          expr = Sample_cond_Laplacian_Rjection_Sampling(
                            Mu_ALD = Model_ALD$center,
-                            Scatter_ALD=Model_ALD$Scatter,
+                           Scatter_ALD=Model_ALD$Scatter,
                            g=List_Params_RF[["function"]],
-                            Th_g=Mu_Laplace)))
+                           Th_g=Mu_Laplace)))
       Sim_l_tf<-apply(Sim_l,MARGIN=2,
                       FUN = L1pack::plaplace)
     }
@@ -1029,11 +1075,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     }
     if(Approach=="HTawn"){
       Sim_l<-Simul_from_Htawn(model_mex_all = Model_Htawn_all,
-                       n_sim = N_sim,d = d,
-                       Name_vars = l_variables,
-                       prop_class = prop_cl,ind_ref=IREF,
-                       thresh_censor=as.numeric(Mu_marg),
-                       Q_sim = DQU_each_scenario)
+                              n_sim = N_sim,d = d,
+                              Name_vars = l_variables,
+                              prop_class = prop_cl,ind_ref=IREF,
+                              thresh_censor=as.numeric(Mu_marg),
+                              Q_sim = DQU_each_scenario)
       # Sim_l_tf<-apply(Sim_l,MARGIN=2,
       #                 FUN = pnorm)
       Sim_l<-exp(Sim_l)-1
@@ -1091,9 +1137,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     Df_combs_sim_exts<-rbind.data.frame(Excedents_lprime_orig,Sim_l)
     colnames(Df_combs_sim_exts)<-c("V1","V2")
     Df_combs_sim_exts$Legend<-c(rep("data",
-                                   nrow(Excedents_lprime_orig)),
-                               rep("simulations",
-                                   nrow(Sim_l)))
+                                    nrow(Excedents_lprime_orig)),
+                                rep("simulations",
+                                    nrow(Sim_l)))
     Z_gg<-1
     Z_gg2<-2
     XLAB<-expression(R[M~","~Z_gg]^g)
@@ -1143,14 +1189,14 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Beg<-1+Length_T*(Z-1)
       END<-Length_T*Z
       Shape_forcing<-Shape_Omega_simul[,Beg:END]
-      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norm_L2)
+      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norme_L2)
       Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
       LISTE_shapes[[nom_s]]<-Shape_forcing_std
       Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
       LISTE_candidats[[nom_s]]<-Z_varj
       DF_simul_lprime<-c(DF_simul_lprime,
                          apply(X = Z_varj,MARGIN = 1,
-                    FUN = calcul_norm_L2))
+                               FUN = calcul_norme_L2))
       ### 0 as the threshold if Frechet
       ### 1 as the threshold if Pareto
       ### If Frechet margins originally
@@ -1168,11 +1214,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       #   Unif<-1-Z_varj[indicatrice_pos,]^(-1)
       # }
       indicatrice_pos<-which(apply(X=Z_varj,
-                               FUN=fonction_trajectoire_positive,
-                               MARGIN = 1)==TRUE)
+                                   FUN=fonction_trajectoire_positive,
+                                   MARGIN = 1)==TRUE)
       Unif<-apply(Z_varj[indicatrice_pos,],
                   MARGIN=2,FUN = evd::pgpd,loc=0,
-                      scale=Shape_evd, shape=Shape_evd)
+                  scale=Shape_evd, shape=Shape_evd)
       PTO<-(1-Unif)^(-1)
       seuil_marg<-1+10^(-5)
       indicatrice_pos2<-which(apply(X=(PTO-seuil_marg),
@@ -1201,8 +1247,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       #   UNIF_k<-1-Z_vark^(-1)
       # }
       UNIF_k<-apply(Z_vark,MARGIN=2,
-                  FUN = evd::pgpd,loc=0,
-                  scale=Shape_evd, shape=Shape_evd)
+                    FUN = evd::pgpd,loc=0,
+                    scale=Shape_evd, shape=Shape_evd)
       UNIF_k<-UNIF_k[c(1:Lag),]
       ### Unif scale
       Array_simul[k,c(Beg_filled:End_filled),]<-UNIF_k
@@ -1229,8 +1275,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       ### Unif-->Pareto to compare in the scale of obs.
       # If GPD(1,0,1) in conversion
       Conv_for_analyse<-apply(Simul_whole_kunif,MARGIN=2,
-            FUN = evd::qgpd,loc=0,
-            scale=Shape_evd, shape=Shape_evd)
+                              FUN = evd::qgpd,loc=0,
+                              scale=Shape_evd, shape=Shape_evd)
       # if Frechet in conversion. 
       #Conv_for_analyse<-(1-Simul_whole_kunif)**(-1)
       LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-Conv_for_analyse
@@ -1275,10 +1321,10 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       # Reconversion in the good scale--------------------------------------
       Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
       Variables_reconversion_ACP<-lapply(NO_ACP,
-                    function_reconversion_Unif_EXTGPD,
-                    Theta_k=Theta_EXTGPD_k)
+                                         function_reconversion_Unif_EXTGPD,
+                                         Theta_k=Theta_EXTGPD_k)
       Variables_reconversion_ACP<-do.call(rbind.data.frame,
-                      Variables_reconversion_ACP)
+                                          Variables_reconversion_ACP)
       colnames(Variables_reconversion_ACP)<-1:ncol(Variables_reconversion_ACP)
       LISTE_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
       
@@ -1350,13 +1396,13 @@ function_reconv_each_dim_EGPD<-function(Simul_Unif,Theta_k,index_dim){
 
 
 Function_one_couple_l<-function(Params_Biv,z,Th,one_u){
-
+  
   realisation<-Function_mixture(Params_Biv =Params_Biv ,u = one_u,
-                   Th =Th,z = z)
+                                Th =Th,z = z)
   realisation_y<-Simul_cond_one(input_x = realisation,
-                 Params_biv = Params_Biv,
-                 Th = Th,
-                 z = z)
+                                Params_biv = Params_Biv,
+                                Th = Th,
+                                z = z)
   return(c(realisation,realisation_y))
 }
 
@@ -1398,10 +1444,10 @@ DIndex_Poisson_Thresholds<-function(Vect_l_function,U,V,Decimal_date,Nb_years){
   return(DIndex)
 }
 Analyse_extreme_proj_gfunction<-function(base_RV,L,M1,M2,function_g){
-
+  
   fnct_k<-function(Obs,k,function_g){
     LISTE_p<-function_analyse_convergence_gPto(Obs=Obs,K= k,
-                                          function_g=function_g)
+                                               function_g=function_g)
     return(LISTE_p)
   }
   vecteur_k<-seq(50,L,by=1)
@@ -1492,5 +1538,46 @@ mindist_update<-function (data, ts = 0.15, method = "mad")
   df<-cbind.data.frame(1:(T-1),M,method)
   colnames(df)<-c("Nb_k","value_metric","metric")
   return(df)
+}
+#' Couple_s_t_chi_measure
+#'
+#' @param t: int. First time of the pair.  
+#' @param s: int. Second time of the pair. 
+#' @param matrix_: matrix. Observations matrix.
+#' @param tail_quantile: float. High threshold in the uniform scale. 
+#'
+#' @return Extremal correlation coefficient Chi for the pair at (t,s) 
+#' @export
+#'
+#' @examples
+Couple_s_t_chi_measure<-function(t,s,matrix_,tail_quantile){
+  
+  Sub_matrix<-matrix_[,c(t,s)]
+  Min_st<-apply(X = Sub_matrix,MARGIN = 1,FUN = min)
+  prob_intersection<-mean(as.numeric(Min_st>tail_quantile))
+  return(prob_intersection/(1-tail_quantile))
+}
+#'Matrix_chi_measure
+#'
+#' @param Data_unif: matrix. Observation with uniform margins. 
+#' @param tail_quantile: float. High threshold in the uniform scale. 
+#'
+#' @return Matrix of extremal correlation coefficient Chi per pair (t,s) 
+#' @export
+#'
+#' @examples
+Matrix_chi_measure<-function(Data_unif,tail_quantile){
+  
+  matrix_chi<-matrix(0,nrow = ncol(Data_unif),
+                     ncol=ncol(Data_unif))
+  for(i in c(1:ncol(matrix_chi))){
+    sup_ij<-c(i:d)
+    Values_chi<-sapply(X = sup_ij,FUN = Couple_s_t_chi_measure,
+                       t=i,matrix_=Data_unif,tail_quantile=tail_quantile)
+    matrix_chi[i,sup_ij]<-Values_chi
+  }
+  Comb<-t(matrix_chi)+matrix_chi
+  diag(Comb)<-diag(Comb)/2
+  return(Comb)
 }
 

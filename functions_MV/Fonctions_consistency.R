@@ -1,77 +1,3 @@
-F_automatic_ggplot_marg<-function(vect_time_choice, 
-                                  l_unit,risk_function,
-                                  ind_var_cond){
-  obj<-Marg_2d_simul_vs_obs(list_simul = L_simul,
-                            list_obs = L_obs,
-                            vect_times = vect_time_choice,
-                            l_name_2V =L_nameV ,
-                            cols_ggplot=cols_,
-                            l_unit = l_unit)
-  ggsave(filename = paste0(TEND_path
-                           ,"/",Prefix,"_distrib_values_",L_nameV[1],"t=",
-                           vect_time_choice[1],"X",L_nameV[2],"t=",
-                           vect_time_choice[2],CPLMT,
-                           opt_used,".png"),
-         width=8,height = 6,
-         plot = obj)
-  ## Cond_ext
-  obj_cond<-Marg_2d_cond_ext(list_simul = L_simul,
-                             list_obs = L_obs,
-                             vect_times = vect_time_choice,
-                             l_name_2V =L_nameV ,
-                             cols_ggplot=cols_,
-                             l_unit = l_unit,
-                             risk_function =risk_function,
-                             ind_var_cond = ind_var_cond)
-  ggsave(filename = paste0(TEND_path
-                           ,"/",Prefix,"_cond_distrib_values_",L_nameV[1],"t=",
-                           vect_time_choice[1],"X",L_nameV[2],"t=",
-                           vect_time_choice[2],CPLMT,
-                           opt_used,".png"),
-         width=8,height = 6,
-         plot = obj_cond)
-}
-F_automatic_ggplot_marg_Omega<-function(vect_time_choice,Obj_data,
-                                        Obj_sim,l_name){
-  t<-vect_time_choice[1]
-  s<-vect_time_choice[2]
-  U<-Obj_data[,t]
-  V<-Obj_data[,s]
-  DF_1<-cbind.data.frame(U,V)
-  DF_sim<-cbind.data.frame(Obj_sim[,t],Obj_sim[,s])
-  colnames(DF_1)<-sapply(c(1:2),function(x){return(paste0("V",x))})
-  colnames(DF_sim)<-colnames(DF_1)
-  df_combo<-rbind.data.frame(DF_1,DF_sim)
-  df_combo$Legend<-c(rep("data",nrow(DF_1)),
-                     rep("simulations",nrow(DF_sim)))
-  
-  name_first<-ifelse(t>37,l_name[2],l_name[1])
-  name_second<-ifelse(s>37,l_name[2],l_name[1])
-  tprime<-ifelse(t>37,yes=t-37,no=t)
-  sprime<-ifelse(s>37,yes = s-37,no = s)
-  Name_file<-paste0("/",CPLMT_graph_theta,"_",METHOD_ANGLE,
-                    "_Distrib_Omega_",name_first,"_t=",
-                    tprime,"_",name_second,"_s=",sprime,".png")
-  GG1<-ggplot(data=df_combo,aes(x=V1,y=V2,colour=Legend,shape=Legend),
-  )+
-    geom_point(aes(size=Legend))+
-    geom_xsidedensity(data=df_combo,aes(fill=Legend), alpha = 0.5)+
-    geom_ysidedensity(data=df_combo,aes(fill=Legend), alpha = 0.5)+
-    
-    scale_color_manual(values=cols_)+
-    scale_fill_manual(values=cols_)+
-    scale_shape_manual(values = c("simulations"=17,"data"=19))+
-    scale_size_manual(values=c("simulations"=0.75,"data"=1.5))+
-    guides(fill="none")+
-    theme(axis.title=element_text(size=15),
-          legend.text=element_text(size=10))+
-    xlab(paste0(name_first,"_",tprime))+
-    ylab(paste0(name_second,"_",sprime))
-  ggsave(filename = paste0(Theta_path,
-                           Name_file),
-         plot = GG1,
-         width=8,height=6)
-}
 #' Title
 #'
 #' @param gam_t 
@@ -139,8 +65,8 @@ Resamples_correlations<-function(l_extremes_indus,B,method_corr,l_names){
 
 Conf_interval_correlations_2V<-function(df1,df2,niv_conf,method_corr,NB_boot){
   Realisations_values<-replicate(n = NB_boot,Sample_level_correlation(df1=df1,
-                                                 df2=df2,
-                                                 method_corr=method_corr))
+                                                                      df2=df2,
+                                                                      method_corr=method_corr))
   Bound_sup<-apply(X = Realisations_values,MARGIN = 1,FUN = function(x){
     return(quantile(x,(1-(niv_conf/2))))})
   Mean<-apply(X=Realisations_values,MARGIN = 1,FUN = mean)
@@ -162,13 +88,13 @@ Conf_interval_ext_correlations_2V<-function(df1,df2,niv_conf,method_corr,NB_boot
 Sample_level_correlation<-function(df1,df2,method_corr){
   Sample_inds<-sample(c(1:nrow(df1)),size =nrow(df1),replace = TRUE )
   Values_obtained<-Fct_correlations(method_corr = "kendall",
-                   df1 =df1[Sample_inds,],
-                   df2=df2[Sample_inds,])
+                                    df1 =df1[Sample_inds,],
+                                    df2=df2[Sample_inds,])
   return(Values_obtained)
 }
 
-Extremo_Quality_MV<-function(list_simul,list_reality,name_cond,name_other,q_per_time
-                             ,B){
+Cross_Extremo_MV<-function(list_simul,list_reality,name_cond,name_other,
+                           q_per_time,B){
   Variable_simul_cond<-list_simul[[name_cond]]
   Variable_reality_cond<-list_reality[[name_cond]]
   ##
@@ -216,8 +142,10 @@ Extremo_Quality_MV<-function(list_simul,list_reality,name_cond,name_other,q_per_
   df_extremo<-cbind.data.frame(vect_distances,CROSS_extremo_reality,
                                CROSS_extremo_sim)
   colnames(df_extremo)<-c("time_d","reality_extremo","sim_extremo")
-  result_delta<-df_extremo %>% group_by(time_d) %>% summarise(val_data=mean(reality_extremo),
-                                                              val_sim=mean(sim_extremo))
+  result_delta<-df_extremo %>% 
+    group_by(time_d) %>% 
+    summarise(val_data=mean(reality_extremo),
+              val_sim=mean(sim_extremo))
   result_delta$Qinf<-Extremo_inf
   result_delta$Qsup<-Extremo_sup
   return(result_delta)
@@ -271,6 +199,61 @@ cross_pi_s_t<-function(couple_s_t,var_cond,var_other,l_Tau){
   return(numerateur/denominateur)
   
 }
+F_automatic_ggplot_marg<-function(vect_time_choice, 
+                                  l_unit,risk_function,
+                                  ind_var_cond,levels_used,
+                                  cols_,L_simul,
+                                  L_obs,L_nameV,L_whole_obs,
+                                  Path_TREND,Path_EXT,hearts){
+  obj<-Marg_2d_simul_vs_obs(list_simul = L_simul,
+                            list_obs = L_obs,
+                            vect_times = vect_time_choice,
+                            l_name_2V = L_nameV ,
+                            cols_ggplot=cols_,
+                            l_unit = l_unit)
+  ggsave(filename = paste0(Path_TREND
+                           ,"/",Prefix,"_distrib_values_",L_nameV[1],"t=",
+                           vect_time_choice[1],"X",L_nameV[2],"t=",
+                           vect_time_choice[2],CPLMT,
+                           opt_used,".png"),
+         width=8,height = 6,
+         plot = obj)
+  
+  ## Bivariate return level
+  ##### on the original data observations.
+  BivRL<-Bivariate_RLevel_simul_vs_obs(list_simul = L_simul,
+                                       list_obs = L_whole_obs,
+                                       vect_times = vect_time_choice,
+                                       l_name_2V =L_nameV ,
+                                       cols_ggplot=cols_,
+                                       l_unit = l_unit,
+                                       levels_used=levels_used,
+                                       cols_ = cols_,hearts=hearts)
+  ggsave(filename = paste0(Path_EXT
+                           ,"/",Prefix,"_BivReturnLevel_",L_nameV[1],"t=",
+                           vect_time_choice[1],"X",L_nameV[2],"t=",
+                           vect_time_choice[2],CPLMT,
+                           opt_used,".png"),
+         width=8,height = 6,
+         plot = BivRL)
+  
+  ## Cond_ext
+  obj_cond<-Marg_2d_cond_ext(list_simul = L_simul,
+                             list_obs = L_obs,
+                             vect_times = vect_time_choice,
+                             l_name_2V =L_nameV ,
+                             cols_ggplot=cols_,
+                             l_unit = l_unit,
+                             risk_function =risk_function,
+                             ind_var_cond = ind_var_cond)
+  ggsave(filename = paste0(Path_TREND,"/",Prefix,
+                           "_cond_distrib_values_",L_nameV[1],"t=",
+                           vect_time_choice[1],"X",L_nameV[2],"t=",
+                           vect_time_choice[2],CPLMT,
+                           opt_used,".png"),
+         width=8,height = 6,
+         plot = obj_cond)
+}
 #' Title
 #'
 #' @param gamma 
@@ -291,8 +274,8 @@ Ratio_log_model1<-function(gamma,sigma_EGPD,order_quantiles,data){
 }
 RL_EGPD_model1<-function(gamma,sigma_EGPD,order_quantiles,Kappa){
   return(mev::qextgp(p = order_quantiles,kappa =Kappa,
-              sigma = sigma_EGPD,xi = gamma,
-              type = 1))
+                     sigma = sigma_EGPD,xi = gamma,
+                     type = 1))
 }
 #' Marg_2d_simul_vs_obs
 #'
@@ -317,7 +300,7 @@ Marg_2d_simul_vs_obs<-function(list_simul,list_obs,vect_times,l_name_2V,
   Simul_ij<-matrix(NA,nrow = NSimul_for_compar,
                    ncol =length(vect_times) )
   Obs_ij<-matrix(NA,nrow = NObs_for_compar,
-                   ncol =length(vect_times) )
+                 ncol =length(vect_times) )
   for(j in c(1:length(list_simul))){
     if(names(list_simul)[j]%in%l_name_2V){
       Simul_namev<-list_simul[[j]][,vect_times[Z]]
@@ -338,13 +321,13 @@ Marg_2d_simul_vs_obs<-function(list_simul,list_obs,vect_times,l_name_2V,
                    rep("simulations",nrow(Simul_ij)))
   exp_type<-expression(x[M]^t~v)
   xlab_title<-do.call("substitute", list(exp_type[[1]], 
-                          list(t= vect_times[1],
-                               x=l_name_2V[1],
-                               v=l_unit[[l_name_2V[1]]])))
+                                         list(t= vect_times[1],
+                                              x=l_name_2V[1],
+                                              v=l_unit[[l_name_2V[1]]])))
   ylab_title<-do.call("substitute", list(exp_type[[1]], 
-                            list(t= vect_times[2],
-                                x=l_name_2V[2],
-                                v=l_unit[[l_name_2V[2]]])))
+                                         list(t= vect_times[2],
+                                              x=l_name_2V[2],
+                                              v=l_unit[[l_name_2V[2]]])))
   GG0<-ggplot(data=Obs_ij,aes(x=V_1,y=V_2,col="data"))+
     geom_point(size=2,pch=19)+
     geom_point(data=Simul_ij,aes(x=V_1,y=V_2,col="simulations"),
@@ -358,28 +341,211 @@ Marg_2d_simul_vs_obs<-function(list_simul,list_obs,vect_times,l_name_2V,
     guides(fill="none")+
     theme(axis.title=element_text(size=15),
           legend.text=element_text(size=10))+
-            xlab(xlab_title)+ylab(ylab_title)
+    xlab(xlab_title)+ylab(ylab_title)
   return(GG0)
   
 }
+
+Bivariate_RLevel_simul_vs_obs<-function(list_simul,list_obs,
+                                        vect_times,l_name_2V,
+                                        cols_ggplot,l_unit,
+                                        levels_used,cols_,
+                                        hearts){
+  Z<-1
+  NSimul_for_compar<-nrow(list_simul[[1]])
+  NObs_for_compar<-nrow(list_obs[[1]])
+  Simul_ij<-matrix(NA,nrow = NSimul_for_compar,
+                   ncol =length(vect_times) )
+  Obs_ij<-matrix(NA,nrow = NObs_for_compar,
+                 ncol =length(vect_times) )
+  for(j in c(1:length(list_simul))){
+    if(names(list_simul)[j]%in%l_name_2V){
+      Simul_namev<-list_simul[[j]][,vect_times[Z]]
+      Simul_ij[,Z]<-Simul_namev
+      Obs_namev<-list_obs[[j]][,vect_times[Z]]
+      Obs_ij[,Z]<-Obs_namev
+      Z<-Z+1
+    }
+  }
+  Obs_ij<-as.data.frame(Obs_ij)
+  colnames(Obs_ij)<-sapply(c(1:length(l_name_2V)),function(x){
+    return(paste0("V",x))
+  })
+  Simul_ij<-as.data.frame(Simul_ij)
+  colnames(Simul_ij)<-colnames(Obs_ij)
+  
+  ### Empirical bivariate return levels
+  Curves_found<-sapply(levels_used,FUN = function(x){
+    texmex::JointExceedanceCurve(Sample = Obs_ij,
+                                 ExceedanceProb = x)
+  })
+  Curves_found<-cbind.data.frame(Curves_found)
+  All<-lapply(c(1:length(levels_used)),function(x){
+    df_j<-data.frame(Curves_found[[x]])
+    nj<-nrow(df_j)
+    name_j<-rep(levels_used[x],nj)
+    df_j$cl<-name_j
+    return(df_j)
+  })
+  combined_df <- do.call(rbind, All)
+  colnames(combined_df)<-c("t","s","level")
+  combined_df$level<-as.character(combined_df$level)
+  ### Bootstrap confidence regions
+  Result_boot_confRegions<-replicate(500,
+                                     Onesample_Bootstrap_Bivar_RL(Obs_t_s = Obs_ij,
+                                                                  levels_used = levels_used))
+  Df_transf<-apply(X=Result_boot_confRegions,
+                   as.data.frame,MARGIN=2)
+  m<-150
+  vect_ind<-c(1:m)
+  Theta_vector_target<-pi*(m+1-vect_ind)/(2*(m+1))
+  Rult<-lapply(Theta_vector_target,Candidates_per_theta,
+               list_boot_samples=Df_transf,
+               hearts=hearts)
+  Bounds_for_graph<-do.call(rbind.data.frame,Rult)
+  lower <- Bounds_for_graph %>% filter(bounds == "Qinf")
+  upper <- Bounds_for_graph %>% filter(bounds == "Qsup")
+  
+  # Build polygon data
+  # x and y are changing so we must create a ggplot polygon object
+  # arrange(level,t) for ordering
+  # group_by level--> polygon per level
+  # bind_rows to assemble rows per group
+  poly_data <- lower %>%
+    arrange(level, t) %>%
+    group_by(level) %>%
+    do({
+      upper_part <- upper %>%
+        filter(level == unique(.$level)) %>%
+        arrange(desc(t))
+      
+      bind_rows(., upper_part)
+    }) %>%
+    ungroup()
+  
+  ### Curves for simulated
+  Curves_found_SIM<-sapply(levels_used,FUN = function(x){
+    texmex::JointExceedanceCurve(Sample = Simul_ij,
+                                 ExceedanceProb = x)
+  })
+  Curves_found_SIM<-cbind.data.frame(Curves_found_SIM)
+  All_sim<-lapply(c(1:length(levels_used)),function(x){
+    df_j<-data.frame(Curves_found_SIM[[x]])
+    nj<-nrow(df_j)
+    ### Add levels used
+    name_j<-rep(levels_used[x],nj)
+    df_j$cl<-name_j
+    return(df_j)
+  })
+  combined_df_sim<- do.call(rbind, All_sim)
+  colnames(combined_df_sim)<-c("t","s","level")
+  combined_df_sim$level<-as.character(combined_df_sim$level)
+  ### Curves for data Texmex
+  Texmex_curves<-list()
+  d<-length(l_name_2V)
+  Model_all <- mexAll(Obs_ij,mqu=0.7,dqu=rep(0.7,5))
+  Simuls_from_tex_all <- mexMonteCarlo(nSample=5000,
+                                       mexList=Model_all)
+  Curves_tex_<-lapply(levels_used,FUN = function(x){
+    JRC_j<-texmex::JointExceedanceCurve(
+      Sample = Simuls_from_tex_all,
+      ExceedanceProb = x,
+      which=c("V1","V2"))
+    
+    return(JRC_j)
+  })
+  ### Create ggplot object
+  GG_BivRL_obs_with_Tawn<-ggplot(Obs_ij)+
+    geom_point(aes(x=V1,y=V2,col="data"),size=0.5)
+  d_levels<-length(levels_used)
+  linetypes <- scales::linetype_pal()(d_levels)
+  for(j in c(1:d_levels)){
+    GG_BivRL_obs_with_Tawn<-GG_BivRL_obs_with_Tawn+
+      geom_jointExcCurve(x = Curves_tex_[[j]],aes(V1,V2,
+                                                  col="model"),
+                         linetype=linetypes[j])
+  }
+  exp_type<-expression(x[M]^t~v)
+  xlab_title<-do.call("substitute", list(exp_type[[1]], 
+                                         list(t= vect_times[1],
+                                              x=l_name_2V[1],
+                                              v=l_unit[[l_name_2V[1]]])))
+  ylab_title<-do.call("substitute", list(exp_type[[1]], 
+                                         list(t= vect_times[2],
+                                              x=l_name_2V[2],
+                                              v=l_unit[[l_name_2V[2]]])))
+  GG_BivRL_obs<-GG_BivRL_obs_with_Tawn+
+    geom_line(data=combined_df,aes(x=t,y=s,
+                                   group=interaction(level),
+                                   col="data",linetype=level))+
+    geom_line(data=combined_df_sim,aes(x=t,y=s,
+                                       group=interaction(level),
+                                       col="simulations",
+                                       linetype=level))+
+    geom_polygon(data = poly_data,
+                 aes(x = t,
+                     y = s,
+                     group = level),
+                 alpha = 0.2,fill="lightgrey") +
+    geom_line(data = Bounds_for_graph,
+              aes(x = t,
+                  y = s,
+                  group = interaction(bounds, level),
+                  linetype=level,col="confidence_band"))+
+    labs(col="Legend",
+         linetype="Level")+
+    guides(fill="none")+
+    xlab(xlab_title)+
+    ylab(ylab_title)+
+    theme(axis.title=element_text(size=15),
+          legend.text=element_text(size=10))+
+    scale_color_manual(values = cols_)
+  return(GG_BivRL_obs)
+}
+Onesample_Bootstrap_Bivar_RL<-function(Obs_t_s,levels_used){
+  Inds_t_s<-sample(x = c(1:nrow(Obs_t_s)),size = nrow(Obs_t_s),
+                   replace = TRUE)
+  New_data<-Obs_t_s[Inds_t_s,]
+  Curves_found_1sample<-sapply(levels_used,FUN = function(x){
+    texmex::JointExceedanceCurve(Sample =  New_data,
+                                 ExceedanceProb = x)
+  })
+  Curves_found_1sample<-cbind.data.frame(
+    Curves_found_1sample)
+  All_1sample<-lapply(names(Curves_found_1sample),function(x){
+    df_j<-data.frame(Curves_found_1sample[[x]])
+    nj<-nrow(df_j)
+    ### Add levels used
+    name_j<-rep(x,nj)
+    df_j$cl<-name_j
+    return(df_j)
+  })
+  combined_df_1sample<- do.call(rbind, All_1sample)
+  colnames(combined_df_1sample)<-c("t","s","level")
+  combined_df_1sample$level<-levels_used[as.numeric(
+    combined_df_1sample$level)]
+  return(combined_df_1sample)
+}
+
+
 One_sample_EGPD<-function(n,theta_egpd,order_quantiles){
   kappa<-theta_egpd[["kappa"]]
   sig<-theta_egpd[["sigma"]]
   xi<-theta_egpd[["xi"]]
   simul_from_egpd<-mev::rextgp(n = n,type=1,kappa =kappa ,
-              sigma = sig,
-              xi =xi )
+                               sigma = sig,
+                               xi =xi )
   model_boot_fit<-mev::fit.extgp(data=simul_from_egpd,
-               model = 1,init = c(kappa,
-                                  sig,xi),
-               method="mle",plots = FALSE)$fit$mle
+                                 model = 1,init = c(kappa,
+                                                    sig,xi),
+                                 method="mle",plots = FALSE)$fit$mle
   ### Quantiles found
   QEGPD<-sapply(order_quantiles,
                 FUN=function(x){
-        return(mev::qextgp(p = x,
-                  kappa = model_boot_fit[["kappa"]],
-                  xi = model_boot_fit[["xi"]],
-                  sigma =model_boot_fit[["sigma"]]))
+                  return(mev::qextgp(p = x,
+                                     kappa = model_boot_fit[["kappa"]],
+                                     xi = model_boot_fit[["xi"]],
+                                     sigma =model_boot_fit[["sigma"]]))
                 })
   return(QEGPD)
 }
@@ -387,24 +553,24 @@ Bootstrap_conf_band<-function(M,n,theta_egpd,order_quantiles,
                               alpha_){
   ### Estimaed EGPD curve
   Mean_egpd<-sapply(order_quantiles,
-         FUN=function(x){
-           return(mev::qextgp(p = x,
-                              kappa = theta_egpd[["kappa"]],
-                              xi = theta_egpd[["xi"]],
-                              sigma = theta_egpd[["sigma"]]))
-         })
+                    FUN=function(x){
+                      return(mev::qextgp(p = x,
+                                         kappa = theta_egpd[["kappa"]],
+                                         xi = theta_egpd[["xi"]],
+                                         sigma = theta_egpd[["sigma"]]))
+                    })
   
   ### Conf_bands
   Result_boot<-t(replicate(n = M,
-                         expr = One_sample_EGPD(n = n,
-          theta_egpd = theta_egpd,
-          order_quantiles = order_quantiles)))
+                           expr = One_sample_EGPD(n = n,
+                                                  theta_egpd = theta_egpd,
+                                                  order_quantiles = order_quantiles)))
   Niv_1<-alpha_/2
   Q1<-apply(
     Result_boot,MARGIN = 2,
     FUN = function(x){
-          return(as.numeric(quantile(x,Niv_1)))
-        })
+      return(as.numeric(quantile(x,Niv_1)))
+    })
   Niv_2<-1-(alpha_/2)
   Q2<-apply(Result_boot,MARGIN = 2,
             FUN = function(x){
@@ -415,7 +581,7 @@ Bootstrap_conf_band<-function(M,n,theta_egpd,order_quantiles,
               "mean"=Mean_egpd))
 }
 Marg_2d_cond_ext<-function(list_simul,list_obs,vect_times,l_name_2V,
-                               cols_ggplot,l_unit,risk_function,
+                           cols_ggplot,l_unit,risk_function,
                            ind_var_cond){
   
   Z<-1
@@ -493,7 +659,7 @@ Marg_2d_cond_ext<-function(list_simul,list_obs,vect_times,l_name_2V,
 #'
 #' @examples
 RL_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles,
-                                 list_params_EGPD){
+                              list_params_EGPD){
   n.cyc<- list_params_EGPD[["n.cyc"]]
   mu.step<- list_params_EGPD[["mu.step"]]
   sigma.step<- list_params_EGPD[["sigma.step"]]
@@ -526,19 +692,19 @@ RL_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles,
   db<-as.data.frame(Sample_EGPD)
   colnames(db)<-c("x")
   con <- gamlss::gamlss.control(n.cyc =  n.cyc,
-                        mu.step = mu.step, sigma.step = sigma.step, 
-                        nu.step = nu.step,tau.step = tau.step,autostep=TRUE,
-                        trace = TRUE)
+                                mu.step = mu.step, sigma.step = sigma.step, 
+                                nu.step = nu.step,tau.step = tau.step,autostep=TRUE,
+                                trace = TRUE)
   con.i<-gamlss::glim.control(glm.trace = TRUE)
   EGPD1Family <- MakeEGPD (function (z,nu) z^nu, Gname = "Model1")
   Fitting_sample_EGPD <- gamlss::gamlss(x~1, 
-                           data=db,
-                           family = EGPD1Family(mu.link = "identity"),
-                           control = con,mu.start=gamma,
-                           sigma.start=sigma,
-                           nu.start=kappa,
-                          i.control=con.i,
-                           method=CG())
+                                        data=db,
+                                        family = EGPD1Family(mu.link = "identity"),
+                                        control = con,mu.start=gamma,
+                                        sigma.start=sigma,
+                                        nu.start=kappa,
+                                        i.control=con.i,
+                                        method=CG())
   muFit <- fitted(Fitting_sample_EGPD,"mu")[1]
   sigmaFit <- predict(Fitting_sample_EGPD,what="sigma", 
                       type="response")[[1]]
@@ -548,7 +714,7 @@ RL_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles,
   #                  data = Sample_EGPD)
   RL_EGPD<-sapply(order_quantiles,function(x){
     return(as.numeric(mev::qextgp(p =x,
-          kappa = nuFit,sigma = sigmaFit,xi =muFit)))
+                                  kappa = nuFit,sigma = sigmaFit,xi =muFit)))
   })
   return(RL_EGPD)
 }
@@ -597,8 +763,8 @@ RLevel_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles){
   nuFit <- predict(Fitting_sample_EGPD,what="nu", 
                    type="response")[[1]]
   Rl_estim<-RL_EGPD_model1(gamma = muFit,sigma_EGPD = sigmaFit,
-                 order_quantiles = order_quantiles,
-                 Kappa = nuFit)
+                           order_quantiles = order_quantiles,
+                           Kappa = nuFit)
   return(Rl_estim)
 }
 ### 
@@ -669,4 +835,154 @@ Simul_Contamination_Model<-function(prob_classes,nu){
     u<-mvtnorm::rmvnorm(n = 1,mean = nu)
   }
   return(u)
+}
+Candidates_per_theta<-function(list_boot_samples,Theta,alpha_prop,
+                               hearts){
+  Rult_for_theta<-parLapply(cl=hearts,list_boot_samples,
+                            fun = Candidates_per_theta_1sample,
+                            Theta=Theta)
+  Rult_for_theta<-do.call(rbind.data.frame,Rult_for_theta)
+  Rult_for_theta$level<-as.character(Rult_for_theta$level)
+  Rult_for_theta$R<-rowSums(cbind(Rult_for_theta$t,
+                                  Rult_for_theta$s)**2)**(1/2)
+  Rays_found<-Rult_for_theta %>% 
+    group_by(level) %>% 
+    summarise(Qinf=quantile(R,0.025),
+              Qsup=quantile(R,0.975))
+  X<-Rays_found[,c(2:3)]*cos(Theta)
+  Y<-Rays_found[,c(2:3)]*sin(Theta)
+  Levels<-Rays_found[,1]
+  
+  Combinaison_coords<-cbind(melt(X,
+                                 id.vars = NULL),
+                            melt(Y,
+                                 id.vars = NULL)[,2])
+  colnames(Combinaison_coords)<-c("bounds","t","s")
+  ncomb<-nrow(Combinaison_coords)
+  n_for_rep<-ncomb/nrow(X)
+  Combinaison_coords$level<-rep(unlist(Levels),n_for_rep)
+  Combinaison_coords$theta<-rep(Theta,ncomb)
+  return(Combinaison_coords)
+}
+
+Candidates_per_theta_1sample<-function(Boot_Sample,Theta){
+  Boot_Sample$angle<-atan(Boot_Sample[,2]/Boot_Sample[,1])
+  Inds_chosen<-Boot_Sample %>% group_by(level) %>%
+    summarise(t=t[which.min(abs(Theta-angle))],
+              s=s[which.min(abs(Theta-angle))])
+  return(sapply(X =Inds_chosen,FUN = unlist))
+}
+Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
+  model_texmex<-texmex::mex(vect_l,mqu = mqu,
+                            dqu = dqu,which = ind_ref)
+  Dep<-model_texmex$dependence
+  Theta<-Dep$coefficients
+  Z<-Dep$Z
+  n<-nrow(Z)
+  d<-ncol(Theta)
+  Ref_var<- seq(dqu, 1 - 1/n, length = n)
+  Result_per_column<-NA
+  Result_per_column2<-NA
+  if(d>1){
+    ### Verify if test doable
+    Sum_ind<-sum(as.numeric(!is.na(Theta[1,])))
+    n<-nrow(Z)
+    if(Sum_ind==d){
+      Resid<-Z
+      Absolute_values<-abs(Resid-colMeans(Resid))
+      Result_per_column<-apply(Resid,MARGIN = 2,
+                               FUN = function(x){
+                                 result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                               3)
+                                 return(result)
+                               })
+      Result_per_column2<-apply(X = Absolute_values,MARGIN = 2,
+                                FUN = function(x){
+                                  result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                                3)
+                                  return(result)
+                                })
+    }
+  }else{
+    ### Verify if test doable
+    Answer<-!is.na(as.numeric(Theta[1,]))
+    if(Answer==TRUE){
+      Resid<-as.numeric(Z)
+      Absolute_values<-abs(Resid-mean(Resid))
+      Result_per_column<-round(cor.test(Resid,
+                                        Ref_var, method="kendall")$p.value,3)
+      Result_per_column2<-round(cor.test(Absolute_values,
+                                         Ref_var,method="kendall")$p.value,3)
+    }
+  }
+  return(list("Test_1"=Result_per_column,
+              "Test_2"=Result_per_column2,
+              "Theta"=Theta))
+}
+Analysis_diag_HTawn_evol_DQU<-function(cond_var,vect_dqu,
+                                       Vect_obs,MQU){
+  Results_Indep_Theta<-sapply(vect_dqu,
+                              Params_HTawn_one_dqu,
+                              mqu=MQU,vect_l=Vect_obs,
+                              ind_ref=cond_var)
+  Inds_for_analyse<-apply(X = Results_Indep_Theta,
+                          FUN = function(x){
+                            Ind_nafalse<-sum(rowSums(!is.na(x$Theta)))
+                            dim<-ncol(x$Theta)*nrow(x$Theta)
+                            return(Ind_nafalse==dim)
+                          },MARGIN = 2)
+  ThetaI_simplified<-Results_Indep_Theta[,Inds_for_analyse]
+  Sub_DQU<-vect_dqu[Inds_for_analyse]
+  Result_Independence_test<-t(ThetaI_simplified[c(1:2),])
+  Result_several_theta<-do.call(rbind,ThetaI_simplified[3,])
+  ### Drop NA results
+  Rult<-melt(Result_several_theta)
+  Sub_vars<-c("a","b")
+  Nb_rep_DQU<-length(Sub_vars)
+  Inds_chosen<-which(Rult$Var1%in%Sub_vars)
+  Rult2<-Rult[Inds_chosen,]
+  N_rep<-nrow(Rult2)/(Nb_rep_DQU*length(Sub_DQU))
+  colnames(Rult2)<-c("param","variable","value")
+  Rult2$quantile<-rep(c(sapply(Sub_DQU,
+                               FUN = function(x){rep(x,Nb_rep_DQU)})),
+                      N_rep)
+  Rult_simplified<-Rult2
+  GG_theta<-ggplot(Rult_simplified,aes(x=quantile,y=value,
+                                       group=interaction(variable,param),
+                                       col=variable))+
+    geom_line()+
+    ylab("Estimator")+
+    xlab("Dqu")+
+    facet_wrap(~param,scales = "free_y")+
+    geom_point()+
+    labs(col="Legend")
+  ### Independence test
+  ######################
+  Melting_indep<-melt(apply(Result_Independence_test,
+                            MARGIN = 2,FUN = unlist))
+  colnames(Melting_indep)<-c("variable","test_used",
+                             "pval")
+  Melting_indep$test_used<-ifelse(Melting_indep$test_used=="Test_1",
+                                  yes = "Z vs Y",
+                                  no = "|Z-mean(Z)| vs Y")
+  Melting_indep$quantile<-rep(c(sapply(Sub_DQU,
+                                       FUN = function(x){rep(x,N_rep)})),
+                              Nb_rep_DQU)
+  d<-ncol(Result_several_theta)
+  GG_Indep<-ggplot(Melting_indep,aes(x=quantile,y=pval,
+                                     group=interaction(variable),
+                                     col=variable))+
+    geom_line()+
+    facet_wrap(~test_used)+
+    geom_point()+
+    ylab("p value")+
+    xlab("Dqu")+
+    labs(col="Legend")+
+    geom_hline(yintercept = 0.05,col="red")
+  if(d==1){
+    GG_Indep<-GG_Indep+
+      guides(col="none")
+  }
+  return(list("theta"=GG_theta,
+              "indep"=GG_Indep))
 }
