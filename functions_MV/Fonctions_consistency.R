@@ -92,9 +92,72 @@ Sample_level_correlation<-function(df1,df2,method_corr){
                                     df2=df2[Sample_inds,])
   return(Values_obtained)
 }
-
-Cross_Extremo_MV<-function(list_simul,list_reality,name_cond,name_other,
-                           q_per_time,B){
+Cross_Extremo_MV_all<-function(list_simul,list_reality,
+                               q_per_time,B,
+                               list_names_VAR){
+  ### i,j equals
+  d<-length(list_names_VAR)
+  Full_indexes<- expand.grid(
+    row = seq_len(d),
+    col = seq_len(d)
+  )
+  All_C_extremo<-apply(X = Full_indexes,FUN = function(couple_used){
+    I<-couple_used[1]
+    J<-couple_used[2]
+    name_i<-list_names_VAR[I]
+    name_gi<-name_i
+    if(name_i=="Surcote"){
+      name_gi<-"Surge"
+    }
+    name_j<-list_names_VAR[J]
+    name_gj<-name_j
+    if(name_j=="Surcote"){
+      name_gj<-"Surge"
+    }
+    
+    Name_pair<- paste0("(",name_gi,","
+                       ,name_gj,")")
+    expr<-expression(gamma[Name_pair]~"value")
+    ### do.call etc... to replace in an expr
+    ### the variable names by their actual value
+    
+    Ylab_value<-do.call("substitute", list(expr[[1]], 
+                                           list(Name_pair=Name_pair)))
+    
+    df_cross_extremo_ij<-Cross_Extremo_MV_ij(list_simul = list_simul,
+                                             list_reality = list_reality,
+                                             name_cond = name_i,name_other=name_j,
+                                             q_per_time=q_per_time,B=B)
+    df_cross_extremo_ij$category<-rep(Name_pair,
+                                      nrow(df_cross_extremo_ij))
+    return(df_cross_extremo_ij)
+    # GG_gam_ij<-ggplot(data=df_cross_extremo_ij,
+    #        aes(x=time_d,y=val_data,col="data"))+
+    #   geom_point()+
+    #   geom_line()+
+    #   geom_point(aes(x=time_d,y=val_sim,
+    #                  col="simulations"),pch=2)+
+    #   geom_line(aes(x=time_d,y=val_sim,col="simulations"))+
+    #   geom_ribbon(mapping = aes(ymin=Qinf,ymax=Qsup,col="confidence_band"),
+    #               alpha=0.15,
+    #               fill="grey", linetype = "dashed")+
+    #   scale_color_manual(values = cols_)+
+    #   ylab(Ylab_value)+xlab("Lag h")+
+    #   labs(col="Legend")+
+    #   theme(axis.title=element_text(size=20),
+    #         legend.text=element_text(size=12),
+    #         legend.title = element_text(size=13),
+    #         axis.text = element_text(size=14))+
+    #   scale_linetype_manual("Legend",
+    #                         values=c("confidence_band"=2,
+    #                                  "mean"=5))
+    # return(GG_gam_ij)
+  },MARGIN = 1)
+  ### Obtained_graphics
+  return(All_C_extremo)
+}
+Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
+                              q_per_time,B){
   Variable_simul_cond<-list_simul[[name_cond]]
   Variable_reality_cond<-list_reality[[name_cond]]
   ##
@@ -124,10 +187,19 @@ Cross_Extremo_MV<-function(list_simul,list_reality,name_cond,name_other,
                                            var_cond = Variable_reality_cond,
                                            var_other = Variable_reality_other,
                                            l_Tau = list_Tau)
+  ### Attention ! We use then the quantile from simulations
+  Tau_cond_sim<-sapply(c(1:37),function(x,q,t){
+    return(as.numeric(quantile(x[,t],q)))},q=q_per_time,
+    x=Variable_simul_cond)
+  Tau_other_sim<-sapply(c(1:37),function(x,q,t){
+    return(as.numeric(quantile(x[,t],q)))},q=q_per_time,
+    x=Variable_simul_other)
+  list_Tau_sim<-list("other"=Tau_other_sim,
+                     "cond"=Tau_cond_sim)
   CROSS_extremo_sim<-cross_extremogram(Matrix_pairs = Matrix_pairs,
                                        var_cond = Variable_simul_cond,
                                        var_other = Variable_simul_other,
-                                       l_Tau = list_Tau)
+                                       l_Tau = list_Tau_sim)
   
   # Bootstrap confidence_intervals ------------------------------------------
   Boot_extremo_results<-replicate(n = B,Resampling_cross_extremo(vect_distances = vect_distances,
@@ -462,7 +534,7 @@ Bivariate_RLevel_simul_vs_obs<-function(list_simul,list_obs,
   for(j in c(1:d_levels)){
     GG_BivRL_obs_with_Tawn<-GG_BivRL_obs_with_Tawn+
       geom_jointExcCurve(x = Curves_tex_[[j]],aes(V1,V2,
-                                                  col="model"),
+                                                  col="CEVmodel"),
                          linetype=linetypes[j])
   }
   exp_type<-expression(x[M]^t~v)
@@ -919,66 +991,133 @@ Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
               "Test_2"=Result_per_column2,
               "Theta"=Theta))
 }
-Analysis_diag_HTawn_evol_DQU<-function(cond_var,vect_dqu,
-                                       Vect_obs,MQU){
-  Results_Indep_Theta<-sapply(vect_dqu,
-                              Params_HTawn_one_dqu,
-                              mqu=MQU,vect_l=Vect_obs,
-                              ind_ref=cond_var)
-  Inds_for_analyse<-apply(X = Results_Indep_Theta,
-                          FUN = function(x){
-                            Ind_nafalse<-sum(rowSums(!is.na(x$Theta)))
-                            dim<-ncol(x$Theta)*nrow(x$Theta)
-                            return(Ind_nafalse==dim)
-                          },MARGIN = 2)
-  ThetaI_simplified<-Results_Indep_Theta[,Inds_for_analyse]
-  Sub_DQU<-vect_dqu[Inds_for_analyse]
-  Result_Independence_test<-t(ThetaI_simplified[c(1:2),])
-  Result_several_theta<-do.call(rbind,ThetaI_simplified[3,])
-  ### Drop NA results
-  Rult<-melt(Result_several_theta)
-  Sub_vars<-c("a","b")
-  Nb_rep_DQU<-length(Sub_vars)
-  Inds_chosen<-which(Rult$Var1%in%Sub_vars)
-  Rult2<-Rult[Inds_chosen,]
-  N_rep<-nrow(Rult2)/(Nb_rep_DQU*length(Sub_DQU))
-  colnames(Rult2)<-c("param","variable","value")
-  Rult2$quantile<-rep(c(sapply(Sub_DQU,
-                               FUN = function(x){rep(x,Nb_rep_DQU)})),
-                      N_rep)
-  Rult_simplified<-Rult2
-  GG_theta<-ggplot(Rult_simplified,aes(x=quantile,y=value,
-                                       group=interaction(variable,param),
-                                       col=variable))+
+Analysis_diag_HTawn_Conv_Hull<-function(Theta_opt){
+  d<-length(Theta_opt)
+  list_GG_for_hull<-list()
+  for(Z in c(1:d)){
+    HTawn_z<-Theta_opt[[Z]]
+    Modelboot_z<-texmex::bootmex(x = HTawn_z)
+    ### Boot run
+    j<-1
+    Results<-t(sapply(Modelboot_z$boot,function(x){
+      y<-x$dependence
+      return(c(y[1,j],y[2,j]))
+    }))
+    list_GG_for_hull[[Z]]<-as.data.frame(Results)
+  }
+  ### Convex graph
+  Combinaison_for_hull<-as.data.frame(
+    matrix(t(data.frame(list_GG_for_hull)),
+           ncol = 2))
+  B_rep<-nrow(Combinaison_for_hull)/length(l_name)
+  
+  colnames(Combinaison_for_hull)<-c("a","b")
+  Combinaison_for_hull$variable_cond<-as.character(
+    c(sapply(X = c(1:length(l_name)),
+             FUN = function(x){return(rep(x,B_rep))}))
+  )
+  Chull<-Combinaison_for_hull %>% 
+    group_by(variable_cond) %>% 
+    slice(chull(a, b))
+  
+  GG_hull<-ggplot(Combinaison_for_hull, 
+                  aes(a, b)) +
+    geom_point() +
+    geom_polygon(data =Chull, alpha = 0.3,aes(fill=variable_cond)) +
+    theme_minimal()+labs(fill="Legend")+
+    theme(axis.title=element_text(size=25),
+          legend.text=element_text(size=14),
+          legend.title = element_text(size=15),
+          axis.text = element_text(size=12),
+          strip.text = element_text(size = 12))
+  return(GG_hull)
+}
+Analysis_diag_HTawn_evol_DQU<-function(vect_dqu,
+                                       Vect_obs,MQU,
+                                       chosen_dqu){
+  d<-ncol(Vect_obs)
+  GG_theta<-ggplot()
+  Rult_simplified<-c()
+  Indep_whole<-c()
+  for(cond_var in c(1:d)){
+    Results_Indep_Theta<-sapply(vect_dqu,
+                                Params_HTawn_one_dqu,
+                                mqu=MQU,vect_l=Vect_obs,
+                                ind_ref=cond_var)
+    Inds_for_analyse<-apply(X = Results_Indep_Theta,
+                            FUN = function(x){
+                              Ind_nafalse<-sum(rowSums(!is.na(x$Theta)))
+                              dim<-ncol(x$Theta)*nrow(x$Theta)
+                              return(Ind_nafalse==dim)
+                            },MARGIN = 2)
+    ThetaI_simplified<-Results_Indep_Theta[,Inds_for_analyse]
+    Sub_DQU<-vect_dqu[Inds_for_analyse]
+    Result_Independence_test<-t(ThetaI_simplified[c(1:2),])
+    Result_several_theta<-do.call(rbind,ThetaI_simplified[3,])
+    ### Drop NA results
+    
+    Rult<-melt(Result_several_theta)
+    Sub_vars<-c("a","b")
+    Nb_rep_DQU<-length(Sub_vars)
+    Inds_chosen<-which(Rult$Var1%in%Sub_vars)
+    Rult2<-Rult[Inds_chosen,]
+    N_rep<-nrow(Rult2)/(Nb_rep_DQU*length(Sub_DQU))
+    colnames(Rult2)<-c("param","variable","value")
+    chosen_dquj<-chosen_dqu[cond_var]
+    Rult2$dqu<-rep(chosen_dquj,
+                   nrow(Rult2))
+    Variable_used<-Rult2$variable[1]
+    Rult2$quantile<-rep(c(sapply(Sub_DQU,
+                                 FUN = function(x){rep(x,Nb_rep_DQU)})),
+                        N_rep)
+    Rult_simplified<-rbind(Rult_simplified,
+                           Rult2)
+    
+    ### Independence test
+    ######################
+    Melting_indep<-melt(apply(Result_Independence_test,
+                              MARGIN = 2,FUN = unlist))
+    colnames(Melting_indep)<-c("variable","test_used",
+                               "pval")
+    Melting_indep$test_used<-ifelse(Melting_indep$test_used=="Test_1",
+                                    yes = "Z vs Y",
+                                    no = "|Z-mean(Z)| vs Y")
+    Melting_indep$quantile<-rep(c(sapply(Sub_DQU,
+                                         FUN = function(x){rep(x,N_rep)})),
+                                Nb_rep_DQU)
+    Melting_indep$variable_cond<-rep(Variable_used,
+                                     nrow(Melting_indep))
+    Melting_indep$dqu<-rep(chosen_dquj,
+                           nrow(Melting_indep))
+    Indep_whole<-rbind(Indep_whole,
+                       Melting_indep)
+  }
+  GG_theta<-ggplot(Rult_simplified
+                   ,aes(x=quantile,y=value,
+                        group=interaction(variable,param),
+                        col=param))+
     geom_line()+
     ylab("Estimator")+
     xlab("Dqu")+
-    facet_wrap(~param,scales = "free_y")+
+    facet_wrap(~variable,
+               scales = "free_y")+
     geom_point()+
-    labs(col="Legend")
-  ### Independence test
-  ######################
-  Melting_indep<-melt(apply(Result_Independence_test,
-                            MARGIN = 2,FUN = unlist))
-  colnames(Melting_indep)<-c("variable","test_used",
-                             "pval")
-  Melting_indep$test_used<-ifelse(Melting_indep$test_used=="Test_1",
-                                  yes = "Z vs Y",
-                                  no = "|Z-mean(Z)| vs Y")
-  Melting_indep$quantile<-rep(c(sapply(Sub_DQU,
-                                       FUN = function(x){rep(x,N_rep)})),
-                              Nb_rep_DQU)
-  d<-ncol(Result_several_theta)
-  GG_Indep<-ggplot(Melting_indep,aes(x=quantile,y=pval,
-                                     group=interaction(variable),
-                                     col=variable))+
+    labs(col="Legend")+
+    geom_vline(aes(xintercept=dqu))
+  GG_Indep<-ggplot(Indep_whole,
+                   aes(x=quantile,y=pval,
+                       group=interaction(variable_cond,
+                                         test_used),
+                       col=variable_cond))+
     geom_line()+
     facet_wrap(~test_used)+
     geom_point()+
     ylab("p value")+
     xlab("Dqu")+
     labs(col="Legend")+
-    geom_hline(yintercept = 0.05,col="red")
+    geom_hline(yintercept = 0.05,col="black")+
+    geom_vline(aes(xintercept = dqu,
+                   col=variable_cond))
   if(d==1){
     GG_Indep<-GG_Indep+
       guides(col="none")

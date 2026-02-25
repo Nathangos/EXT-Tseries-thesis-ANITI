@@ -70,6 +70,7 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
     else{
       Donnes<-read.csv(file=lien_donnees)[,2:38]
     }
+    print(nrow(Donnes))
     colnames(Donnes)<-c(1:37)
     rownames(Donnes)<-c(1:nrow(Donnes))
     l_Orig[[name_variable]]<-Donnes
@@ -78,15 +79,14 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
     Nb_annees<-diff(range(lubridate::year(d_POIXCT)))
     NPY<-nrow(Donnes)/Nb_annees
     ### Choice of threshold using metric
-    ########using full/10.1080/00401706.2024.2421744
+    #######
     p_U[[name_variable]]<-Choice_automatic_thresh_per_variable(df = Donnes,
                                                                nb_threshs = Nb_Threshs)
-    return(p_U)
-    AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,
-                              fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
-                              nom=name_variable,type_entree=type_entree,
-                              dates_prises=dates_import,j_show = 19)
-    l_AD[[name_variable]]<-AN_GPD
+    # AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,
+    #                           fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
+    #                           nom=name_variable,type_entree=type_entree,
+    #                           dates_prises=dates_import,j_show = 19)
+    # l_AD[[name_variable]]<-AN_GPD
     if(type_entree=="donnees_brutes"){
       return(TRUE)
     }
@@ -790,22 +790,25 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     d<-length(l_variables)
     DQU_modeling_Htawn<-rep(NA,d)
     nb_threshs<-50
-    Qtile_candidates<-seq.int(0,0.99,
+    Qtile_candidates<-seq.int(0.65,0.85,
                               length.out=nb_threshs)
     MQU<-0.70
     DQU_modeling_Htawn<-Params_risk_Function[["HTAWN_params"]]
-    for(j in c(1:d)){
-      
-      ### Diagnostic choice of qu
-      #(1) stability of theta + (2) independence_test
-      cond_var<-j
-      #Vect_l_marg
-      Graphics_diags<-Analysis_diag_HTawn_evol_DQU(cond_var = cond_var,
-                                                   vect_dqu = Qtile_candidates,
-                                                   MQU =MQU,
-                                                   Vect_obs = Vect_log)
-    }
-    
+    print(DQU_modeling_Htawn)
+    Graphics_diags<-Analysis_diag_HTawn_evol_DQU(vect_dqu = Qtile_candidates,
+                                                 chosen_dqu=DQU_modeling_Htawn,
+                                                 MQU =MQU,
+                                                 Vect_obs = Vect_log)
+    GG_theta<-Graphics_diags[["theta"]]
+    GG_Indep<-Graphics_diags[["indep"]]
+    ggsave(filename = paste0(root_for_export,"RiskFunctions/",
+                             l_name[1],"_",l_name[2],
+                             "_evol_HTparams.png"),
+           plot = GG_theta,width = 8,height = 6)
+    ggsave(filename = paste0(root_for_export,"RiskFunctions/",
+                             l_name[1],"_",l_name[2],
+                             "_result_HTindep.png"),
+           plot =  GG_Indep,width = 8,height = 6)
     ### HTawn modelling
     # vect_l_marg
     Model_Htawn_all<-texmex::mexAll(Vect_log,
@@ -813,24 +816,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                                     dqu = DQU_modeling_Htawn)
     Theta_opt<-Model_Htawn_all
     list_GG_cases<-list()
-    list_GG_for_hull<-list()
     for(Z in c(1:d)){
       HTawn_z<-Theta_opt[[Z]]
-      Modelboot_z<-texmex::bootmex(x = HTawn_z)
-      ### Boot run
-      j<-1
-      Results<-t(sapply(Modelboot_z$boot,function(x){
-        y<-x$dependence
-        return(c(y[1,j],y[2,j]))
-      }))
-      list_GG_for_hull[[Z]]<-as.data.frame(Results)
-      png(filename = paste0(root_for_export,"RiskFunctions/",
-                            l_name[1],"_",l_name[2],"modHtawn_",
-                            Z,"_diag.png"))
-      par(mfcol=c(2,2))
-      plot(Theta_opt[[Z]])
-      dev.off()
-      par(mfrow=c(1,1))
       ### Graphics to visualize what appears
       Data_tfed<-as.data.frame(HTawn_z$margins$transformed[,l_variables])
       colnames(Data_tfed)<-sapply(c(1:d),function(x){
@@ -855,29 +842,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
         ylab(paste0("Norm of T(",l_variables[2],")"))
       list_GG_cases[[Z]]<-GG_z_model
     }
-    ### Convex graph
-    Combinaison_for_hull<-as.data.frame(matrix(t(data.frame(list_GG_for_hull)),
-                                               ncol = 2))
-    B_rep<-nrow(Combinaison_for_hull)/length(l_name)
-    
-    colnames(Combinaison_for_hull)<-c("a","b")
-    Combinaison_for_hull$variable_cond<-as.character(c(sapply(X = c(1:length(l_name)),
-                                                              FUN = function(x){return(rep(x,B_rep))}))
-    )
-    Chull<-Combinaison_for_hull %>% 
-      group_by(variable_cond) %>% 
-      slice(chull(a, b))
-    
-    GG_hull<-ggplot(Combinaison_for_hull, 
-                    aes(a, b)) +
-      geom_point() +
-      geom_polygon(data =Chull, alpha = 0.3,aes(fill=variable_cond)) +
-      theme_minimal()+labs(fill="Legend")+
-      theme(axis.title=element_text(size=25),
-            legend.text=element_text(size=14),
-            legend.title = element_text(size=15),
-            axis.text = element_text(size=12),
-            strip.text = element_text(size = 12))
+    GG_hull<-Analysis_diag_HTawn_Conv_Hull(
+      Theta_opt = Theta_opt)
     ggsave(plot = GG_hull,filename = paste0(root_for_export,"RiskFunctions/",
                                             l_name[1],"_",l_name[2],
                                             "_Convex_huls_Htawn.png"),
@@ -891,7 +857,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
            filename = paste0(root_for_export,"RiskFunctions/",
                              l_name[1],"_",l_name[2],
                              "_pts_input_HT.png"),
-           width=8,height=8)
+           width=8,height=6)
     ### Simulation step
     prop_cl<-Q_from_mixt
     # AI case
