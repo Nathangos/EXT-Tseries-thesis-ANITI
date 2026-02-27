@@ -111,7 +111,7 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
       df<-matrix(NA,ncol=length(liste_noms),
                  nrow=nrow(Vtransf))
     }
-    df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norme_L2)
+    df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norm_L2)
     j<-j+1
   }
   # Pareto ------------------------------------------------------------------
@@ -286,7 +286,7 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
                                  "Fitting"=Vect_fitting,
                                  "INIT"=Vect_Init)
     df[[name_variable]]<-apply(X = FINAL_transfo,MARGIN = 1,
-                               FUN = calcul_norme_L2)
+                               FUN = calcul_norm_L2)
     
   }
   return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
@@ -1155,14 +1155,14 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Beg<-1+Length_T*(Z-1)
       END<-Length_T*Z
       Shape_forcing<-Shape_Omega_simul[,Beg:END]
-      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norme_L2)
+      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norm_L2)
       Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
       LISTE_shapes[[nom_s]]<-Shape_forcing_std
       Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
       LISTE_candidats[[nom_s]]<-Z_varj
       DF_simul_lprime<-c(DF_simul_lprime,
                          apply(X = Z_varj,MARGIN = 1,
-                               FUN = calcul_norme_L2))
+                               FUN = calcul_norm_L2))
       ### 0 as the threshold if Frechet
       ### 1 as the threshold if Pareto
       ### If Frechet margins originally

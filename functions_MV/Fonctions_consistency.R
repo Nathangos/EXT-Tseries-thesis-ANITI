@@ -291,15 +291,13 @@ F_automatic_ggplot_marg_Omega<-function(vect_time_choice,Obj_data,
   tprime<-ifelse(t>37,yes=t-37,no=t)
   sprime<-ifelse(s>37,yes = s-37,no = s)
   
-  exp_type<-expression(x[M]^t~v)
+  exp_type<-expression(x[M]^t)
   xlab_title<-do.call("substitute", list(exp_type[[1]], 
                                          list(t=tprime,
-                                              x=name_first,
-                                              v=l_unit[[name_first]])))
+                                              x=name_first)))
   ylab_title<-do.call("substitute", list(exp_type[[1]], 
                                          list(t=sprime,
-                                              x=name_second,
-                                              v=l_unit[[name_second]])))
+                                              x=name_second)))
   Name_file<-paste0("/",CPLMT_graph_theta,"_",METHOD_ANGLE,
                     "_Distrib_Omega_",name_first,"_t=",
                     tprime,"_",name_second,"_s=",sprime,".png")
@@ -1014,16 +1012,16 @@ Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
       Resid<-Z
       Absolute_values<-abs(Resid-colMeans(Resid))
       Result_per_column<-apply(Resid,MARGIN = 2,
-                               FUN = function(x){
-                                 result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
-                                               3)
-                                 return(result)
+                     FUN = function(x){
+                       result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                     3)
+                       return(result)
                                })
       Result_per_column2<-apply(X = Absolute_values,MARGIN = 2,
-                                FUN = function(x){
-                                  result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
-                                                3)
-                                  return(result)
+                    FUN = function(x){
+                      result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                    3)
+                      return(result)
                                 })
     }
   }else{
@@ -1175,4 +1173,51 @@ Analysis_diag_HTawn_evol_DQU<-function(vect_dqu,
   }
   return(list("theta"=GG_theta,
               "indep"=GG_Indep))
+}
+Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
+  model_texmex<-texmex::mex(vect_l,mqu = mqu,
+                            dqu = dqu,which = ind_ref)
+  Dep<-model_texmex$dependence
+  Theta<-Dep$coefficients
+  Z<-Dep$Z
+  n<-nrow(Z)
+  d<-ncol(Theta)
+  Ref_var<- seq(dqu, 1 - 1/n, length = n)
+  Result_per_column<-NA
+  Result_per_column2<-NA
+  if(d>1){
+    ### Verify if test doable
+    Sum_ind<-sum(as.numeric(!is.na(Theta[1,])))
+    n<-nrow(Z)
+    if(Sum_ind==d){
+      Resid<-Z
+      Absolute_values<-abs(Resid-colMeans(Resid))
+      Result_per_column<-apply(Resid,MARGIN = 2,
+                               FUN = function(x){
+                                 result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                               3)
+                                 return(result)
+                               })
+      Result_per_column2<-apply(X = Absolute_values,MARGIN = 2,
+                                FUN = function(x){
+                                  result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                                3)
+                                  return(result)
+                                })
+    }
+  }else{
+    ### Verify if test doable
+    Answer<-!is.na(as.numeric(Theta[1,]))
+    if(Answer==TRUE){
+      Resid<-as.numeric(Z)
+      Absolute_values<-abs(Resid-mean(Resid))
+      Result_per_column<-round(cor.test(Resid,
+                                        Ref_var, method="kendall")$p.value,3)
+      Result_per_column2<-round(cor.test(Absolute_values,
+                                         Ref_var,method="kendall")$p.value,3)
+    }
+  }
+  return(list("Test_1"=Result_per_column,
+              "Test_2"=Result_per_column2,
+              "Theta"=Theta))
 }

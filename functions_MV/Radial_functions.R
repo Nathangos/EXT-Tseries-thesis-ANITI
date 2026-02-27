@@ -328,9 +328,3 @@ Fit_HGD_from_Laplace<-function(Lap_vectors,Model_Lap_inits){
 Convert_marg_model_ghyp<-function(vect,model_univ){
   return(ghyp::qghyp(vect,object = model_univ))
 }
-Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
-  model_texmex<-texmex::mex(vect_l,mqu = mqu,
-                 dqu = dqu,which = ind_ref)
-  Theta<-model_texmex$dependence$coefficients
-  return(Theta)
-}

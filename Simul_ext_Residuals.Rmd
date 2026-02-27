@@ -417,12 +417,13 @@ n<-1000
 d<-2
 nu<-rep(1,d)
 prob_classes<-c(0.5,0.5)
-Result_Cont_Model<-t(replicate(n = n,Simul_Contamination_Model(prob_classes = prob_classes,
-                                          nu = nu))[1,,])
-plot(Result_Cont_Model,main="Simulation from contamination model",
+Result_Cont_Model<-t(replicate(n =n,
+                               Simul_Contamination_Model(prob_classes = prob_classes,
+                   nu = nu))[1,,])
+plot(Result_Cont_Model,
+     main="Simulation from contamination model",
      xlab="V1",ylab="V2")
-Test_GM_knowingH1<-TwoGM_versus_normal(vect_Id = Result_Cont_Model,
-                                      alpha = 0.05)
+Test_GM_knowingH1<-TwoGM_versus_normal(vect_Id = Result_Cont_Model,alpha = 0.05)
 
 ################
 Theta_fit<-re$Param_found
@@ -447,11 +448,7 @@ print(Test_exchangeability$p.value)
 
 # Testing several copula families for the risk functions----------------------------
 #######################
-
 d<-ncol(Vect_RiskF)
-
-
-
 
 ```
 
@@ -652,9 +649,9 @@ list_pairs<-list("1"=c(1,37),
                  "3"=c(19,56),
                  "4"=c(38,56),
                  "5"=c(56,74))
-sapply(list_pairs,F_automatic_ggplot_marg_Omega,
+Summary_pairs_Omega<-sapply(list_pairs,F_automatic_ggplot_marg_Omega,
        Obj_sim=Obj_sim,Obj_data=Obj_data,
-       l_name=l_name)
+       l_name=l_name,cols_ggplot=cols_)
 ```
 
 
