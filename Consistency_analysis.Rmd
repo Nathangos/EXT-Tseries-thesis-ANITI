@@ -17,10 +17,22 @@ require(extRemes)
 require(ggside)
 require(patchwork)
 require(viridis)
+require(parallel)
+require(texmex)
+
 # Import residuals --------------------------------------------------------
 cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue")
 variable<-"Surge"
 
+```
+
+```{r}
+F_names<-ls()
+nb_hearts<-detectCores()-4
+
+# Ouverture des clusters --------------------------------------------------
+hearts<-makeCluster(nb_hearts)
+clusterExport(hearts,varlist=F_names)
 ```
 
 
@@ -281,9 +293,10 @@ Unit_variable<-list("Surcote"="(m)","U"="(m/s)",
                     "Hs"="(m)")
 list_simul<-list()
 list_obs<-list()
-Obs_taken<-sample(c(1:nrow(Reals)),size = 100,
+Nshown<-50
+Obs_taken<-sample(c(1:nrow(Reals)),size = Nshown,
                   replace = FALSE)
-Simul_taken<-sample(c(1:Nsim),size = 100,
+Simul_taken<-sample(c(1:Nsim),size = Nshown,
                     replace = FALSE)
 Simul_taken
 # Params for extremo computation 
@@ -308,198 +321,6 @@ periods_years<-c(2,5,10,20,50,80,
 NB_years<-37
 Qtile_per_year<-0.90
 ```
-
-```{r}
-# Correlation values ------------------------------------------------------
-###########
-# Fbvplot with several values ---------------------------------------------
-t<-19
-s<-13
-i_index<-1
-name_i<-L_nameV[i_index]
-j_index<-2
-name_j<-L_nameV[j_index]
-print(name_j)
-Prop<-0.90
-Pair_for_bv<-cbind(L_whole[[name_i]][,t],
-                   L_whole[[name_j]][,s]
-)
-Pair_simulated_points<-cbind(list_simul[[name_i]][,t],
-                             list_simul[[name_j]][,s])
-
-Qs<-apply(X = Pair_for_bv,MARGIN = 2,FUN = 
-            function(x){return(as.numeric(quantile(x,Prop)))})
-
-Bvpot<-evd::fbvpot(Pair_for_bv,threshold = Qs, 
-                   model = "log")
-Object_fbvpot<-plot(Bvpot,which = 3,
-                    lty=2,col="blue")
-Object_fbvpot$message
-# points(Pair_simulated_points,col="orange",
-#        cex=0.5,pch=2)
-NL2_simul<-sapply(X = list_simul,
-       function(x){return(apply(x,MARGIN=1,
-                                    FUN = calcul_norme_L2))})
-NL2_obs<-sapply(X = list_obs,
-                  function(x){return(apply(x,MARGIN=1,
-                                           FUN = calcul_norme_L2))})
-NL2_obs<-as.data.frame(NL2_obs)
-NL2_simul<-as.data.frame(NL2_simul)
-colnames(NL2_obs)<-L_nameV
-colnames(NL2_simul)<-colnames(NL2_obs)
-NL2_obs<-as.data.frame(NL2_obs)
-Risk_f_obs1<-apply(X = NL2_obs,MARGIN = 1,FUN = Risk_f)
-Risk_f_obs<-cbind.data.frame(Risk_f_obs1,rep("data",
-                                             length(Risk_f_obs1)))
-
-NL2_simul<-as.data.frame(NL2_simul)
-Sub_simul<-colnames(NL2_obs)
-
-Risk_f_simul1<-apply(X = NL2_simul,MARGIN = 1,FUN = Risk_f)
-
-
-```
-
-
-
-```{r}
-# QQ plot analysis --------------------------------------------------------
-Obj_qq<-qqplot(x = Risk_f_obs1,y = Risk_f_simul1,make.plot = FALSE)
-QQdata<-Obj_qq$qdata
-GGQQ_RISKFsim_data<-ggplot(data=QQdata,aes(x=x,y=x,col="data"))+
-  geom_line()+
-  geom_point(aes(x=x,y=y,col="simulations"),
-             pch=17)+
-  scale_color_manual(values = cols_)+
-  labs(col="Legend")+
-  theme(axis.title=element_text(size=15))+
-  xlab("Theoretical quantiles")+
-  ylab("Empirical quantiles")
-ggsave(plot = GGQQ_RISKFsim_data,
-       filename=paste0(Lg_path,"/QQ_RiskF_data_sim_",Prefix,"_",CPLMT,".png"),
-       width=8,height=6)
-
-# Violin plots for each dataset (simulations and observations) ------------------------------------------
-#####
-Orig_s<-rep("simulations",length(Risk_f_simul1))
-Risk_f_simul<-cbind.data.frame(Risk_f_simul1,Orig_s)
-colnames(Risk_f_simul)<-c("Risk_f","orig")
-colnames(Risk_f_obs)<-colnames(Risk_f_simul)
-Risk_f_obs_simul<-rbind.data.frame(Risk_f_obs,Risk_f_simul)
-colnames(Risk_f_obs_simul)<-c("value_Risk_f","origin")
-GG_violin_Risk_f<-ggplot(data=Risk_f_obs_simul,aes(x=origin,y=value_Risk_f,
-                              fill=origin))+
-  geom_violin()+
-  geom_boxplot(width=0.3)+
-  scale_fill_manual(values=cols_)+
-  labs(fill="Legend")+ylab("value (m)")
-ggsave(plot=GG_violin_Risk_f,
-       filename=paste0(Lg_path,"/Violin_RiskF_data_sim_",Prefix,"_",CPLMT,".png"),
-       width=8,height=8)
-
-NL2_obs$origin<-rep("data",nrow(NL2_obs))
-NL2_simul$origin<-rep("simulations",
-                      nrow(NL2_simul))
-NL2_all<-rbind.data.frame(NL2_obs,NL2_simul)
-NL2_all<-melt(NL2_all)
-colnames(NL2_all)<-c("origin","variable",
-                     "value")
-GG_violin<-ggplot(data=NL2_all,aes(x=origin,y=value,fill=origin))+
-  facet_wrap(~variable,scales = "free")+
-  geom_violin(alpha=0.6)+
-  scale_fill_manual(values=cols_)+
-  geom_boxplot(width=0.3)+
-  labs(fill="Legend")+
-  xlab("origin")+ylab("value (m)")
-
-ggsave(plot=GG_violin,
-       filename =paste0(Lg_path,"/Violin_RiskF_data_sim_varwise_",Prefix,"_",CPLMT,".png"),
-       width=8,height=8)
-
-N_rep<-500
-Mcorr<-"kendall"
-B<-nrow(Reals_1)
-Conf_int_corr<-replicate(n = N_rep,Resamples_correlations(l_extremes_indus = list_obs,
-                       B = B,method_corr = Mcorr,
-                       l_names = L_nameV))
-```
-
-
-```{r}
-# Compute quantile at each time -------------------------------------------
-Q_minus<-apply(X = Conf_int_corr,MARGIN = 1,
-               function(x){return(quantile(x,0.025))})
-Q_plus<-apply(X = Conf_int_corr,MARGIN = 1,
-               function(x){return(quantile(x,0.975))})
-Estimator<-Fct_correlations(method_corr = Mcorr ,
-                 df1 =list_obs[[L_nameV[1]]],
-                 df2=list_obs[[L_nameV[2]]])
-Estimator_corr_simul<-Fct_correlations(method_corr = Mcorr ,
-                                       df1 =list_simul[[L_nameV[1]]],
-                                       df2=list_simul[[L_nameV[2]]])
-DF<-cbind.data.frame(Q_minus,Q_plus,Estimator ,
-                     Estimator_corr_simul)
-colnames(DF)<-c("bound_min","bound_plus",
-                "estimator","estimator_simul")
-DF$Time<-(c(1:nrow(DF))-19)/6
-
-GG_corr<-ggplot(data=DF,aes(x=Time,y=estimator,col="data"))+
-  geom_line()+
-  geom_point()+
-  geom_ribbon(aes(ymin=bound_min,
-                  ymax=bound_plus,col="confidence_band"),alpha=0.15,
-  fill="grey", linetype = "dashed")+
-  geom_line(aes(y=estimator_simul,col="simulations"),linetype=2)+
-  ylab("correlation coefficient")+
-  scale_color_manual(values=cols_)+
-  xlab("Time (hour) with respect to tidal peak")+
-  labs(col="Legend")+
-  theme(axis.title=element_text(size=15),
-         legend.text=element_text(size=10))
-ggsave(filename = paste0(Corr_path,"/",Prefix,"_Coor_",L_nameV[1],"_",
-                         L_nameV[2],"_",Mcorr,"_",CPLMT,
-                         opt_used,
-                         ".png"),
-       plot = GG_corr
-       ,width = 8,height = 6)
-```
-
-
-```{r}
-# Bivariate relation ------------------------------------------------------
-L_simul<-NULL
-L_obs<-NULL
-L_L2_simul<-list()
-L_L2_obs<-list()
-for(name_variable_analyze in L_nameV){
-  if(ANALYSIS_for_resid){
-    Simuls_v<-read.csv(file=paste0(ROOT_import,name_variable_analyze,"_",
-                                   Prefix,"_simul",
-                                   opt_used,".csv"))[,2:38]
-    Reals_v<-read.csv(file=paste0(ROOT_import,name_variable_analyze
-                                  ,"_obs_ext.csv"))[,2:38]
-  }else{
-    Simuls_v<-read.csv(file=paste0(ROOT_import,"_",name_variable_analyze,
-                                   "_fsim.csv"))[,2:38]
-    Reals_v<-read.csv(file=paste0(ROOT_import,name_variable_analyze
-                                  ,"_fdata.csv"))[,2:38]
-  }
-  
-  
-  colnames(Simuls_v)<-c(1:ncol(Simuls_v))
-  colnames(Reals_v)<-colnames(Simuls_v)
-  L_L2_simul[[name_variable_analyze]]<-apply(X = Simuls_v,
-          MARGIN = 1,FUN = calcul_norme_L2)
-  L_L2_obs[[name_variable_analyze]]<-apply(X = Reals_v,
-          MARGIN = 1,FUN = calcul_norme_L2)
-  L_simul[[name_variable_analyze]]<-Simuls_v
-  L_obs[[name_variable_analyze]]<-Reals_v
-}
-```
-
-
-
-
 ```{r}
 
 for(NV in L_nameV){
@@ -563,9 +384,9 @@ for(NV in L_nameV){
   mu1<-apply(X = Simuls_1,MARGIN = 2,FUN = mean)
   mu2<-apply(X = Reals_1,MARGIN = 2,FUN = mean)
   NB_sample<-sample(c(1:nrow(Simuls_1)),
-                    size = 100,replace = FALSE)
+                    size = Nshown,replace = FALSE)
   NB_sample_data<-sample(c(1:nrow(Reals_1)),
-                         size = 100,replace = FALSE)
+                         size = Nshown,replace = FALSE)
   Melteur<-melt(t(Simuls_1[NB_sample,]))
   colnames(Melteur)<-c("Temps","Individu","valeur")
   Melteur$Individu<-as.character(Melteur$Individu)
@@ -894,9 +715,9 @@ for(NV in L_nameV){
   # PCA coordinates ---------------------------------------------------------
   Nb_scores<-3
   L2_simul<-apply(X = Simuls_1,MARGIN = 1,
-                  FUN = calcul_norme_L2)
+                  FUN = calcul_norm_L2)
   L2_reality<-apply(X = Reals_1,MARGIN = 1,
-                    FUN = calcul_norme_L2)
+                    FUN = calcul_norm_L2)
   POS_sim<-which(L2_simul>0)
   Angle_simul<-t(t(Simuls_1[POS_sim,])%*%diag(L2_simul[POS_sim]^(-1)))
   POS<-which(L2_reality>0)
@@ -974,6 +795,229 @@ for(NV in L_nameV){
 ```
 
 ```{r}
+# Cross-extremogram -------------------------------------------------------
+###########
+ALL_CE<-Cross_Extremo_MV_all(list_simul = list_simul,
+                  list_reality = list_obs,
+                  list_names_VAR = L_nameV,
+                  q_per_time = q_chosen,
+                  B = 500)
+WHOLE<-do.call(rbind.data.frame,ALL_CE)
+GG_cross_Gam<-ggplot(data=WHOLE,
+       aes(x=time_d,y=val_data,col="data"))+
+  geom_point()+
+  geom_line()+
+  facet_wrap(~category,scales="free_y")+
+  geom_point(aes(x=time_d,y=val_sim,
+                 col="simulations"),pch=2)+
+  geom_line(aes(x=time_d,y=val_sim,col="simulations"))+
+  geom_ribbon(mapping = aes(ymin=Qinf,ymax=Qsup,col="confidence_band"),
+              alpha=0.15,
+              fill="grey", linetype = "dashed")+
+  scale_color_manual(values = cols_)+
+  xlab("Lag h")+ylab(expression(gamma~"value"))+
+  labs(col="Legend")+
+  theme(axis.title=element_text(size=20),
+        legend.text=element_text(size=12),
+        legend.title = element_text(size=13),
+        axis.text = element_text(size=14))+
+  scale_linetype_manual("Legend",
+                        values=c("confidence_band"=2,
+                                 "mean"=5))
+
+ggsave(filename = paste0(Extremo_path,"/",Prefix,"_cross_extremo_",
+                         L_nameV[1],"_",L_nameV[2],"_",
+                         opt_used,".png"),
+       plot = GG_cross_Gam,
+       width=rep(10,length(L_nameV)),
+       height=6)
+```
+
+
+```{r}
+# Correlation values ------------------------------------------------------
+###########
+# Fbvplot with several values ---------------------------------------------
+t<-19
+s<-13
+i_index<-1
+name_i<-L_nameV[i_index]
+j_index<-2
+name_j<-L_nameV[j_index]
+print(name_j)
+Prop<-0.90
+Pair_for_bv<-cbind(L_whole[[name_i]][,t],
+                   L_whole[[name_j]][,s]
+)
+Pair_simulated_points<-cbind(list_simul[[name_i]][,t],
+                             list_simul[[name_j]][,s])
+
+Qs<-apply(X = Pair_for_bv,MARGIN = 2,FUN = 
+            function(x){return(as.numeric(quantile(x,Prop)))})
+
+Bvpot<-evd::fbvpot(Pair_for_bv,threshold = Qs, 
+                   model = "log")
+Object_fbvpot<-plot(Bvpot,which = 3,
+                    lty=2,col="blue")
+Object_fbvpot$message
+# points(Pair_simulated_points,col="orange",
+#        cex=0.5,pch=2)
+NL2_simul<-sapply(X = list_simul,
+       function(x){return(apply(x,MARGIN=1,
+                                    FUN = calcul_norm_L2))})
+NL2_obs<-sapply(X = list_obs,
+                  function(x){return(apply(x,MARGIN=1,
+                                           FUN = calcul_norm_L2))})
+NL2_obs<-as.data.frame(NL2_obs)
+NL2_simul<-as.data.frame(NL2_simul)
+colnames(NL2_obs)<-L_nameV
+colnames(NL2_simul)<-colnames(NL2_obs)
+NL2_obs<-as.data.frame(NL2_obs)
+Risk_f_obs1<-apply(X = NL2_obs,MARGIN = 1,FUN = Risk_f)
+Risk_f_obs<-cbind.data.frame(Risk_f_obs1,rep("data",
+                                             length(Risk_f_obs1)))
+
+NL2_simul<-as.data.frame(NL2_simul)
+Sub_simul<-colnames(NL2_obs)
+
+Risk_f_simul1<-apply(X = NL2_simul,MARGIN = 1,FUN = Risk_f)
+```
+
+```{r}
+# QQ plot analysis --------------------------------------------------------
+Obj_qq<-qqplot(x = Risk_f_obs1,y = Risk_f_simul1,make.plot = FALSE)
+QQdata<-Obj_qq$qdata
+GGQQ_RISKFsim_data<-ggplot(data=QQdata,aes(x=x,y=x,col="data"))+
+  geom_line()+
+  geom_point(aes(x=x,y=y,col="simulations"),
+             pch=17)+
+  scale_color_manual(values = cols_)+
+  labs(col="Legend")+
+  theme(axis.title=element_text(size=15))+
+  xlab("Theoretical quantiles")+
+  ylab("Empirical quantiles")
+ggsave(plot = GGQQ_RISKFsim_data,
+       filename=paste0(Lg_path,"/QQ_RiskF_data_sim_",Prefix,"_",CPLMT,".png"),
+       width=8,height=6)
+
+# Violin plots for each dataset (simulations and observations) ------------------------------------------
+#####
+Orig_s<-rep("simulations",length(Risk_f_simul1))
+Risk_f_simul<-cbind.data.frame(Risk_f_simul1,Orig_s)
+colnames(Risk_f_simul)<-c("Risk_f","orig")
+colnames(Risk_f_obs)<-colnames(Risk_f_simul)
+Risk_f_obs_simul<-rbind.data.frame(Risk_f_obs,Risk_f_simul)
+colnames(Risk_f_obs_simul)<-c("value_Risk_f","origin")
+GG_violin_Risk_f<-ggplot(data=Risk_f_obs_simul,aes(x=origin,y=value_Risk_f,
+                              fill=origin))+
+  geom_violin()+
+  geom_boxplot(width=0.3)+
+  scale_fill_manual(values=cols_)+
+  labs(fill="Legend")+ylab("value (m)")
+ggsave(plot=GG_violin_Risk_f,
+       filename=paste0(Lg_path,"/Violin_RiskF_data_sim_",Prefix,"_",CPLMT,".png"),
+       width=8,height=8)
+
+NL2_obs$origin<-rep("data",nrow(NL2_obs))
+NL2_simul$origin<-rep("simulations",
+                      nrow(NL2_simul))
+NL2_all<-rbind.data.frame(NL2_obs,NL2_simul)
+NL2_all<-melt(NL2_all)
+colnames(NL2_all)<-c("origin","variable",
+                     "value")
+GG_violin<-ggplot(data=NL2_all,aes(x=origin,y=value,fill=origin))+
+  facet_wrap(~variable,scales = "free")+
+  geom_violin(alpha=0.6)+
+  scale_fill_manual(values=cols_)+
+  geom_boxplot(width=0.3)+
+  labs(fill="Legend")+
+  xlab("origin")+ylab("value (m)")
+
+ggsave(plot=GG_violin,
+       filename =paste0(Lg_path,"/Violin_RiskF_data_sim_varwise_",Prefix,"_",CPLMT,".png"),
+       width=8,height=8)
+
+N_rep<-500
+Mcorr<-"kendall"
+B<-nrow(Reals_1)
+Conf_int_corr<-replicate(n = N_rep,Resamples_correlations(l_extremes_indus = list_obs,
+                       B = B,method_corr = Mcorr,
+                       l_names = L_nameV))
+```
+
+
+```{r}
+# Compute quantile at each time -------------------------------------------
+Q_minus<-apply(X = Conf_int_corr,MARGIN = 1,
+               function(x){return(quantile(x,0.025))})
+Q_plus<-apply(X = Conf_int_corr,MARGIN = 1,
+               function(x){return(quantile(x,0.975))})
+Estimator<-Fct_correlations(method_corr = Mcorr ,
+                 df1 =list_obs[[L_nameV[1]]],
+                 df2=list_obs[[L_nameV[2]]])
+Estimator_corr_simul<-Fct_correlations(method_corr = Mcorr ,
+                                       df1 =list_simul[[L_nameV[1]]],
+                                       df2=list_simul[[L_nameV[2]]])
+DF<-cbind.data.frame(Q_minus,Q_plus,Estimator ,
+                     Estimator_corr_simul)
+colnames(DF)<-c("bound_min","bound_plus",
+                "estimator","estimator_simul")
+DF$Time<-(c(1:nrow(DF))-19)/6
+
+GG_corr<-ggplot(data=DF,aes(x=Time,y=estimator,col="data"))+
+  geom_line()+
+  geom_point()+
+  geom_ribbon(aes(ymin=bound_min,
+                  ymax=bound_plus,col="confidence_band"),alpha=0.15,
+  fill="grey", linetype = "dashed")+
+  geom_line(aes(y=estimator_simul,col="simulations"),linetype=2)+
+  ylab("correlation coefficient")+
+  scale_color_manual(values=cols_)+
+  xlab("Time (hour) with respect to tidal peak")+
+  labs(col="Legend")+
+  theme(axis.title=element_text(size=15),
+         legend.text=element_text(size=10))
+ggsave(filename = paste0(Corr_path,"/",Prefix,"_Coor_",L_nameV[1],"_",
+                         L_nameV[2],"_",Mcorr,"_",CPLMT,
+                         opt_used,
+                         ".png"),
+       plot = GG_corr
+       ,width = 8,height = 6)
+```
+
+```{r}
+# Bivariate relation ------------------------------------------------------
+L_simul<-NULL
+L_obs<-NULL
+L_L2_simul<-list()
+L_L2_obs<-list()
+for(name_variable_analyze in L_nameV){
+  if(ANALYSIS_for_resid){
+    Simuls_v<-read.csv(file=paste0(ROOT_import,name_variable_analyze,"_",
+                                   Prefix,"_simul",
+                                   opt_used,".csv"))[,2:38]
+    Reals_v<-read.csv(file=paste0(ROOT_import,name_variable_analyze
+                                  ,"_obs_ext.csv"))[,2:38]
+  }else{
+    Simuls_v<-read.csv(file=paste0(ROOT_import,"_",name_variable_analyze,
+                                   "_fsim.csv"))[,2:38]
+    Reals_v<-read.csv(file=paste0(ROOT_import,name_variable_analyze
+                                  ,"_fdata.csv"))[,2:38]
+  }
+  
+  
+  colnames(Simuls_v)<-c(1:ncol(Simuls_v))
+  colnames(Reals_v)<-colnames(Simuls_v)
+  L_L2_simul[[name_variable_analyze]]<-apply(X = Simuls_v,
+          MARGIN = 1,FUN = calcul_norm_L2)
+  L_L2_obs[[name_variable_analyze]]<-apply(X = Reals_v,
+          MARGIN = 1,FUN = calcul_norm_L2)
+  L_simul[[name_variable_analyze]]<-Simuls_v
+  L_obs[[name_variable_analyze]]<-Reals_v
+}
+```
+
+```{r}
 DF_L2_simul<-as.data.frame(L_L2_simul)
 DF_L2_obs<-as.data.frame(L_L2_obs)
 
@@ -1043,7 +1087,7 @@ apply(X = Combn_rf,MARGIN = 1,
         ggsave(filename =paste0(Lg_path,"/Distrib_RiskF",name_i,"_",name_j,"_",Prefix,
                                 opt_used,".png"),
                plot = GG_RF_j,width=8,height=6)
-        dev.off()
+      
 })
 
 ```
@@ -1054,9 +1098,18 @@ list_pairs<-list("1"=c(1,19),"2"=c(19,37),
                   "3"=c(1,37),
                  "4"=c(13,19),
                  "5"=c(19,1))
-sapply(list_pairs,F_automatic_ggplot_marg,
-       l_unit=Unit_variable,risk_function=Risk_f, 
-       ind_var_cond=1)
+Levels_for_RL<-c(0.01,0.05)
+##
+clusterEvalQ(hearts, c(library(dplyr),library(reshape2)))
+Summary_pairs<-lapply(list_pairs,
+       F_automatic_ggplot_marg,Path_EXT = Extremo_path,
+      Path_TREND = TEND_path ,
+       l_unit=Unit_variable,risk_function=Risk_f,
+       ind_var_cond=1,levels_used=Levels_for_RL,
+       L_obs=L_obs,L_simul=L_simul,
+       L_whole_obs=L_whole,
+       cols_=cols_,L_nameV=L_nameV,
+      hearts=hearts)
 ```
 
 

@@ -372,7 +372,7 @@ abline(v=kZero_found,col="red")
 dev.off()
 
 Qfound<-1-(kZero_found/length(Riskf_data))
-Qfound
+Qfound<-0.87
 ```
 
 
