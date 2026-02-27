@@ -148,6 +148,8 @@ try({
   dir.create(file.path(PCA_path))
   Extremo_path<-paste0(ROOT_export_graph,"extremes")
   dir.create(file.path(Extremo_path))
+  ML_path<-paste0(ROOT_export_graph,"ML")
+  dir.create(file.path(ML_path))
   for(name_V in L_nameV){
     newfolder<-name_V
     try({
@@ -1115,22 +1117,120 @@ Summary_pairs<-lapply(list_pairs,
 
 ```{r}
 # Use of the machine learning -----------------------------------------------------
+##########
 H_Params<-c("radial","logit",500)
 NB_times<-100
 ALPHA_PROP<-0.10
 K<-4
 typeS<-"simple"
 resultat<-matrix(NA,ncol=3,nrow=3)
-Lperfs_Y<-Running_perfs_ML(Base_simul = Simuls,Base_data = Reals, 
+LIST_ML<-list()
+
+DATA_for_gg_ML<-c()
+DATA_for_gg_ML_L2<-c()
+DATA_for_gg_ML_Angle<-c()
+for(nameV in names(L_simul)){
+  
+  result<-matrix(NA,nrow = 3,ncol = 3)
+  Reals<-L_obs[[nameV]]
+  Simuls<-L_simul[[nameV]]
+  Lperfs_Y<-Running_perfs_ML(Base_simul = Simuls,Base_data = Reals, 
+                             hyp_param = H_Params, NB_times =NB_times,
+                        alpha_prop=ALPHA_PROP,K = K, 
+                             type_sampling = typeS,
+                      title_ROC =nameV,
+                             NB_shown_ROC = 20)
+  New_df<-Lperfs_Y$df_for_graphics
+  Cplmt<-rep(nameV,
+             nrow(New_df))
+  New_df$variable<-Cplmt
+  DATA_for_gg_ML<-rbind(DATA_for_gg_ML,
+                        New_df)
+  L2_sim<-apply(X = Simuls,MARGIN = 1,
+                FUN = calcul_norm_L2)
+  L2_obs<-apply(X = Reals,MARGIN = 1,
+                FUN = calcul_norm_L2)
+  Lperfs_L2<-Running_perfs_ML(Base_simul = L2_sim,
+                            Base_data = L2_obs, hyp_param = H_Params, 
+                      NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
+                       type_sampling = typeS,
+                    title_ROC =nameV,
+                       NB_shown_ROC = 20)
+  New_df_L2<-Lperfs_L2$df_for_graphics
+  New_df_L2$variable<-Cplmt
+  DATA_for_gg_ML_L2<-rbind(DATA_for_gg_ML_L2,
+                        New_df_L2)
+  
+  Angle_Sim<-t(t(Simuls)%*%diag(L2_sim^(-1)))
+  Angle_Obs<-t(t(Reals)%*%diag(L2_obs^(-1)))
+  Lperfs_Angle_Y<-Running_perfs_ML(Base_simul = Angle_Sim,
+              Base_data = Angle_Obs, hyp_param = H_Params, 
+            NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
+             type_sampling = typeS,title_ROC =nameV,
+             NB_shown_ROC = 20)
+  New_df_Angle<-Lperfs_Angle_Y$df_for_graphics
+  New_df_Angle$variable<-Cplmt
+  DATA_for_gg_ML_Angle<-rbind(DATA_for_gg_ML_Angle,
+                           New_df_Angle)
+  result[1,]<-Lperfs_Y$Accuracy$qu_accuracy
+  result[2,]<-Lperfs_L2$Accuracy$qu_accuracy
+  result[3,]<-Lperfs_Angle_Y$Accuracy$qu_accuracy
+}
+
+```
+
+```{r}
+### Assemble the predictions
+LIST_ML[["X"]]<-DATA_for_gg_ML
+LIST_ML[["L2"]]<-DATA_for_gg_ML_L2
+LIST_ML[["Angle_X"]]<-DATA_for_gg_ML_Angle
+
+for(name_elt_gg in names(LIST_ML)){
+  ### Different ML results summarised
+  GG_summary_MV<-ggplot(data = LIST_ML[[name_elt_gg]],
+                aes(y=value))+
+    geom_violin(aes(x=model,fill=model),alpha=0.7)+
+    facet_wrap(~variable,scales="free_y")+
+    geom_boxplot(aes(x=model),alpha=0.3,width=0.3)+
+    ylab("Accuracy")+
+    labs(fill="Legend")+
+    xlab(NULL)+
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())+
+    geom_hline(aes(yintercept=0.5),col="red",
+               linetype="dashed")
+  ggsave(filename =  paste0(ML_path,"/summary_results_",
+                              name_elt_gg,".png"),
+         width = 6,height=6,plot = GG_summary_MV)
+  
+}
+```
+
+
+```{r}
+### MLearning with multivariate time series
+#######
+Simuls_MV<-do.call(cbind, L_simul)
+Reals_MV<-do.call(cbind, L_obs)
+result_MV<-matrix(NA,nrow = 3,ncol = 3)
+Lperfs_Y_MV<-Running_perfs_ML(Base_simul = Simuls_MV,
+                            Base_data = Reals_MV, 
                            hyp_param = H_Params, NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
-                           type_sampling = typeS,title_ROC =variable,
+                           type_sampling = typeS,
+                          title_ROC ="MV case",
                            NB_shown_ROC = 20)
-
-resultat[1,]<-Lperfs_Y$Accuracy$qu_accuracy
-resultat
-
-# End of the code ---------------------------------------------------------
-#########
-
+Melting_ML_MV<-Lperfs_Y_MV$df_for_graphics
+GG_ML_MV<-ggplot(data = Melting_ML_MV,aes(y=value))+
+  geom_violin(aes(x=model,fill=model),alpha=0.7)+
+  geom_boxplot(aes(x=model),alpha=0.3,width=0.3)+
+  ylab("Accuracy")+
+  labs(fill="Legend")+
+  xlab(NULL)+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())+
+  geom_hline(aes(yintercept=0.5),col="red",
+             linetype="dashed")
+ggsave(filename =  paste0(ML_path,"/summary_results_MV.png"),
+       width = 6,height=6,plot = GG_ML_MV)
 ```
 
