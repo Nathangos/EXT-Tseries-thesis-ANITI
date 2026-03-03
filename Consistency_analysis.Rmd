@@ -1210,27 +1210,99 @@ for(name_elt_gg in names(LIST_ML)){
 ```{r}
 ### MLearning with multivariate time series
 #######
+
+### X
 Simuls_MV<-do.call(cbind, L_simul)
+colnames(Simuls_MV)<-c(1:ncol(Simuls_MV))
 Reals_MV<-do.call(cbind, L_obs)
+colnames(Reals_MV)<-colnames(Simuls_MV)
+
+### L_X
+L_L2_simul_MV<-do.call(cbind, L_L2_simul)
+L_L2_reals_MV<-do.call(cbind, L_L2_obs)
+
+### A(X)
+A_X_simul_MV<-do.call(cbind, L_A_X_simul)
+A_X_reals_MV<-do.call(cbind, L_A_X_obs)
+colnames(A_X_reals_MV)<-c(1:ncol(A_X_reals_MV))
+colnames(A_X_simul_MV)<-colnames(A_X_reals_MV)
 result_MV<-matrix(NA,nrow = 3,ncol = 3)
-Lperfs_Y_MV<-Running_perfs_ML(Base_simul = Simuls_MV,
+
+# Graphics to represent the modelling applied -----------------------------
+#################
+
+Inds_simul_shown<-sample(c(1:nrow(Simuls_MV)), 
+                         size = Nshown,replace = FALSE)
+Inds_obs_shown<-sample(c(1:nrow(Reals_MV)), 
+                       size = Nshown,replace = FALSE)
+SUB_SIM<-scale(Simuls_MV)[Inds_simul_shown,]
+rownames(SUB_SIM)<-c(1:Nshown)
+Sub_sim<-melt(t(SUB_SIM))
+Sub_sim$origin<-rep("simulations",
+                    nrow(Sub_sim))
+
+SUB_OBS<-scale(Reals_MV)[Inds_obs_shown,]
+rownames(SUB_OBS)<-c(1:Nshown)
+Sub_obs<-melt(t(SUB_OBS))
+Sub_obs$origin<-rep("data",
+                    nrow(Sub_obs))
+Whole_MV_TS<-rbind(Sub_obs,Sub_sim)
+colnames(Whole_MV_TS)<-c("time","index",
+                         "value","origin")
+GG_MV_ML<-Fct_cplmt_ggplot(T = 37,vect_name_variable  = L_nameV ,
+                 Max_time = 74,Melting_df = Whole_MV_TS,
+                 option_facet_wrap = TRUE)
+ggsave(filename = paste0(ML_path,"/graph_input_MV_ML.png"),
+       plot = GG_MV_ML,width=8,height=6)
+
+
+```
+
+```{r}
+# Run fitting ---------------------------------------------------------------
+#################
+result_MV<-matrix(NA,ncol=3,nrow=3)
+LIST_MV_ML<-list()
+LIST_MV_ML[["X"]]<-Running_perfs_ML(Base_simul = Simuls_MV,
                             Base_data = Reals_MV, 
                            hyp_param = H_Params, NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
                            type_sampling = typeS,
                           title_ROC ="MV case",
                            NB_shown_ROC = 20)
-Melting_ML_MV<-Lperfs_Y_MV$df_for_graphics
-GG_ML_MV<-ggplot(data = Melting_ML_MV,aes(y=value))+
-  geom_violin(aes(x=model,fill=model),alpha=0.7)+
-  geom_boxplot(aes(x=model),alpha=0.3,width=0.3)+
-  ylab("Accuracy")+
-  labs(fill="Legend")+
-  xlab(NULL)+
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank())+
-  geom_hline(aes(yintercept=0.5),col="red",
-             linetype="dashed")
-ggsave(filename =  paste0(ML_path,"/summary_results_MV.png"),
-       width = 6,height=6,plot = GG_ML_MV)
+result_MV[,1]<-LIST_MV_ML[["X"]]$Accuracy$qu_accuracy
+LIST_MV_ML[["L2"]]<-Running_perfs_ML(Base_simul = L_L2_simul_MV,
+                                Base_data =L_L2_reals_MV, 
+                                hyp_param = H_Params, NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
+                                type_sampling = typeS,
+                                title_ROC ="L2 MV case",
+                                NB_shown_ROC = 20)
+result_MV[,2]<-LIST_MV_ML[["L2"]]$Accuracy$qu_accuracy
+LIST_MV_ML[["A_X"]]<-Running_perfs_ML(Base_simul = A_X_simul_MV,
+                              Base_data =A_X_reals_MV, 
+                              hyp_param = H_Params, NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
+                              type_sampling = typeS,
+                              title_ROC ="Angle MV case",
+                              NB_shown_ROC = 20)
+result_MV[,3]<-LIST_MV_ML[["A_X"]]$Accuracy$qu_accuracy
+rownames(result_MV)<-c("X","L_X","A(X)")
+colnames(result_MV)<-c("SVM","GLM","RF")
+write.csv(file = paste0(ML_path,"/MV_ML_result.csv")
+          ,x = result_MV)
+for(key_ML in names(LIST_MV_ML)){
+  Melting_ML_MV<-LIST_MV_ML[[key_ML]]$df_for_graphics
+  GG_ML_MV<-ggplot(data = Melting_ML_MV,aes(y=value))+
+    geom_violin(aes(x=model,fill=model),alpha=0.7)+
+    geom_boxplot(aes(x=model),alpha=0.3,width=0.3)+
+    ylab("Accuracy")+
+    labs(fill="Legend")+
+    xlab(NULL)+
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())+
+    geom_hline(aes(yintercept=0.5),col="red",
+               linetype="dashed")
+  ggsave(filename =  paste0(ML_path,"/summary_MLresults_MV",key_ML,
+                            ".png"),
+         width = 6,height=6,plot = GG_ML_MV)
+}
 ```
 
