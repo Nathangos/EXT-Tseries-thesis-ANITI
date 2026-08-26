@@ -1,4 +1,127 @@
-
+Fct_correct_name<-function(x,target,replacement){
+  require(stringr)
+  b<-as.numeric(str_locate(x,target))
+  S<-sum((is.na(b)))
+  if(S>=1){
+    return(x)
+  }else{
+    Loc<-substr(x,start = b[1],stop = b[2])
+    x_new<-str_replace(x,
+                       Loc, 
+                       replacement)
+    return(x_new)
+  }
+}
+plot_Acf_modif<-function (x, ci = 0.95, type = "h", xlab = "Lag", ylab = NULL, 
+                          ylim = NULL, main = NULL, ci.col = "blue", ci.type = c("white", 
+                                                                                 "ma"), max.mfrow = 6, ask = Npgs > 1 && dev.interactive(), 
+                          mar = if (nser > 2) c(3, 2, 2, 0.8) else par("mar"), oma = if (nser > 
+                                                                                         2) c(1, 1.2, 1, 1) else par("oma"), mgp = if (nser > 
+                                                                                                                                       2) c(1.5, 0.6, 0) else par("mgp"), xpd = par("xpd"), 
+                          cex.main = if (nser > 2) 1 else par("cex.main"), verbose = getOption("verbose"), 
+                          ...){
+  ### plot.acf with the option to add CCF and ACF at diagonal 
+  ### and CCF for the anti diagonal
+  ci.type <- match.arg(ci.type)
+  if ((nser <- ncol(x$lag)) < 1L) 
+    stop("x$lag must have at least 1 column")
+  if (is.null(ylab)) 
+    ylab <- switch(x$type, correlation = "ACF", covariance = "ACF (cov)", 
+                   partial = "Partial ACF")
+  # %%||% paste("Series ", if (nser == 1L) 
+  #   x$series
+  #   else 1L:nser
+  snames <- x$snames
+  with.ci <- ci > 0 && x$type != "covariance"
+  with.ci.ma <- with.ci && ci.type == "ma" && x$type == "correlation"
+  if (with.ci.ma && x$lag[1L, 1L, 1L] != 0L) {
+    warning("can use ci.type=\"ma\" only if first lag is 0")
+    with.ci.ma <- FALSE
+  }
+  clim0 <- if (with.ci) 
+    qnorm((1 + ci)/2)/sqrt(x$n.used)
+  else c(0, 0)
+  Npgs <- 1L
+  nr <- nser
+  if (nser > 1L) {
+    sn.abbr <- x$snames
+    if (nser > max.mfrow) {
+      Npgs <- ceiling(nser/max.mfrow)
+      nr <- ceiling(nser/Npgs)
+    }
+    opar <- par(mfrow = rep(nr, 2L), mar = mar, oma = oma, 
+                mgp = mgp, ask = ask, xpd = xpd, cex.main = cex.main)
+    on.exit(par(opar))
+    if (verbose) {
+      message("par(*) : ", appendLF = FALSE, domain = NA)
+      str(par("mfrow", "cex", "cex.main", "cex.axis", "cex.lab", 
+              "cex.sub"))
+    }
+  }
+  if (is.null(ylim)) {
+    ylim <- range(x$acf[, 1L:nser, 1L:nser], na.rm = TRUE)
+    if (with.ci) 
+      ylim <- range(c(-clim0, clim0, ylim))
+    if (with.ci.ma) {
+      for (i in 1L:nser) {
+        clim <- clim0 * sqrt(cumsum(c(1, 2 * x$acf[-1, 
+                                                   i, i]^2)))
+        ylim <- range(c(-clim, clim, ylim))
+      }
+    }
+  }
+  for (I in 1L:Npgs) for (J in 1L:Npgs) {
+    dev.hold()
+    iind <- (I - 1) * nr + 1L:nr
+    jind <- (J - 1) * nr + 1L:nr
+    if (verbose) 
+      message(gettextf("Page [%d,%d]: i =%s; j =%s", I, 
+                       J, paste(iind, collapse = ","), paste(jind, collapse = ",")), 
+              domain = NA)
+    for (i in iind) for (j in jind) if (max(i, j) > nser) {
+      frame()
+      box(col = "light gray")
+    }
+    else {
+      if(i==j){
+        ylab<-"ACF"
+      }else{
+        ylab<-"CCF"
+      } 
+      if(x$type=="partial"){
+        ylab<-""
+      }
+      
+      clim <- if (with.ci.ma && i == j) 
+        clim0 * sqrt(cumsum(c(1, 2 * x$acf[-1, i, j]^2)))
+      else clim0
+      plot(x$lag[, i, j], x$acf[, i, j], type = type, xlab = xlab, 
+           ylab = ylab, ylim = ylim, ...)
+      abline(h = 0)
+      if (with.ci && ci.type == "white") 
+        abline(h = c(clim, -clim), col = ci.col, lty = 2)
+      else if (with.ci.ma && i == j) {
+        clim <- clim[-length(clim)]
+        lines(x$lag[-1, i, j], clim, col = ci.col, lty = 2)
+        lines(x$lag[-1, i, j], -clim, col = ci.col, lty = 2)
+      }
+      Name_title<-ifelse(i == j,snames[i],
+                         paste(sn.abbr[i], "&", sn.abbr[j]))
+      title(Name_title, line = if (nser > 
+                                   2) 
+        1
+        else 2)
+    }
+    if (Npgs > 1) {
+      mtext(paste("[", I, ",", J, "]"), side = 1, line = -0.2, 
+            adj = 1, col = "dark gray", cex = 1, outer = TRUE)
+    }
+    
+    dev.flush()
+    
+  }
+  invisible()
+}
 Create_list_fromALL<-function(l_name,obj_source){
   list_toreturn<-list()
   for(j in c(1:length(l_name))){
@@ -17,22 +140,41 @@ Create_list_fromALL<-function(l_name,obj_source){
   }
   return(list_toreturn)
 } 
-Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs){
-  Qtiles_candidates<-seq.int(0,0.95,
-                             length.out=nb_threshs)
+Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs,
+                                                    q_min,
+                                                    q_max,
+                                                    plot_graph){
+  #Original paper
+  #qmin=0
+  #qmax=0.95
+  #nb_threshd=20
+  Qtiles_candidates<-seq.int(q_min,q_max,
+                   length.out=nb_threshs)
   thresholds1 <- quantile(var_t,Qtiles_candidates)
   Metric_result<-eqd(var_t, 
                      thresh = thresholds1)
-  plot(thresholds1, Metric_result$dists, 
-       xlab="Threshold", ylab="Metric value")
+  if(plot_graph){
+    plot(thresholds1, Metric_result$dists, 
+         xlab="Threshold", ylab="Metric value")
+  }
   index_used<-which(Metric_result$thresh==thresholds1)
-  return(Qtiles_candidates[index_used])
+  ### Order thresholds according to the distance
+  ### from the best to the worst.
+  Order_metric_for_th<-order(Metric_result$dists,
+                             decreasing = FALSE)
+  Ordered_qtiles_metric_derived<-Qtiles_candidates[Order_metric_for_th]
+  return(list("p_u_opt"=Qtiles_candidates[index_used],
+              "ordered_quantiles"=Ordered_qtiles_metric_derived)
+         )
 }
 Choice_automatic_thresh_per_variable<-function(df,
-                                               nb_threshs){
-  return(apply(X = df,MARGIN = 2,FUN =
-                 Choice_automatic_thresh_per_variable_time,
-               nb_threshs=nb_threshs))
+                      nb_threshs,Qmin, Qmax,hearts){
+  #
+  return(parallel::parApply(cl = hearts,
+          X = df,MARGIN = 2,FUN =
+          Choice_automatic_thresh_per_variable_time,
+          nb_threshs=nb_threshs,q_min = Qmin,
+          q_max = Qmax,plot_graph=TRUE))
 }
 
 #' MarTransfo_TS_exts_Mixture
@@ -53,26 +195,28 @@ Choice_automatic_thresh_per_variable<-function(df,
 MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
                                      file_dates,n.dens,
                                      opt_Frech,type_entree,
-                                     Nb_Threshs){
+                                     Nb_Threshs,CPU_hearts){
   p_U<-list()
-  l_ALL<-list()
   l_Orig<-list()
   j<-1
   l_AD<-list()
+  l_Kdens<-list()
+  l_ev_theta<-list()
+  d<-length(liste_noms)
+  l_Transf<-list()
   for(name_variable in liste_noms){
-    lien_donnees<-paste0(lien_racine,name_variable,"_residuals.csv")
+    ### Add d to prevent contamination problems.
+    lien_donnees<-paste0(lien_racine,name_variable,"_residuals_",
+                         d,".csv")
     if(type_entree=="clust"){
-      All<-read.csv(file=lien_donnees)[,2:39]
+      All<-read.csv(file=lien_donnees)
       colnames(All)<-c(1:38)
       Vrais_indices<-All[,38]
       Donnes<-All[,c(1:37)]
     }
     else{
-      Donnes<-read.csv(file=lien_donnees)[,2:38]
+      Donnes<-read.csv(file=lien_donnees)
     }
-    print(nrow(Donnes))
-    colnames(Donnes)<-c(1:37)
-    rownames(Donnes)<-c(1:nrow(Donnes))
     l_Orig[[name_variable]]<-Donnes
     dates_import<-read.csv(file=file_dates)[,2]
     d_POIXCT<-as.POSIXct(dates_import, format="%d/%m/%Y")
@@ -80,8 +224,30 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
     NPY<-nrow(Donnes)/Nb_annees
     ### Choice of threshold using metric
     #######
-    p_U[[name_variable]]<-Choice_automatic_thresh_per_variable(df = Donnes,
-                                                               nb_threshs = Nb_Threshs)
+    ### Here, we focus on positive exceedances
+    SUM_pos<-apply(Donnes>0,MARGIN = 1,FUN = sum)
+    IND_posj<-which(SUM_pos==ncol(Donnes))
+    Donnes_pos<-Donnes[IND_posj,]
+    Proba_pos<-apply(X = Donnes,MARGIN = 2,
+                     FUN = function(x){
+                       return(mean(as.numeric(x>0)))
+                     })
+    p_U_variable<-Choice_automatic_thresh_per_variable(df = Donnes_pos,
+                    nb_threshs = Nb_Threshs,Qmin=0, 
+                    Qmax = 0.95,hearts=CPU_hearts)
+    ### Obtain actual
+    p_uOpt<-sapply(c(1:ncol(Donnes)),
+              function(k){
+                pu_k<-p_U_variable[[k]][["p_u_opt"]]
+                proba_posk<-Proba_pos[k]
+                proba_pop_pos<-proba_posk*pu_k
+                proba_pop_other<-(1-proba_posk)
+                cplmt_pu<-proba_pop_pos+proba_pop_other
+                ### p_U= weight put on the tail in Opitz.
+                return(1-cplmt_pu)
+                })
+
+    p_U[[name_variable]]<-p_uOpt
     # AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,
     #                           fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
     #                           nom=name_variable,type_entree=type_entree,
@@ -91,33 +257,88 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
       return(TRUE)
     }
     Vecteur_DIM<-c(1:ncol(Donnes))
-    Resultat_P<-as.data.frame(t(sapply(Vecteur_DIM,f_marginales_all_Pareto,data_to_tf=Donnes,
-                                       p_u=p_U[[name_variable]],
-                                       n.dens=n.dens)))
-    K<-Resultat_P$kernel_dens
+    ### Own code
+    Resultat_P<-as.data.frame(t(sapply(Vecteur_DIM,
+                  f_marginales_all_Pareto,data_to_tf=Donnes,
+                     p_u=p_uOpt,
+                    n.dens=n.dens)))
+    # Donnes2<-(Donnes)
+    # return(list("ddd"=Donnes,
+    #             "pu_"=p_U_variable))
+    # MARGTransf<-RC_emp_transf(data_obs = Donnes,p_U_variable)
+    
+    # L<-nrow(KDENS[[1]])
+    # Time_pst<-sapply(colnames(Vtransf),
+    #                  FUN = function(t){
+    #                    return(rep(t,L))
+    #                  })
+    
     PARETO<-Resultat_P$obs
-    L_EVT<-list("gamma"=Resultat_P$gamma,
-                "scale"=Resultat_P$scale,
-                "threshold"=Resultat_P$threshold,
-                "p_u"=Resultat_P$p_u)
+    ### Unit Pareto
     Vtransf<-do.call(cbind.data.frame,PARETO)
+    Vunif<-(1-(1/Vtransf))
     if(opt_Frech==TRUE){
-      Vunif<-(1-(1/Vtransf))
+      ### Frechet(1)
       Vtransf<--1/log(Vunif)
+    }else{
+      ### GPD(sig=1,gam=1,u=0)
+      Vtransf<-(1/(1-Vunif))-1
     }
-    l_ALL[[name_variable]]<-list("transf"=Vtransf,"K"=K,
-                                 "LEVT"=L_EVT)
+   
+    colnames(Vtransf)<-substr(colnames(Donnes),
+                              start = 2,stop = 3)
+    Times_found<-colnames(Vtransf)
+    Intermed_list<-list("gamma"=Resultat_P$gamma,
+                       "scale"=Resultat_P$scale,
+                       "threshold"=Resultat_P$threshold,
+                       "p_u"=Resultat_P$p_u,
+                       "time_analysed"=Times_found)
+    Df_theta<-data.frame(lapply(Intermed_list,
+                                        FUN = unlist))
+    rownames(Df_theta)<-c(1:nrow(Df_theta))
+    l_ev_theta[[name_variable]]<-Df_theta
+    
+    ### Kdens export
+    KDENS<-Resultat_P$kernel_dens
+    L<-length(Times_found)
+    LK<-lapply(c(1:L),function(t){
+      var_x<-KDENS[[t]]
+      Intermed_df<-data.frame(var_x$x,var_x$y)
+      colnames(Intermed_df)<-c("x","y")
+      Nt<-nrow(Intermed_df)
+      ### Keep in memory the corresponding time step.
+      real_time<-Times_found[t]
+      Intermed_df$time_analysed<-rep(real_time,Nt)
+      return(Intermed_df)
+    })
+    l_Kdens[[name_variable]]<-do.call(rbind.data.frame,
+                                      LK)
+    
     if(name_variable==liste_noms[1]){
       df<-matrix(NA,ncol=length(liste_noms),
                  nrow=nrow(Vtransf))
     }
     df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norm_L2)
     j<-j+1
+    l_Transf[[name_variable]]<-Vtransf
   }
   # Pareto ------------------------------------------------------------------
-  return(list("resume"=l_ALL,"df"=df,"GPD"=l_AD,
-              "orig"=l_Orig,"type_transfo"="Mixture_emp_GPD"))
+  return(list("df"=df,
+          "evt_theta"=l_ev_theta,
+          "k_dens"=l_Kdens,
+          "Transf"=l_Transf))
 }
+RC_emp_transf<-function(data_obs,vect_pu){
+  Result_conversion_EXP<-lapply(c(1:ncol(data_obs)),function(x){
+    return(RC_emp_transf_per_time(col_obs = data_obs[[x]],
+                                  p_u = vect_pu[x]))
+  })
+  return(Result_conversion_EXP)
+}
+RC_emp_transf_per_time<-function(col_obs,p_u){
+  return(ReturnCurves::margtransf(data = col_obs,qmarg = p_u))
+}
+
 fct_extract_Transf<-function(time_list){
   return(time_list[["unif_convert_t"]])
 }
@@ -129,6 +350,151 @@ fct_extract_InitEGPD<-function(time_list){
 }
 fct_extract_FittingEGPD<-function(time_list){
   return(time_list[["Model_t"]])
+}
+#' 
+#'
+#' @param L_nameV 
+#' @param Max_time 
+#' @param Melting_df 
+#' @param option_facet_wrap 
+#'
+#' @return Ggplot with df from melting operation.
+#' @export
+#'
+#' @examples
+Fct_cplmt_ggplot<-function(Times_available,vect_name_variable,Melting_df,
+                           option_facet_wrap){
+  
+  Comment<-"Time(hour) with respect to tidal peak"
+  #Time_index<-(c(1:T)-19)/6
+  d<-length(vect_name_variable)
+  Time_index_MV<-c()
+  Time_index_first<-c()
+  Stotal<-c()
+  BREAKS<-c(1)
+  LABELS<-c()
+  S_sub<-0
+  for(jn in c(1:d)){
+    nameV<-vect_name_variable[jn]
+    new_TA<-as.numeric(Times_available[[nameV]])
+    Number_times_seen<-length(new_TA)
+    ### Times of concatenated Omega
+    Cplmt<-c(1:Number_times_seen)+S_sub
+    Time_index_first<-c(Time_index_first,
+                        Cplmt)
+    S_sub<-Number_times_seen+S_sub
+    
+    ### Concatenated real times. 
+    L<-length(Time_index_first)
+    Stotal<-c(Stotal,Time_index_first[L])
+    Time_index<-(new_TA-19)/6
+    Time_index_MV<-c(Time_index_MV,
+                     Time_index)
+    Midway<-which(Time_index==0)
+    BREAKS<-c(BREAKS,
+              c(Cplmt[Midway],
+                Cplmt[length(Cplmt)]))
+    ### Labels change according to the position 
+    ### of the variable
+    t_modif<-Time_index[length(Time_index)]
+    if(t_modif<0){t_modif<-ceiling(t_modif)
+    }else{t_modif<-floor(t_modif)}
+    opt_beg<-c()
+    if(jn==1){
+      BEGTIME<-as.character(Time_index[1])
+      opt_beg<-BEGTIME
+    }
+    if(jn!=d){
+      nameVfollow<-vect_name_variable[jn+1]
+      new_TA_follow<-as.numeric(Times_available[[nameVfollow]])
+      L_follow<-length(new_TA_follow)
+      Scd_part<-(new_TA_follow[1]-19)/6
+      t_modif2<-Scd_part
+      if(t_modif2<0){t_modif2<-ceiling(t_modif2)
+      }else{t_modif2<-floor(t_modif2)}
+      ENDTIME<-paste(t_modif,
+                     t_modif2)
+      Cplmt_label<-c(opt_beg,"0",
+                     ENDTIME)
+    }
+    if(jn==d){
+      ENDTIME<-paste0(t_modif)
+      Cplmt_label<-c("0",
+                     ENDTIME)
+    }
+    print(Cplmt_label)
+    LABELS<-c(LABELS,
+              Cplmt_label)
+  }
+  ### whole construction
+  Ogn_indexes<-c(1:length(LABELS))
+  ind_final<-length(Ogn_indexes)-1
+  final_indexes<-Ogn_indexes[2:ind_final]
+  sub_breaks<-BREAKS[2:ind_final]
+  Inds_nonpair<-which(final_indexes%%2!=0)
+  sub_whole<-sub_breaks[Inds_nonpair]
+  vline_full<-sub_whole
+  print(vline_full)
+  
+  ### dash construction
+  Value_y_for_spec<-max(Melting_df$value)
+  Times_T<-which(LABELS=="0")
+  sub_dash<-BREAKS[Times_T]
+  vline_dashed<-sub_dash
+  vect_name_variable_Corrected<-sapply(vect_name_variable,
+                FUN = function(x){
+                  return(Fct_correct_name(x=x,
+                        target = "Surcote",
+                        replacement = "Surge"))
+                })
+  Df_for_annotate<-cbind.data.frame(sub_dash,
+              rep(Value_y_for_spec,length(sub_dash)),
+              vect_name_variable_Corrected)
+  colnames(Df_for_annotate)<-c("xspec","yspec","label_spec")
+  GG_present_object<-ggplot()+
+    geom_text(
+      data=Df_for_annotate,
+      aes(x=xspec,y=yspec,label=label_spec),
+      size=12
+    )
+ 
+  if("nameFC"%in%colnames(Melting_df)){
+    Melting_df$origin<-paste(Melting_df$nameFC,"-",
+                             Melting_df$origin)
+    GG_present_object<-GG_present_object+
+      geom_line(data = Melting_df,aes(x=time,y=value,
+            group=interaction(index,
+                              origin),
+               col=index))
+  }else{
+    GG_present_object<-GG_present_object+
+      geom_line(data = Melting_df,aes(x=time,y=value,
+            group=interaction(index),
+            col=index))
+  }
+  if(option_facet_wrap==TRUE){
+    GG_present_object<-GG_present_object+
+      facet_wrap(~origin)
+  }
+  GG_present_object<-GG_present_object+
+    geom_line()+
+    guides(col="none")+
+    guides(col="none")+
+    labs(col="Legend")+
+    ylab("value (-)")+
+    xlab(Comment)+
+    geom_vline(xintercept=vline_dashed,
+               linetype="dashed")+
+    geom_vline(xintercept = vline_full)+
+    scale_x_continuous(breaks = BREAKS,
+                       labels = LABELS)+
+    theme(axis.title=element_text(size=20),
+          legend.text=element_text(size=14),
+          legend.title = element_text(size=15),
+          axis.text = element_text(size=12),
+          strip.text = element_text(size = 12),
+          strip.text.x = element_text(size = 15))
+  return(GG_present_object)
 }
 #' Convert_time_z
 #'
@@ -158,43 +524,69 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
                         tau.step = tau.step,autostep=TRUE,
                         trace = show_EGPD)
   con.i<-glim.control(glm.trace = FALSE)
-  # Identity to enable mu/gamma<0
-  Th<-quantile(x =Col_pos_t,0.90)
-  #Th<-0
-  #FIT_pos<-mev::gp.fit(xdat = Col_pos_t,threshold =Th)$est
-  FIT_pos<-extRemes::fevd(x = Col_pos_t,threshold = Th,
-                          method = "Lmoments",
-                          type = "GP")$results
-  # GG_shapeorig<-Graphics_estimators_gamma(series = Col_pos_t,
-  #                           vect_k = c(50:300),
-  #                           Title_graphic = paste0("result time ",z))
-  # print(GG_shapeorig)
-  
-  Shape<-FIT_pos[2]
-  # ## Use gpd property to get the scale at 0.
-  if(Shape<0){
-    Scale<-FIT_pos[1]-Th*Shape
-  }else{
-    Scale<-FIT_pos[1]
-  }
-  INIT<-c(Shape,Scale)
-  #INIT<-c(FIT_pos[2],FIT_pos[1])
-  print(INIT)
-  #INIT<-c(FIT_pos[2],FIT_pos[1])
+  # Th<-quantile(x =Col_pos_t,0.90)
+  # print(c(Th_opt,Th))
   ## Nu.start initialisation using moments.
   Th_beg<-quantile(x = Col_pos_t,0.05)
   Lower_tail<-Col_pos_t[which(Col_pos_t<Th_beg)]
   Moment_1<-mean(Lower_tail)
   nu.start<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
-  Fitting_time_t <- gamlss(x~1, 
-                           data=db,family = EGPD1Family(mu.link = "identity"),
-                           control = con,mu.start=INIT[1],
-                           sigma.start=INIT[2],nu.start=nu.start,
-                           i.control=con.i,method=CG())
-  muFit <-fitted(Fitting_time_t,"mu")[1]
-  sigmaFit <- predict(Fitting_time_t,what="sigma", 
+  
+  Opt_thresholds<-Choice_automatic_thresh_per_variable_time(var_t = Col_pos_t,
+            q_min = 0,q_max = 0.95,
+             nb_threshs = 20,plot_graph = TRUE)
+  Candidates_ordered<-Opt_thresholds[["ordered_quantiles"]]
+  for(Q_opt in Candidates_ordered){
+    Th_opt<-as.numeric(quantile(Col_pos_t,Q_opt))
+    FIT_pos<-extRemes::fevd(x = Col_pos_t,threshold = Th_opt,
+                            method = "Lmoments",
+                            type = "GP")$results
+    Shape<-FIT_pos[2]
+    ## Use gpd property to get the scale at 0.
+    Scale<-FIT_pos[1]-Th_opt*Shape
+    INIT<-c(Shape,Scale)
+    print(INIT)
+    ### EGPD optimisation
+    result_EGPD_t <- tryCatch(
+      {
+        Fitting_time_t <- gamlss(x~1, 
+           data=db,family = EGPD1Family(mu.link = "identity"),
+           control = con,mu.start=INIT[1],
+           sigma.start=INIT[2],nu.start=nu.start,
+           i.control=con.i,method=CG())
+      },
+      error = function(e) {
+        # Handle the error
+        cat("Error occurred:", conditionMessage(e), "\n")
+        return(NA)
+      }
+    )
+    if(length(result_EGPD_t)!=1){
+      break
+    }
+  }
+  #Th<-0
+  #FIT_pos<-mev::gp.fit(xdat = Col_pos_t,threshold =Th)$est
+  
+  # GG_shapeorig<-Graphics_estimators_gamma(series = Col_pos_t,
+  #                           vect_k = c(50:300),
+  #                           Title_graphic = paste0("result time ",z))
+  # print(GG_shapeorig)
+  
+  
+  # if(Shape<0){
+  #   Scale<-FIT_pos[1]-Th*Shape
+  # }else{
+  #   Scale<-FIT_pos[1]
+  # }
+  # 
+  # print(INIT)
+  #INIT<-c(FIT_pos[2],FIT_pos[1])
+  
+  muFit <-fitted(result_EGPD_t,"mu")[1]
+  sigmaFit <- predict(result_EGPD_t,what="sigma", 
                       type="response")[[1]]
-  nuFit <- predict(Fitting_time_t,what="nu", 
+  nuFit <- predict(result_EGPD_t,what="nu", 
                    type="response")[[1]]
   Params_egpd<-list("mu"=muFit,"sigma"=sigmaFit,"nu"=nuFit)
   vect_unif_conver_t<-pEGPDModel1(q = Col_t,mu =muFit,
@@ -202,7 +594,7 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
                                   nu = nuFit)
   return(list("params_egpd"=Params_egpd,
               "unif_convert_t"=vect_unif_conver_t,
-              "Model_t"=Fitting_time_t,
+              "Model_t"=result_EGPD_t,
               "Init"=c(INIT,nu.start)))
 }
 
@@ -218,18 +610,13 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
   LIST_SUB_TRANSFO<-list()
   j<-1
   df<-list()
+  d<-length(liste_noms)
   for(name_variable in liste_noms){
-    lien_donnees<-paste0(lien_racine,name_variable,"_residuals.csv")
-    if(type_entree=="clust"){
-      All<-read.csv(file=lien_donnees)[,2:39]
-      colnames(All)<-c(1:38)
-      Vrais_indices<-All[,38]
-      Donnes<-All[,c(1:37)]
-    }
-    else{
-      Donnes<-read.csv(file=lien_donnees)[,2:38]
-    }
-    colnames(Donnes)<-c(1:37)
+    
+    ### ADD d to prevent contamination error
+    lien_donnees<-paste0(lien_racine,name_variable,
+              "_residuals_",d,".csv")
+    Donnes<-read.csv(file=lien_donnees)
     rownames(Donnes)<-c(1:nrow(Donnes))
     l_Orig_all[[name_variable]]<-Donnes
     dates_import<-read.csv(file=file_dates)[,2]
@@ -237,9 +624,11 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
     d_POIXCT<-as.POSIXct(dates_import, format="%d/%m/%Y")
     Nb_annees<-diff(range(lubridate::year(d_POIXCT)))
     NPY<-nrow(Donnes)/Nb_annees
-    AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
+    AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,fonction_seuil = p_U[[name_variable]],
+                          n.dens = n.dens,
                               nom=name_variable,type_entree=type_entree,
                               dates_prises=dates_import,j_show = 19)
+    print("passed !")
     l_AD[[name_variable]]<-AN_GPD
     if(type_entree=="donnees_brutes"){
       return(TRUE)
@@ -253,9 +642,10 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
     IND_select<-intersect(IND_select,IND_posj)
     j<-j+1
   }
+  return(l_Orig_all)
   for(name_variable in liste_noms){
     Donnes<-l_Orig_all[[name_variable]]
-    colnames(Donnes)<-c(1:37)
+    
     rownames(Donnes)<-c(1:nrow(Donnes))
     Vecteur_DIM<-c(1:ncol(Donnes))
     # 1) Use GAM to analyse short-tail distribs ----------------------------------
@@ -263,16 +653,18 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
     l_Orig[[name_variable]]<-Donnes_pos
     Unif_EGPD<-matrix(NA,nrow = length(IND_select),
                       ncol=ncol(Donnes))
-    ALL_results<-lapply(c(1:ncol(Donnes)),FUN =Convert_time_z,
+    print("#########")
+    print(name_variable)
+    ALL_results<-lapply(colnames(Donnes),FUN =Convert_time_z,
                         Data_pos=Donnes_pos,
                         show_EGPD=show_EGPD,
                         list_params_EGPD=list_params_EGPD)
     Unif_EGPD<-cbind.data.frame(lapply(X = ALL_results,
-                                       FUN = fct_extract_Transf))
+                            FUN = fct_extract_Transf))
     Vect_egpd<-lapply(X = ALL_results,
                       FUN = fct_extract_ParamsEGPD)
     Vect_Init<-lapply(X = ALL_results,
-                      FUN = fct_extract_InitEGPD)
+           FUN = fct_extract_InitEGPD)
     Vect_fitting<-lapply(X = ALL_results,
                          FUN = fct_extract_FittingEGPD)
     
@@ -281,18 +673,24 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
     }else{
       FINAL_transfo<-(1/(1-Unif_EGPD))-1
     }
+    FINAL_transfo<-as.data.frame(FINAL_transfo)
+    colnames(FINAL_transfo)<-colnames(Donnes)
+    ### Remove from FINAL_transfo's colnames
+    colnames(FINAL_transfo)<-substr(colnames(FINAL_transfo),
+                                    start = 2,
+                                  stop = 3)
     l_ALL[[name_variable]]<-list("transf"=FINAL_transfo,
-                                 "params_transfo"=Vect_egpd,
-                                 "Fitting"=Vect_fitting,
-                                 "INIT"=Vect_Init)
+                                "params_transfo"=Vect_egpd,
+                                "Fitting"=Vect_fitting,
+                                "INIT"=Vect_Init)
     df[[name_variable]]<-apply(X = FINAL_transfo,MARGIN = 1,
-                               FUN = calcul_norm_L2)
-    
-  }
-  return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
-              "orig"=l_Orig,"orig_all"=l_Orig_all,
-              "SUB_set"=IND_select,"type_transfo"="EXTGPD"
-  ))
+                  FUN = calcul_norm_L2)
+
+    }
+    return(list("resume"=l_ALL,"df"=as.data.frame(df),"GPD"=l_AD,
+            "orig"=l_Orig,"orig_all"=l_Orig_all,
+            "SUB_set"=IND_select,"type_transfo"="EXTGPD"
+            ))
 }
 
 
@@ -421,104 +819,149 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                              Params_risk_Function,root_for_export,
                              list_nb_scores,One_PCA_base,f_transf,
                              f_transf_inv,opt_Frech,
-                             cols_ggplot){
+                             cols_ggplot,Common_theme){
   Shape_evd<-Params_risk_Function[["Shape_parameter"]]
   # CF Kokozka ---------------------------------------------------------------
   L<-300
   vect_k<-c(20:L)
-  Array_simul<-array(data = NA,dim = c(length(l_variables),M,37))
+  Array_simul<-array(data = NA,dim = c(length(l_variables),
+                M,37))
   
   LISTE_obs_exts<-list()
+  Times_per_FCG<-list()
   Liste_all<-result_transformation$resume
+  for(name_FCG in names(Liste_all)){
+    RAW<-colnames(Liste_all[[name_FCG]]$transf)
+    Times_per_FCG[[name_FCG]]<-substr(RAW,start = 2,
+                           stop = 3)  
+  }
   Vect_l_function<-result_transformation$df
+  
   # RiskF -------------------------------------------------------------------
   ### ----------------------------------------------------------------------
   for(ztilde in c(1:ncol(Vect_l_function))){
     Graphics_estimators_gamma(series = Vect_l_function[,ztilde],
-                              vect_k = vect_k,
-                              NB_years = 37,
-                              Title_graphic = paste0("Shape parameter of l(T("
-                                                     ,l_name[ztilde]
-                                                     ,")"))
+                    vect_k = vect_k,
+                    NB_years = 37,
+                    Title_graphic = paste0("Shape parameter of l(T("
+                                           ,l_name[ztilde]
+                                           ,")"))
   }
+  # Choice of the individuals -----------------------------------------------
+  RiskF_data<-apply(Vect_l_function,MARGIN = 1,
+        FUN = List_Params_RF[["function"]])
+  Threshold<-quantile(RiskF_data,
+                         Q_thresh)
+  Indices_exts<-which(RiskF_data>Threshold)
+  
   N<-nrow(Vect_l_function)
   L_Transf_vect_l<-list()
   L_Convert<-list()
+  
   dir_AIC<-"RisKFunctions/evol_AIC_param"
+  list_mixt<-list()
+  list_Qfound<-list()
   for(nameV in l_variables){
     #log
     VECT_lj<-log(Vect_l_function[,nameV]+1)
-    # Opitz way
-    # L_Transf_vect_l[[nameV]]<-f_marginales_Pareto(variable =VECT_lj,p_u = 0.05,
-    #                              n.dens = 10^(4))
-    # L_Convert[[nameV]]<-L_Transf_vect_l[[nameV]][["obs"]]
     # EGPD way
     Values_gp<-mev::gp.fit(VECT_lj,threshold = 0)$est
     Th_beg<-quantile(x = VECT_lj,0.10)
     Lower_tail<-VECT_lj[which(VECT_lj<Th_beg)]
     Moment_1<-mean(Lower_tail)
-    nu.start<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
-    PWM_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,init=c(nu.start,Values_gp[1],0.2),
-                              method="pwm",R=20)
+    Pstart<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
+    Initialisation<-c(Pstart,Shape_chosen,0)
+    PWM_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
+                 init=Initialisation,
+                     method="pwm",R=20)
     Theta<-PWM_EXTGP$fit$pwm
     Name_file_plot<-paste0(root_for_export,"RisKfunctions/",nameV,"_EGPD_fitting_RiskF.png")
-    MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,init=Theta,
-                              method="mle",R=20)$fit$mle
+    
+    MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
+                  init=Theta,
+                   method="mle",R=20)$fit$mle
+    u_vec_gom <- quantile(VECT_lj,
+                          probs = seq(0.2, 0.9, by = 0.05))
+    Choice_threshr_j<-threshr::ithresh(data = VECT_lj, u_vec = u_vec_gom,
+                                       n_v = 2, prior = "mdi",
+                                       h_prior = list(a = 0.6))
+    Sthresh_j<-summary(Choice_threshr_j)
+    plot(Choice_threshr_j)
+    Q_foundj<-median(Sthresh_j[,4])
+    list_Qfound[[nameV]]<-Q_foundj/100
+    # U_thresh<-Choice_threshr$u_vec
+    # summary_results_chce_th<-summary(Choice_threshr)
+    # Quantile_Lvl<-mean(summary_results_chce_th[,3])
+    # Mod1<-texmex::migpd(data = as.data.frame(VECT_lj),
+    #                     mqu = Quantile_Lvl)
+    # Result_mixture<-craft_mex_tform(x=Mod1, margins ="laplace",
+    #                                 method = "mixture",
+    #                                 r = NULL)
+    # UNIF_extgp<-sapply(Result_mixture$transformed[,1], 
+    #                 function(x){
+    #             return(L1pack::qlaplace(x,
+    #                         location = 0,scale=2**(1/2)))
+    #                 })
+    # list_mixt[[name_V]]<-Result_mixture
     UNIF_extgp<-sapply(VECT_lj,mev::pextgp,kappa=MLE_EXTGP[["kappa"]],
-                       sigma = MLE_EXTGP[["sigma"]],
-                       xi=MLE_EXTGP[["xi"]])
+                            sigma = MLE_EXTGP[["sigma"]],
+                            xi=MLE_EXTGP[["xi"]])
+    
     Quantile_LEVELS<-c(1:length(VECT_lj))/(length(VECT_lj)+1)
     ### Confidence bound
-    Result_boot<-Bootstrap_conf_band(M = 500,
-                                     n = length(VECT_lj),
-                                     theta_egpd = MLE_EXTGP,
-                                     order_quantiles = Quantile_LEVELS,
-                                     alpha = 0.05)
-    DF_egpd_emp<-Result_boot
-    DF_egpd_emp$emp<-sort(VECT_lj)
-    DF_egpd_emp$Levels<-Quantile_LEVELS
-    DF_egpd_emp<-as.data.frame(DF_egpd_emp)
-    GG_fit_vect_R<-ggplot(data=DF_egpd_emp,aes(x=emp,y=mean,
-                                               col="model"))+
-      geom_point()+
-      geom_line(aes(x=emp,y=emp,col="data"))+
-      geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
-                      col="confidence_band"),
-                  linetype="dashed",alpha=0.15,
-                  fill="grey")+
-      theme(axis.title=element_text(size=20),
-            legend.title = element_text(size=14),
-            legend.text=element_text(size=13),
-            axis.text=element_text(size=13))+
-      scale_color_manual(values=cols_)+
-      labs(col="Legend")+
-      xlab("Empirical quantiles")+
-      ylab("Fitted quantiles")
-    ggsave(filename = Name_file_plot,
-           plot = GG_fit_vect_R,
-           width = 8,height=6)
-    
+    # Launchable if low number of individuals observed
+    # Result_boot<-Bootstrap_conf_band(M = 500,
+    #                     n = length(VECT_lj),
+    #                     theta_egpd = MLE_EXTGP,
+    #                     order_quantiles = Quantile_LEVELS,
+    #                     alpha = 0.05)
+    # DF_egpd_emp<-Result_boot
+    # DF_egpd_emp$emp<-sort(VECT_lj)
+    # DF_egpd_emp$Levels<-Quantile_LEVELS
+    # DF_egpd_emp<-as.data.frame(DF_egpd_emp)
+    # GG_fit_vect_R<-ggplot(data=DF_egpd_emp,aes(x=emp,y=mean,
+    #             col="model"))+
+    #   geom_point()+
+    #   geom_line(aes(x=emp,y=emp,col="data"))+
+    #   geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
+    #                   col="confidence_band"),
+    #               linetype="dashed",alpha=0.15,
+    #               fill="grey")+
+    #   theme(axis.title=element_text(size=20),
+    #           legend.title = element_text(size=14),
+    #           legend.text=element_text(size=13),
+    #           axis.text=element_text(size=13))+
+    #   scale_color_manual(values=cols_)+
+    #   labs(col="Legend")+
+    #   xlab("Empirical quantiles")+
+    #   ylab("Fitted quantiles")
+    # ggsave(filename = Name_file_plot,
+    #        plot = GG_fit_vect_R,
+    #        width = 8,height=6)
+    # MLE_EXTGP
     L_Transf_vect_l[[nameV]]<-MLE_EXTGP
     Frechet_j<-(-log(UNIF_extgp))**(-1)
     print(paste0("Frechet test for conversion of l(",nameV,")"))
     print(goftest::ad.test(Frechet_j,null = extRemes::"pevd",
-                           shape=1,scale=1,loc=1,type="GEV")$p.value)
+                     shape=1,scale=1,loc=1,type="GEV")$p.value)
     L_Convert[[nameV]]<-Frechet_j
   }
+
   Vect_l_transf<-as.data.frame(L_Convert)
+  
   ### Regular variations hypothesis
   Simple_MRV_HRV_analysis(couple_UV =  Vect_l_transf,
                           root_graphics = paste0(root_for_export,
-                                                 "RisKfunctions/"),
+                            "RisKfunctions/"),
                           Vect_k = c(20:500),
                           l_name = l_variables,q = 0.80)
   Vect_lunif<-exp(-Vect_l_transf^(-1))
   ### Asymmetry test 
-  test_asy<-copula::exchTest(Vect_lunif,N = 1000)
-  print(test_asy)
+  # test_asy<-copula::exchTest(Vect_lunif,N = 1000)
+  # print(test_asy)
   ### What would be the copula
   Select_cop_fam<-VineCopula::BiCopSelect(Vect_lunif[,1],
-                                          Vect_lunif[,2])
+                          Vect_lunif[,2])
   FAMILY_set<-c(1:40,104,114,
                 124,134,204,214,
                 224,234)
@@ -541,61 +984,51 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   DF$par2<-round(as.numeric(DF$par2),2)
   Sort_df<-head(DF[order(DF$AIC),c(1:6) ],5)
   write.csv(x = Sort_df,file = paste0(root_for_export,
-                                      dir_AIC,"_",
-                                      Approach,".csv"))
-  ### 
+                   dir_AIC,"_",
+                   Approach,".csv"))
   Vect_Pareto_margins<-apply(Vect_lunif,
-                             MARGIN=2,FUN = evd::qgpd,loc=0,
-                             scale=1, shape=1)
-  l_prime<-apply(Vect_l_transf,MARGIN = 1,
-                 FUN = List_Params_RF[["function"]])
-  TS_param<-0.30
-  Result_k0_metric2<-tea::mindist(data = l_prime,
-                                  method = "mad",ts =TS_param )
-  kstar2<-Result_k0_metric2$k0
-  print(paste0("We would take ",kstar2," extreme MV time series with MAD distance"))
-  Q_alt<-1-(kstar2/nrow(Vect_l_transf))
-  print("Alternative proportion of extreme observations")
-  print(Q_alt)
-  vect_k<-c(50:200)
-  GG_gam<-Graphics_estimators_gamma(series = l_prime,
-                                    vect_k = vect_k,
-                                    Title_graphic = "Shape parameter of gol",
-                                    NB_years = 37)
-  print(GG_gam)
+                    MARGIN=2,FUN = evd::qgpd,loc=0,
+                              scale=1, shape=1)
   l_Pareto<-apply(Vect_Pareto_margins,MARGIN = 1,
                   FUN = List_Params_RF[["function"]])
-  
-  # Choice of the individuals -----------------------------------------------
-  Seuil_lprime<-quantile(l_prime,
-                         Q_thresh)
-  Indices_exts<-which(l_prime>Seuil_lprime)
+
   Seuil_Margins_Pareto<-quantile(l_Pareto,
                                  Q_thresh)
-  Excedents_lprime<-Vect_l_transf[Indices_exts,]
+  #IndExceedances_Pareto
+  IndExceedances_Pareto<-which(l_Pareto>Seuil_Margins_Pareto)
+  Exceedances_Pareto<-l_Pareto[Indices_exts]
+
+  # Anderson-Darling test for exceedances (Pareto margins) ----------------------
+  ##########################################
+  # print("p value AD test Pareto (Pareto margins)")
+  # print(goftest::ad.test(x = Exceedances_Pareto, 
+  #                        null = extRemes::"pevd",
+  #                        shape=1,scale=Seuil_Margins_Pareto,
+  #                        threshold=Seuil_Margins_Pareto,
+  #                        type="GP")$p.value)
   
   # Export radial extreme elts ----------------------------------------------
-  Ext_cat<-as.character(as.numeric(l_prime>Seuil_lprime))
-  Df_rad_ext<-cbind.data.frame(Vect_l_function,Ext_cat)
-  NC<-length(colnames(Vect_l_function))
-  Cols_first<-sapply(c(1:NC),function(x){return(paste0("V",x))})
-  colnames(Df_rad_ext)<-c(Cols_first,"category")
-  GG_rad_ext_bool<-ggplot(data=Df_rad_ext,aes(x=V1,y=V2,col=category))+
-    geom_point()+
-    guides(col="none")+
-    scale_x_continuous(transform="log10")+
-    scale_y_continuous(transform="log10")+
-    geom_xsidedensity(data=Df_rad_ext,aes(fill=category), alpha = 0.5)+
-    geom_ysidedensity(data=Df_rad_ext,aes(fill=category), alpha = 0.5)+
-    labs(fill="Legend")+
-    xlab(paste0("T(",l_variables[1],") (.)"))+
-    ylab(paste0("T(",l_variables[2],") (.)"))
-  ggsave(filename = paste0(root_for_export,
-                           "repar_points_Rad_",
-                           l_variables[1],"_",
-                           l_variables[2],".png"),
-         plot = GG_rad_ext_bool,
-         width = 8,height=6)
+  # Ext_cat<-as.character(as.numeric(l_prime>Seuil_lprime))
+  # Df_rad_ext<-cbind.data.frame(Vect_l_function,Ext_cat)
+  # NC<-length(colnames(Vect_l_function))
+  # Cols_first<-sapply(c(1:NC),function(x){return(paste0("V",x))})
+  # colnames(Df_rad_ext)<-c(Cols_first,"category")
+  # GG_rad_ext_bool<-ggplot(data=Df_rad_ext,aes(x=V1,y=V2,col=category))+
+  #   geom_point()+
+  #   guides(col="none")+
+  #   scale_x_continuous(transform="log10")+
+  #   scale_y_continuous(transform="log10")+
+  #   geom_xsidedensity(data=Df_rad_ext,aes(fill=category), alpha = 0.5)+
+  #   geom_ysidedensity(data=Df_rad_ext,aes(fill=category), alpha = 0.5)+
+  #   labs(fill="Legend")+
+  #   xlab(paste0("T(",l_variables[1],") (.)"))+
+  #   ylab(paste0("T(",l_variables[2],") (.)"))
+  # ggsave(filename = paste0(root_for_export,
+  #                          "repar_points_Rad_",
+  #                          l_variables[1],"_",
+  #                          l_variables[2],".png"),
+  #        plot = GG_rad_ext_bool,
+  #        width = 8,height=6)
   
   Theta_obtained<-atan(Vect_Pareto_margins[,2]/Vect_Pareto_margins[,1])
   png(filename= paste0(root_for_export,
@@ -604,9 +1037,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                        l_variables[2],".png"),
       width=600,height=800)
   plot(density(Theta_obtained),
-       main="Angular density of the risk functions",
-       cex.lab = 1.5,
-       cex.main=1.5)
+      main="Angular density of the risk functions",
+      cex.lab = 1.5,
+      cex.main=1.5)
   abline(v=0,col="red")
   abline(v=pi/2,col="red")
   dev.off()
@@ -614,7 +1047,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   Exced_PTO_marg<-Vect_Pareto_margins[Indices_exts,]
   l_exts<-l_Pareto[Indices_exts]
   Angle_exceeds<-t(t(Exced_PTO_marg)%*%diag(l_exts^(-1)))
-  
+
   df_angle_exceeds<-as.data.frame(Angle_exceeds)
   colnames(df_angle_exceeds)<-c("V1","V2")
   GG_dens_Ang<-ggplot(data = df_angle_exceeds,aes(x=V1,y=V2))+
@@ -626,80 +1059,12 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     ylab(paste0("Angular component for risk of ",
                 l_name[2]))
   ggsave(filename = paste0(root_for_export,
-                           "/RisKfunctions/Angular_val_exts_",
-                           l_variables[1],"_",
-                           l_variables[2],".png"),
+         "/RisKfunctions/Angular_val_exts_",
+         l_variables[1],"_",
+         l_variables[2],".png"),
          plot = GG_dens_Ang,width=6,height=8)
-  
-  Excesses_maximum<-l_prime[Indices_exts]
-  # Anderson-Darling test for the maximum -- Pareto ?  ----------------------
-  print("p value AD test Pareto")
-  print(goftest::ad.test(x =Excesses_maximum, 
-                         null = extRemes::"pevd",
-                         shape=1,scale=Seuil_lprime,
-                         threshold=Seuil_lprime,
-                         type="GP")$p.value)
   Theta_opt<-NA
-  # else{
-  #   ### Drop the AD hypothesis
-  #   
-  #   d <- ncol(Vect_l_transf)
-  #   start <- starting_point(Vect_l_transf,d)
-  #   start <- c(t(start))
-  #   n<-nrow(Vect_l_transf)
-  #   p <- 0.3
-  #   ### Number of assumed clusters.
-  #   r<-2
-  #   lambda <- 10^(-3)
-  #   k<-(1-Q_thresh)
-  #   Vect_Unit_Pareto_margins<-Vect_Pareto_margins+1
-  #   if(Params_risk_Function[["name_model"]]=="HR"){
-  #     points <- c(0 , 1/6,  1/8 ,  1/4 ,  1/3 , 1/2 , 2/3 , 3/4 , 1)
-  #     Grid_points<- selectGrid(points, d = d, nonzero = d-1)
-  #     Mod<-"SSR_row_HR"
-  #   }else{
-  #     ###Log variant
-  #     points_log <- c(0,1/4 , 1/3 , 1/2 , 3/4 ,1)
-  #     Grid_points<- tailDepFun::selectGrid(cst = points_log, d = d, 
-  #                                          nonzero =d-1)
-  #     Mod<-"SSR_row_log"
-  #   }
-  #   q<-nrow(Grid_points)
-  #   w_total <- sapply(1:q, function(m) 
-  #     stdfEmp(Vect_Unit_Pareto_margins, 
-  #             k * n, Grid_points[m, ]))
-  #   A_Theta<-param_estim(d , r , grid = Grid_points , lambda=lambda , 
-  #                        num_col = NULL ,
-  #                        start , type =Mod , p = p ,  
-  #                        w = w_total )
-  #   Vect_lambda<-c(1e-04,1e-03,1e-02,1e-01)
-  #   L_Lambda<-list()
-  #   K<-5
-  #   w_train_val<-W_calculus(k = k * n , num_class = K , 
-  #                           X = Vect_Unit_Pareto_margins, 
-  #                           grid = Grid_points,
-  #                           q = q)
-  #   Z<-1
-  #   for(lam in Vect_lambda){
-  #     CV_j<-cross_validation(d , r,  grid = Grid_points,
-  #                            lambda = lam , num_col = NULL, start ,
-  #                            type = Mod,
-  #                            p = p , w = w_train_val , num_class=K)
-  #     Optimization_lam_j<-param_estim(d =d, r =r, grid = Grid_points,
-  #                                     lambda=lam ,
-  #                                     num_col = NULL ,
-  #                                     start = start, type = Mod,
-  #                                     p = p ,  w = w_total )
-  #     L_Lambda[[Z]]<-list("cv"=CV_j,
-  #                         "result_theta_A"=Optimization_lam_j)
-  #     Z<-Z+1
-  #   }
-  #   Result_CV<-sapply(L_Lambda,function(x){return(x$cv)})
-  #   plot(Vect_lambda,Result_CV,
-  #        main="CV score according to lambda value")
-  #   Theta_opt<-A_Theta
-  # }
-  # 
+
   Approach<-Params_risk_Function[["RF_Approach"]]
   if(Approach=="AD"){
     if(Params_risk_Function[["parametric"]]==TRUE){
@@ -745,7 +1110,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     dev.off()
     ### Summary of results
     Asymp_test<-MVN::mvn(Vect_l_norm, mvn_test="mardia",
-                         bootstrap = FALSE)
+                   bootstrap = FALSE)
     print(Asymp_test$multivariate_normality)
     print("### MVN test")
     Mardia_test<-round(MVN::mardia(Vect_l_norm)$p.value,2)
@@ -765,24 +1130,20 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
               x = Table_Gauss_hyp)
   }
   if(Approach=="HTawn"){
-    
-    # Vect_l_marg<-apply(X = Vect_lunif,
-    #                    FUN = function(x){return(qnorm(x))},
-    #                    MARGIN = 2)
-    # g_marg<-apply(Vect_l_marg,MARGIN = 1,
-    #               FUN = List_Params_RF[["function"]])
-    # Mu_marg<-quantile(g_marg,Q_thresh)
-    Vect_log<-log(Vect_l_function+1)
-    g_marg<-apply(Vect_log,MARGIN = 1,
-                  FUN = List_Params_RF[["function"]])
-    Mu_marg<-quantile(g_marg,
-                      Q_thresh)
     IREF<-1
     ### probability of being in each case
-    #Vect_l_marg
-    Q_from_mixt<-apply(Vect_log,
-                       MARGIN = 2,FUN = function(x){
-                         return(mean(as.numeric(x>Mu_marg)))})
+    # Old computation
+    # Q_from_mixt<-apply(Vect_l_function,
+    #    MARGIN = 2,FUN = function(x){
+    #                return(mean(as.numeric(x>Threshold)))})
+    # New computation
+    Q_from_mixt<-apply(Vect_l_function,
+          MARGIN = 2,
+          FUN = function(col_){
+            estimated_surv_prob<-F_find_Quantile(Vect = col_,
+                                Target = Threshold)
+            
+          })
     DQU_each_scenario<-1-Q_from_mixt
     ### Choose the du used during modelling step.
     # Use the one used for future simulations
@@ -790,111 +1151,248 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     d<-length(l_variables)
     DQU_modeling_Htawn<-rep(NA,d)
     nb_threshs<-50
-    Qtile_candidates<-seq.int(0.65,0.85,
-                              length.out=nb_threshs)
-    MQU<-0.70
+    Qtile_candidates<-seq.int(0.70,0.98,
+              length.out=nb_threshs)
+    #Extgp
+    #MQU<-0
+    
+    ## Usin exp as input
+    # MQU<-apply(Vect_l_function,
+    #        FUN = function(x){
+    #          Result_eqd<-Choice_automatic_thresh_per_variable_time(
+    #            var_t = x,
+    #          q_min = 0,q_max = 0.95,
+    #          nb_threshs = 20,plot_graph = TRUE)[["p_u_opt"]]
+    #          return(Result_eqd)
+    #        },MARGIN = 2)
+    ### Threshr used
+    #with DKG= c(0.8,0.6,0.70)
+    #without c(0.75,0.8,0.80)
+    MQU<-c(0.8,0.6,0.70)
     DQU_modeling_Htawn<-Params_risk_Function[["HTAWN_params"]]
-    print(DQU_modeling_Htawn)
+  
+    #Vect_pareto_margins
     Graphics_diags<-Analysis_diag_HTawn_evol_DQU(vect_dqu = Qtile_candidates,
-                                                 chosen_dqu=DQU_modeling_Htawn,
-                                                 MQU =MQU,
-                                                 Vect_obs = Vect_log)
+                          chosen_dqu=DQU_modeling_Htawn,
+                          MQU =MQU,
+                      Vect_obs = Vect_l_function)
     GG_theta<-Graphics_diags[["theta"]]
     GG_Indep<-Graphics_diags[["indep"]]
-    ggsave(filename = paste0(root_for_export,"RiskFunctions/",
-                             l_name[1],"_",l_name[2],
-                             "_evol_HTparams.png"),
-           plot = GG_theta,width = 8,height = 6)
-    ggsave(filename = paste0(root_for_export,"RiskFunctions/",
-                             l_name[1],"_",l_name[2],
-                             "_result_HTindep.png"),
-           plot =  GG_Indep,width = 8,height = 6)
-    ### HTawn modelling
-    # vect_l_marg
-    Model_Htawn_all<-texmex::mexAll(Vect_log,
-                                    mqu = MQU,
-                                    dqu = DQU_modeling_Htawn)
+    if(is.list(GG_theta)){
+      Ensemble<-c(1:length(GG_theta))
+      for(elt in Ensemble){
+        #Ensemble_rest<-l_name[Ensemble[-elt]]
+        GGtheta_elt<-GG_theta[[elt]]+
+          Common_theme
+        GGIndep_elt<-GG_Indep[[elt]]+
+          Common_theme
+        ggsave(filename = paste0(root_for_export,"RiskFunctions/d=",
+                                 length(l_name),"_evol_HTparams_model",elt,".png"),
+               plot = GGtheta_elt,width = 10,height = 6)
+        ggsave(filename = paste0(root_for_export,"RiskFunctions/d=",
+                                 length(l_name),
+                          "_result_HTindep_model",elt,".png"),
+               plot =  GGIndep_elt,width = 10,height = 6)
+      }
+    }else{
+      ggsave(filename = paste0(root_for_export,"RiskFunctions/",
+                               l_name[1],"_",l_name[2],"_d=",
+                               length(l_name),"_evol_HTparams.png"),
+             plot = GG_theta,width = 8,height = 6)
+      ggsave(filename = paste0(root_for_export,"RiskFunctions/",
+                               l_name[1],"_",l_name[2],"_d=",
+                               length(l_name),"_result_HTindep.png"),
+             plot =  GG_Indep,width = 8,height = 6)
+    }
+    # HTawn modeling ---------------------------------------------------------
+    ############
+    Model_Htawn_all<-texmex::mexAll(
+            data = Vect_l_function,
+            mqu = MQU,
+            dqu = DQU_modeling_Htawn)
     Theta_opt<-Model_Htawn_all
     list_GG_cases<-list()
     for(Z in c(1:d)){
-      HTawn_z<-Theta_opt[[Z]]
+      Vars_present<-c(1:d)[-Z]
+      Names_other<-sapply(l_variables[Vars_present],
+                          FUN = Fct_correct_name,
+                          target="Surcote",replacement="Surge")
+      D_rest<-length(Vars_present)
+      Name_Var_cond<-l_variables[Z]
+      L_increment<-1
       ### Graphics to visualize what appears
-      Data_tfed<-as.data.frame(HTawn_z$margins$transformed[,l_variables])
-      colnames(Data_tfed)<-sapply(c(1:d),function(x){
-        return(paste0("V",x))
-      })
-      Th_used_j<-as.numeric(HTawn_z$dependence$dth)
-      Data_tfed$inds_exts_Z<-as.character(
-        as.numeric(Data_tfed[,Z]>Th_used_j))
-      GG_z_model<-ggplot(data = Data_tfed,aes(x=V1,y=V2,
-                                              col=inds_exts_Z))+
-        geom_point()
-      if(Z==1){
+      for(vars in Vars_present){
+        #### Modify ggplot vline variable name
+        Var_cond_replaced<-Fct_correct_name(
+          x = Name_Var_cond,target = "Surcote",
+          replacement = "Surge"
+        )
+        Other_var<-l_variables[vars]
+        ### Var cond first, other var second
+        PAIR_for_graphic<-c(Name_Var_cond,Other_var)
+        PAIR_for_graphic_corrected<-sapply(PAIR_for_graphic,
+                 FUN = function(x){
+                   return(Fct_correct_name(x = x,
+                                           target = "Surcote",
+                                           replacement = "Surge"))
+                                           })
+        HTawn_z<-Theta_opt[[Z]]
+        
+        ### Residual against predictor
+        model<-HTawn_z$dependence
+        MARGINS<-HTawn_z$margins$transformed
+        Th<-model$dth
+        Var_cond<-MARGINS[,model$conditioningVariable]
+        Inds_exts<-which(Var_cond>Th)
+        Reg_HT<-Var_cond[Inds_exts]
+        Resid<-model$Z
+        VARIABLE<-c(sapply(Names_other,
+                           FUN=function(x){
+                             Category<-x
+                             rep(Category,nrow(Resid))}))
+        REGRESSOR<-rep(x = Reg_HT,ncol(Resid))
+        RESID<-c(Resid)
+        DF<-cbind.data.frame(VARIABLE,REGRESSOR,RESID)
+        colnames(DF)<-c("variable","reg_","resid_")
+        GG_trend_Z_Yreg<-ggplot(DF,aes(x=reg_,y=resid_))+
+          facet_wrap(~variable)+
+          geom_point()+
+          geom_smooth(aes(col="Polynomial regression"),
+                      alpha=0.4)+
+          labs(col="Legend")+
+          xlab(paste0("Conditioning variable (",Var_cond_replaced,")"))+
+          ylab("Residual")+
+          Common_theme+theme(
+                legend.direction = "horizontal",
+                legend.position = "bottom")
+        ggsave(plot = GG_trend_Z_Yreg,
+               filename = paste0(root_for_export,"RiskFunctions/d=",
+                  length(l_name),"_trend_Reg_Resid_HT_model",
+                  Z,".png"),
+               width=10,height=6)
+
+        ### Input from HTawn
+        
+        Data_tfed<-as.data.frame(MARGINS[,PAIR_for_graphic])
+        colnames(Data_tfed)<-sapply(c(1:length(PAIR_for_graphic)),
+        function(x){
+          return(paste0("V",x))
+        })
+        Th_used_j<-as.numeric(HTawn_z$dependence$dth)
+        Data_tfed$inds_exts_Z<-as.character(
+          as.numeric(Data_tfed[,1]>Th_used_j))
+        
+        Label_1<-latex2exp::TeX(sprintf("$\\ell(T(%s))$",
+                                  PAIR_for_graphic_corrected[1]))
+        Label_2<-latex2exp::TeX(sprintf("$\\ell(T(%s))$",
+                                  PAIR_for_graphic_corrected[2]))
+        GG_z_model<-ggplot(data = Data_tfed,aes(x=V1,y=V2,
+                                                col=inds_exts_Z))+
+          geom_point()
+        Real_test<-expression(u[Z])
+        Real_label<-as.expression(do.call("substitute", 
+              list(Real_test[[1]], 
+                   list(Z=Var_cond_replaced))))
         GG_z_model<-GG_z_model+
-          geom_vline(aes(xintercept=Th_used_j))
-      }else{
-        GG_z_model<-GG_z_model+
-          geom_hline(aes(yintercept=Th_used_j))
+          geom_vline(aes(xintercept=Th_used_j,
+                         linetype="dep_quantile"))+
+          scale_linetype_manual(values=2,
+                                labels=Real_label)
+        GG_z_model<-GG_z_model+ 
+          labs(col="Legend",linetype="Model")+
+          xlab(Label_1)+
+          ylab(Label_2)+
+          Common_theme+theme(
+                legend.direction = "horizontal",
+                legend.position = "bottom")
+        if(L_increment==1){
+          LGD_input<-ggpubr::get_legend(GG_z_model)
+          LGD_HTAWN<-plot_grid(LGD_input)
+          GG_z_model<-GG_z_model+
+            guides(col="none",linetype="none")
+          WHOLE<-GG_z_model
+          
+        }
+        if(!L_increment%in%c(1,D_rest)){
+          if(L_increment%%2==0){
+            ### 2 graphics per row
+            WHOLE<-WHOLE+GG_z_model+
+              guides(col="none",linetype="none")
+          }else{
+            GG_transit<-GG_z_model+
+              guides(col="none",linetype="none")
+            ### We jump the line if it is not the case
+            WHOLE<-WHOLE/GG_transit
+          }
+
+        }
+        #ADD +plot_layout(guides="collect")
+        if(L_increment==D_rest){
+          if(L_increment%%2==0){
+            GG_transit<-GG_z_model+
+              guides(col="none",linetype="none")
+              
+            WHOLE<-WHOLE+GG_transit
+          }else{
+            GG_transit<-GG_z_model+
+              guides(col="none",linetype="none")
+            ### Fill the last row with plot_spacer
+            Second_row<-plot_spacer() + GG_transit+ plot_spacer()+
+              plot_layout(widths = c(0.5, 1,0.5))
+            WHOLE<-WHOLE/Second_row
+          }
+        }
+        ### Increment the index for next graphic to add
+        L_increment<-L_increment+1
       }
-      GG_z_model<-GG_z_model+ 
-        labs(col="Legend")+
-        xlab(paste0("Norm of T(",l_variables[1],")"))+
-        ylab(paste0("Norm of T(",l_variables[2],")"))
-      list_GG_cases[[Z]]<-GG_z_model
+      WHOLE_RF<-WHOLE+
+        plot_layout(axis_titles = "collect_x")
+      Base_RF_modif<-plot_grid(WHOLE_RF,
+               LGD_HTAWN,nrow=2,rel_heights =c(10,1))
+      WHOLE_RF_modif<-ggdraw()+
+        draw_plot(Base_RF_modif)+
+        theme(plot.background = element_rect(fill = "white", 
+                                             color = NA))
+      ggsave(plot = WHOLE_RF_modif,
+             filename = paste0(root_for_export,"RiskFunctions/d=",
+                length(l_name),"_pts_input_HT_model",
+                Z,".png"),
+             width=10,height=6)
     }
-    GG_hull<-Analysis_diag_HTawn_Conv_Hull(
-      Theta_opt = Theta_opt)
-    ggsave(plot = GG_hull,filename = paste0(root_for_export,"RiskFunctions/",
-                                            l_name[1],"_",l_name[2],
-                                            "_Convex_huls_Htawn.png"),
-           width=8,height=8)
     
-    ### RiskFunctions
-    Object_cases_HTAWN<-list_GG_cases[[1]]+list_GG_cases[[2]]+
-      plot_layout(axis_titles = "collect") 
+    ### Hull requires a lot of time...
+    CHULL<-NA
+    RUN_chull<-Params_risk_Function[["RUN_Convex_Hull"]]
+    if(RUN_chull){
+      GG_hull<-Analysis_diag_HTawn_Conv_Hull(
+        Theta_opt = Theta_opt,
+        vect_name_variables = l_variables)+
+        Common_theme+theme(axis.text=element_text(size=12))
+      ggsave(plot=GG_hull,
+             filename = paste0(root_for_export,
+                               "RiskFunctions/d=",length(l_variables),
+                               "_Convex_huls_Htawn.png"),
+             width=8,height=4)
+    }
     
-    ggsave(plot = Object_cases_HTAWN,
-           filename = paste0(root_for_export,"RiskFunctions/",
-                             l_name[1],"_",l_name[2],
-                             "_pts_input_HT.png"),
-           width=8,height=6)
     ### Simulation step
     prop_cl<-Q_from_mixt
     # AI case
     # directly Q_from_mixt
     # AD case) other j
-    W_scenarios<-rep(Qfound,d)
-    W_scenarios[IREF]<-Q_from_mixt[IREF]
-    W_scenarios[-IREF]<-W_scenarios[-IREF]-(Q_from_mixt[IREF])
-    probs_cl<-W_scenarios/sum(W_scenarios)
+    if(d==3){
+      W_scenarios<-rep(Q_thresh,d)
+      sub_vector<-apply(Vect_l_function[,c(1:2)],
+                        MARGIN = 1,FUN = max)
+      new_weight<-mean(as.numeric(sub_vector>Threshold
+                              ))-Q_from_mixt[IREF]
+      W_scenarios[IREF]<-Q_from_mixt[IREF]
+      W_scenarios[2]<-new_weight
+      W_scenarios[3]<-(1-Q_thresh)-(new_weight+Q_from_mixt[IREF])
+    }
+    prop_cl<-W_scenarios
   }
-  if(Approach=="Laplace"){
-    Vect_Laplace<-apply(X = Vect_lunif,
-                        FUN = function(x){
-                          return(L1pack::qlaplace(x))},
-                        MARGIN = 2)
-    g_Laplace<-apply(Vect_Laplace,MARGIN = 1,
-                     FUN = List_Params_RF[["function"]])
-    Mu_Laplace<-as.numeric(quantile(g_Laplace,Q_thresh))
-    Model_ALD<-L1pack::LaplaceFit(x = Vect_Laplace)
-  }
-  if(Approach=="HGD"){
-    d<-ncol(Vect_l_norm)
-    model_univariate<-ghyp::ghyp()
-    Norm_std<-apply(Vect_lunif,MARGIN=2,FUN = Convert_marg,
-                    model_univ=model_univariate)
-    Model_HGD<-ghyp::fit.VGmv(data = Norm_std,
-                              gamma=rep(0,d),
-                              lambda = 1,opt.pars = c(lambda=TRUE,
-                                                      mu=TRUE,gamma=FALSE,
-                                                      sigma=TRUE),
-                              symmetric = TRUE,
-                              sigma=cov(Norm_std),
-                              mu=rep(0,d),
-                              standardize=TRUE)
-    # Model_HGD<-Fit_HGD_from_Laplace(Lap_vectors = Vect_Laplace,
-    #           Model_Lap_inits = Model_ALD)
-  }
+  
   MATRICE_SCORES<-c()
   l_fonction<-list()
   l_Mat_moyenne<-list()
@@ -915,6 +1413,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                                      l_variables = l_variables,
                                      Indices_exts = Indices_exts,
                                      d = d,f_transf = f_transf)
+    Inertia_EXPLAINED<-LIST_Mod[["inertia_explained"]]
+    print(paste0("inertia explained ", Inertia_EXPLAINED))
   }else{
     print("Several PCA basis")
     LIST_Mod<-Approach_Angle_Mult_PCA(Indices_exts = Indices_exts,
@@ -933,16 +1433,16 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   M_Theta<-Params_risk_Function[["Method_Angle"]]
   if(M_Theta=="VineCop"){
     Matrix_C<-function_Structure_Matrice(NB_dim = NbScores_Omega)
-    Modele_coords<-VineCopula::RVineCopSelect(Unif_coord,
+    Model_coords<-VineCopula::RVineCopSelect(Unif_coord,
                                               Matrix = Matrix_C)
   }
   if(M_Theta=="BetaCop"){
-    Modele_coords<-copula::empCopula(X = Unif_coord,
-                                     smoothing = "beta")
+    Model_coords<-copula::empCopula(X = Unif_coord,
+                      smoothing = "beta")
   }
   if(M_Theta=="GaussMixture"){
-    Mod_Gauss<-mclust::densityMclust(Scores,
-                                     plot=FALSE)
+    Model_coords<-mclust::densityMclust(Scores,
+                                    plot=FALSE)
   }
   Bool_filled<-FALSE
   N_sim<-M
@@ -952,11 +1452,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       if(M_Theta=="VineCop"){
         # Simulations of coordinates  ------------------------------------------------------------
         Simulations_coord<-VineCopula::RVineSim(N=N_sim,
-                                                RVM = Modele_coords)
+                                                RVM = Model_coords)
       }
       if(M_Theta=="BetaCop"){
         Simulations_coord<-copula::rCopula(N_sim, 
-                                           copula=Modele_coords)
+                                           copula=Model_coords)
       }
       
       colnames(Simulations_coord)<-1:ncol(Simulations_coord)
@@ -969,7 +1469,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     }
     if(M_Theta=="GaussMixture"){
       Coords_ech_orig<-t(replicate(n = N_sim,
-                                   expr=Simul_from_MixtureGauss(Mod_Gauss))[1,,])
+            expr=Simul_from_MixtureGauss(Model_coords))[1,,])
     }
     if(One_PCA_base){
       Shape_Omega_simul<-Simul_Omega_One_PCA_base(list_Mod_One_PCA = LIST_Mod,
@@ -1003,83 +1503,73 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
         ### Warning) definition by continuity if null values are given
         Sim_l<-Sim_l*Seuil_Margins_Pareto
         Sim_l_tf<-apply(Sim_l,MARGIN=2,FUN = evd::pgpd,loc=0,
-                        scale=1, shape=1)
+              scale=1, shape=1)
       }
-    }
-    if(Approach=="Gauss"){
-      ### To do: correct Sample_cond_g
-      Sim_l<-t(replicate(n =N_sim,
-                         expr = Sample_cond_g_Rjection_Sampling(Mu_vector = Mu_vector,
-                                                                Cov_mat = Cov_mat,
-                                                                g=List_Params_RF[["function"]],
-                                                                Th_g=Mu_Gauss)))
-      ### Conversion to uniform margins.
-      print("here")
-      Sim_l_tf<-apply(Sim_l,MARGIN=2,
-                      FUN = pnorm)
-      ### Mixture model
-      
-    }
-    if(Approach=="Laplace"){
-      Sim_l<-t(replicate(n =N_sim,
-                         expr = Sample_cond_Laplacian_Rjection_Sampling(
-                           Mu_ALD = Model_ALD$center,
-                           Scatter_ALD=Model_ALD$Scatter,
-                           g=List_Params_RF[["function"]],
-                           Th_g=Mu_Laplace)))
-      Sim_l_tf<-apply(Sim_l,MARGIN=2,
-                      FUN = L1pack::plaplace)
-    }
-    if(Approach=="HGD"){
-      Sim_l<-t(replicate(n =N_sim,
-                         expr = Sample_cond_HGD_Rjection_Sampling(
-                           Model_HGD = Model_HGD,
-                           g=List_Params_RF[["function"]],
-                           Th_g=Mu_Gauss)))
-      Sim_l_tf<-apply(Sim_l,MARGIN=2,
-                      FUN =pnorm)
     }
     if(Approach=="HTawn"){
-      Sim_l<-Simul_from_Htawn(model_mex_all = Model_Htawn_all,
-                              n_sim = N_sim,d = d,
-                              Name_vars = l_variables,
-                              prop_class = prop_cl,ind_ref=IREF,
-                              thresh_censor=as.numeric(Mu_marg),
-                              Q_sim = DQU_each_scenario)
-      # Sim_l_tf<-apply(Sim_l,MARGIN=2,
-      #                 FUN = pnorm)
-      Sim_l<-exp(Sim_l)-1
+      # Rejection sampling approach
+      Sim_l_tf<-Simul_from_Htawn(model_mex_all = Model_Htawn_all,
+               n_sim = N_sim,d = d,Name_vars = l_variables,
+               prop_class = prop_cl,ind_ref=IREF,
+               thresh_censor = Threshold,
+               Q_sim = DQU_each_scenario)
+      
+      ### MONTE CARLO approach
+
+      # Sim_l_tf<-Loop_TexmexCarlo_Extrapol(nSample = N_sim,
+      #                       mexList = Model_Htawn_all,
+      #                       pqu_extrapol = DQU_each_scenario,
+      #                       mult = 20)
+
+      #Sim_l_tf<-as.data.frame(Sim_l_tf)
+      ### Uniform margins
+      ################
+      # Sim_l_tf<-apply(Sim_l_tf,
+      #         MARGIN=2,FUN = evd::pgpd,loc=0,
+      #                 scale=1, shape=1)
     }
-    
-    if(Approach!="HTawn"){
-      ### We cannot use the HTawn modelling of the radial
-      ### components.
-      Sim_l<-Sim_l_tf
-      for(j in c(1:length(l_variables))){
-        var_tf_sim<-Sim_l_tf[,j]
-        nameV<-l_variables[j]
-        Param_tf_lj<-L_Transf_vect_l[[nameV]]
-        # WEIGHT<-Param_tf_lj[["p_u"]]
-        # R_j<-sapply(var_tf_sim,Fast_reconv,p_Ui=WEIGHT,
-        #             scale_fonc=Param_tf_lj[["scale"]],
-        #             gamma=Param_tf_lj[["gamma"]],
-        #             kernel_DENS=Param_tf_lj[["kernel_dens"]],
-        #             u_f=Param_tf_lj[["threshold"]])
-        #ELT_pos<-which(var_tf_sim>0)
-        R_j<-var_tf_sim
-        R_j<-sapply(var_tf_sim,mev::qextgp,
-                    kappa =Param_tf_lj[["kappa"]],
-                    sigma = Param_tf_lj[["sigma"]],
-                    xi = Param_tf_lj[["xi"]])  
-        Sim_l[,j]<-exp(R_j)-1
-      }
-    }
+    ### Uniform to EGPD margins.
+    #######################
+    Sim_l<-Sim_l_tf
+    # for(j in c(1:length(l_variables))){
+    #   var_tf_sim<-Sim_l_tf[,j]
+    #   nameV<-l_variables[j]
+    #   Param_tf_lj<-L_Transf_vect_l[[nameV]]
+    #   R_j<-sapply(var_tf_sim,mev::qextgp,
+    #               kappa =Param_tf_lj[["kappa"]],
+    #               sigma = Param_tf_lj[["sigma"]],
+    #               xi = Param_tf_lj[["xi"]])
+    #   ### To real scale
+    #   Sim_l[,j]<-exp(R_j)-1
+    # }
     
     ### Extreme individuals in the original scale Pareto(shape param)
     Excedents_lprime_orig<-Vect_l_function[Indices_exts,]
-    plot(Excedents_lprime_orig,log="xy")
-    points(Sim_l,col="blue",
+    # return(list("SIM"=Sim_l_tf,
+    #             "OBS"=Excedents_lprime_orig,
+    #             "thresh"=Threshold)
+    # )
+    Max_found<-apply(X = Excedents_lprime_orig,
+                     MARGIN = 1,
+                     FUN = max)
+    print(summary(Max_found))
+    Max_sim<-apply(X = Sim_l,MARGIN = 1,
+                   FUN = max)
+    print(summary(Max_sim))
+    plot(Excedents_lprime_orig[,c(1,2)],
+         log="xy")
+    points(Sim_l[,c(1,2)],col="blue",
            cex=0.75)
+    plot(Excedents_lprime_orig[,c(1,3)],
+         log="xy")
+    points(Sim_l[,c(1,3)],col="blue",
+           cex=0.75)
+    
+    plot(Excedents_lprime_orig[,c(2,3)],
+         log="xy")
+    points(Sim_l[,c(2,3)],col="blue",
+           cex=0.75)
+    
     print("Kendall correlation")
     Kendall_sim<-cor(Sim_l[,1],Sim_l[,2],
                      method = "kendall")
@@ -1088,81 +1578,184 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                      Excedents_lprime_orig[,2],
                      method = "kendall")
     print(Kendall_obs)
+  
     ### Chimeas for sim L (vs) obs L
     png(filename= paste0(root_for_export,"RisKfunctions/chi_meas_sim_obs",
                          Params_risk_Function[["general_option"]],".png"),
         width=750,250)
     par(mfrow=c(1,2))
-    POT::chimeas(Excedents_lprime_orig,which=1)
-    POT::chimeas(Sim_l,which=2)
+    ### Attention)Only two columns provided. 
+    ### To do) use Xi matrix function
+    POT::chimeas(Excedents_lprime_orig[,c(1:2)],which=1)
+    POT::chimeas(Sim_l[,c(1:2)],which=2)
     par(mfrow=c(1,1))
     dev.off()
     ####
     Sim_l<-as.data.frame(Sim_l)
     colnames(Sim_l)<-l_variables
-    Df_combs_sim_exts<-rbind.data.frame(Excedents_lprime_orig,Sim_l)
-    colnames(Df_combs_sim_exts)<-c("V1","V2")
-    Df_combs_sim_exts$Legend<-c(rep("data",
-                                    nrow(Excedents_lprime_orig)),
-                                rep("simulations",
-                                    nrow(Sim_l)))
-    Z_gg<-1
-    Z_gg2<-2
-    XLAB<-expression(R[M~","~Z_gg]^g)
-    XLAB<-as.expression(do.call('substitute', list( XLAB[[1]], 
-                                                    list(Z_gg=Z_gg))))
-    YLAB<-expression(R[M~","~Z_gg2]^g)
-    YLAB<-as.expression(do.call('substitute', 
-                                list( YLAB[[1]], list(Z_gg2=Z_gg2))))
-    GG_RG_sim_vs_obs<-ggplot(data=Df_combs_sim_exts,
-                             aes(x=V1,y=V2))+
-      geom_point(aes(shape=Legend,col=Legend,
-                     size=Legend))+
-      geom_xsidedensity(data=Df_combs_sim_exts,aes(fill=Legend), 
-                        alpha = 0.5)+
-      geom_ysidedensity(data=Df_combs_sim_exts,aes(fill=Legend), 
-                        alpha = 0.5)+
-      scale_y_continuous(transform = "log10")+
-      scale_x_continuous(transform = "log10")+
-      # xlab(paste0("l(T(",l_variables[1],"))"))+
-      # ylab(paste0("l(T(",l_variables[2],"))"))+
-      xlab(XLAB)+
-      ylab(YLAB)+
-      scale_shape_manual(values = c("simulations"=17,
-                                    "data"=19))+
-      scale_size_manual(values=c("simulations"=0.75,
-                                 "data"=1.5))+
-      scale_color_manual(values=cols_ggplot)+
-      scale_fill_manual(values=cols_ggplot)+
-      guides(fill="none")+
-      theme(axis.title=element_text(size=15),
-            legend.text=element_text(size=10))
-    ggsave(filename= paste0(root_for_export,"RisKfunctions/Rg_sim_vs_obs_",
-                            l_variables[1],"_",l_variables[2],"_",
-                            Params_risk_Function[["general_option"]],".png"),
-           plot=GG_RG_sim_vs_obs,
-           width=8,height=6)
+    if(length(l_variables)>2){
+      list_R_GM<-list()
+      Avail_combinations<-t(utils::combn(x = length(l_variables)
+                                         ,m = 2))
+      for(j in c(1:nrow(Avail_combinations))){
+        PAIR<-Avail_combinations[j,]
+        NAMES_avail<-l_variables[PAIR]
+        Exces_sub<-Excedents_lprime_orig[,PAIR]
+        sim_lsub<-Sim_l[,PAIR]
+        Df_combs_sim_exts<-rbind.data.frame(Exces_sub,
+                                            sim_lsub)
+        
+        colnames(Df_combs_sim_exts)<-c("V1","V2")
+        Df_combs_sim_exts$Legend<-c(rep("data",
+                                        nrow(Exces_sub)),
+                                    rep("simulations",
+                                        nrow(sim_lsub)))
+        Z_gg<-PAIR[1]
+        Z_gg2<-PAIR[2]
+        XLAB<-expression(R[M~","~Z_gg]^g)
+        XLAB<-as.expression(do.call('substitute', list( XLAB[[1]], 
+                                                        list(Z_gg=Z_gg))))
+        YLAB<-expression(R[M~","~Z_gg2]^g)
+        YLAB<-as.expression(do.call('substitute', 
+                                    list( YLAB[[1]], list(Z_gg2=Z_gg2))))
+        GG_RG_sim_vs_obs<-ggplot(data=Df_combs_sim_exts,
+                                 aes(x=V1,y=V2))+
+          geom_point(aes(shape=Legend,col=Legend,
+                         size=Legend))+
+          geom_xsidedensity(data=Df_combs_sim_exts,aes(fill=Legend), 
+                            alpha = 0.5)+
+          geom_ysidedensity(data=Df_combs_sim_exts,aes(fill=Legend), 
+                            alpha = 0.5)+
+          scale_y_continuous(transform = "log10")+
+          scale_x_continuous(transform = "log10")+
+          xlab(XLAB)+
+          ylab(YLAB)+
+          scale_shape_manual(values = c("simulations"=17,
+                                        "data"=19))+
+          scale_size_manual(values=c("simulations"=0.75,
+                                     "data"=1.5))+
+          scale_color_manual(values=cols_ggplot)+
+          scale_fill_manual(values=cols_ggplot)+
+          guides(fill="none")
+        if(j==1){
+          GG_root<-GG_RG_sim_vs_obs+
+            Common_theme+theme(
+                legend.direction = "horizontal")
+          Combn_RGM<-GG_RG_sim_vs_obs+
+            Common_theme+theme(
+                  legend.direction = "horizontal",
+                  legend.position = "none")
+          LGD_RGM<-get_legend(GG_root)
+        }else{
+          Rest<-j-1
+          Transit<-GG_RG_sim_vs_obs+
+            Common_theme+
+            theme(
+                  legend.position = "none",
+                  legend.direction = "horizontal")
+          Combn_RGM<-plot_grid(Combn_RGM,
+                Transit,rel_widths = c(Rest,1))
+        }
+        # ggsave(filename= paste0(root_for_export,"RisKfunctions/Rg_sim_vs_obs_",
+        #                         Params_risk_Function[["general_option"]],
+        #                         "_d=",length(l_name),"_",
+        #                         PAIR[1],"_",PAIR[2],".png"),
+        #        plot=GG_RG_sim_vs_obs,
+        #        width=8,height=6)
+        
+          
+      }
+      # Whole_SIM_L<-do.call(grid.arrange, c(L_gg, 
+      #                                      ncol = 2, nrow = Frac))
+    }else{
+      Df_combs_sim_exts<-rbind.data.frame(Excedents_lprime_orig,
+                                          Sim_l)
+      colnames(Df_combs_sim_exts)<-c("V1","V2")
+      Df_combs_sim_exts$Legend<-c(rep("data",
+                                      nrow(Excedents_lprime_orig)),
+                                  rep("simulations",
+                                      nrow(Sim_l)))
+      Z_gg<-1
+      Z_gg2<-2
+      XLAB<-expression(R[M~","~Z_gg]^g)
+      XLAB<-as.expression(do.call('substitute', list( XLAB[[1]], 
+                                                      list(Z_gg=Z_gg))))
+      YLAB<-expression(R[M~","~Z_gg2]^g)
+      YLAB<-as.expression(do.call('substitute', 
+                                  list( YLAB[[1]], list(Z_gg2=Z_gg2))))
+      GG_RG_sim_vs_obs<-ggplot(data=Df_combs_sim_exts,
+                               aes(x=V1,y=V2))+
+        geom_point(aes(shape=Legend,col=Legend,
+                       size=Legend))+
+        geom_xsidedensity(data=Df_combs_sim_exts,aes(fill=Legend), 
+                          alpha = 0.5)+
+        geom_ysidedensity(data=Df_combs_sim_exts,aes(fill=Legend), 
+                          alpha = 0.5)+
+        scale_y_continuous(transform = "log10")+
+        scale_x_continuous(transform = "log10")+
+        # xlab(paste0("l(T(",l_variables[1],"))"))+
+        # ylab(paste0("l(T(",l_variables[2],"))"))+
+        xlab(XLAB)+
+        ylab(YLAB)+
+        scale_shape_manual(values = c("simulations"=17,
+                                      "data"=19))+
+        scale_size_manual(values=c("simulations"=0.75,
+                                   "data"=1.5))+
+        scale_color_manual(values=cols_ggplot)+
+        scale_fill_manual(values=cols_ggplot)+
+        guides(fill="none")+
+        Common_theme
+      Whole_SIM_L<-Df_combs_sim_exts
+      ggsave(filename= paste0(root_for_export,"RisKfunctions/Rg_sim_vs_obs_",
+                              Params_risk_Function[["general_option"]],
+                              "_d=",length(l_name),".png"),
+             plot=Whole_SIM_L,
+             width=8,height=6)
+    }
+    ### Export simulated radial vectors
+    ###############
+    LG<-plot_grid(LGD_RGM)
+    Combn_leg<-plot_grid(Combn_RGM,
+                         LG,nrow=2,
+                         ncol=1,rel_heights =c(10,1))
+    
+    Combn_leg<-ggdraw()+
+      draw_plot(Combn_leg)+
+      theme(plot.background = element_rect(fill = "white", 
+                                           color = NA))
+    File_rmg<-paste0(root_for_export,"RisKfunctions/Rg_sim_vs_obs_",
+                     Params_risk_Function[["general_option"]],
+                     "_d=",length(l_name),".png")
+    ggsave(plot = Combn_leg,filename = File_rmg,
+      height=6,width=10)
+    ######
+    #########
+    
     LISTE_shapes<-list()
-    vect_found<-c()
     LISTE_candidats<-list()
     DF_simul_lprime<-c()
-    Z<-1
-    for(k in c(1:length(l_variables))){
+    NB_Forcg_cond<-length(l_variables)
+    Beg<-0
+    list_ind_pos<-list()
+    for(k in c(1:NB_Forcg_cond)){
       nom_s<-l_variables[k]
       L_prime_simul<-Sim_l[,k]
       #Deconcatenate the Omega----------------
       #####
-      Beg<-1+Length_T*(Z-1)
-      END<-Length_T*Z
+      Beg<-Beg+1
+      END<-Beg+Length_T[[nom_s]]-1
+      # Beg<-1+Length_T*(Z-1)
+      # END<-Length_T*Z
       Shape_forcing<-Shape_Omega_simul[,Beg:END]
-      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,FUN = calcul_norm_L2)
+      L2_shape_name<-apply(Shape_forcing,MARGIN = 1,
+                           FUN = calcul_norm_L2)
       Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
       LISTE_shapes[[nom_s]]<-Shape_forcing_std
       Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
       LISTE_candidats[[nom_s]]<-Z_varj
       DF_simul_lprime<-c(DF_simul_lprime,
-                         apply(X = Z_varj,MARGIN = 1,
-                               FUN = calcul_norm_L2))
+            apply(X = Z_varj,MARGIN = 1,
+                    FUN = calcul_norm_L2))
       ### 0 as the threshold if Frechet
       ### 1 as the threshold if Pareto
       ### If Frechet margins originally
@@ -1180,27 +1773,45 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       #   Unif<-1-Z_varj[indicatrice_pos,]^(-1)
       # }
       indicatrice_pos<-which(apply(X=Z_varj,
-                                   FUN=fonction_trajectoire_positive,
-                                   MARGIN = 1)==TRUE)
+                               FUN=fonction_trajectoire_positive,
+                               MARGIN = 1)==TRUE)
+      Zsub<-Z_varj[indicatrice_pos,]
       Unif<-apply(Z_varj[indicatrice_pos,],
                   MARGIN=2,FUN = evd::pgpd,loc=0,
-                  scale=Shape_evd, shape=Shape_evd)
+                      scale=Shape_evd, shape=Shape_evd)
       PTO<-(1-Unif)^(-1)
       seuil_marg<-1+10^(-5)
       indicatrice_pos2<-which(apply(X=(PTO-seuil_marg),
-                                    FUN=fonction_trajectoire_positive,MARGIN = 1)==TRUE)
+                FUN=fonction_trajectoire_positive,
+                MARGIN = 1)==TRUE)
       indicatrice_pos<-indicatrice_pos[indicatrice_pos2]
-      vect_found<-c(vect_found,indicatrice_pos)
-      Z<-Z+1
+      #vect_found<-c(vect_found,indicatrice_pos)
+      # Z<-Z+1
+      if(k==1){
+        ### initialisation
+        list_ind_pos[[k]]<-indicatrice_pos
+      }else{
+        ### intersection of intersection etc...
+        list_ind_pos[[k]]<-intersect(list_ind_pos[[k-1]],
+                                     indicatrice_pos)
+      }
+      
+      Beg<-END
     }
     ref<-Array_simul[1,,1]
     Nb_filled<-length(which(!is.na(ref)==TRUE))
-    Inds_final_chosen<-unique(vect_found[duplicated(vect_found)])
+    Inds_final_chosen<-list_ind_pos[[NB_Forcg_cond]]
     Nb_final_chosen<-length(Inds_final_chosen)
     Beg_filled<-Nb_filled+1
     Gap<-M-(Nb_filled+Nb_final_chosen)
     End_filled<-min(Nb_filled+Nb_final_chosen,M)
     Lag<-End_filled-Beg_filled+1
+    # return(list("inds"=Inds_final_chosen,
+    #             "sims"=LISTE_candidats,
+    #             "array_sim"=ref,
+    #             "array_simul"=Array_simul,
+    #             "list_inds_gd"=list_ind_pos,
+    #             "found_filter"=Inds_final_chosen))
     for(k in c(1:length(l_variables))){
       name_variable<-l_variables[k]
       Z_vark<-LISTE_candidats[[name_variable]][Inds_final_chosen,]
@@ -1213,12 +1824,20 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       #   UNIF_k<-1-Z_vark^(-1)
       # }
       UNIF_k<-apply(Z_vark,MARGIN=2,
-                    FUN = evd::pgpd,loc=0,
-                    scale=Shape_evd, shape=Shape_evd)
+                  FUN = evd::pgpd,loc=0,
+                  scale=Shape_evd, shape=Shape_evd)
       UNIF_k<-UNIF_k[c(1:Lag),]
       ### Unif scale
-      Array_simul[k,c(Beg_filled:End_filled),]<-UNIF_k
-      Coords_simul[c(Beg_filled:End_filled),]<-Sub_coords
+      D_full<-dim(Array_simul)[3]
+      D<-ncol(UNIF_k)
+      Filled_indexes<-c(Beg_filled:End_filled)
+      Nfound<-length(Filled_indexes)
+      ### Fill with 0 if nb_col<full case
+      Array_simul[k,Filled_indexes,c(1:D_full)]<-matrix(0,
+                              nrow = length(Nfound),
+                              ncol=D_full)
+      Array_simul[k,Filled_indexes,c(1:D)]<-UNIF_k
+      Coords_simul[Filled_indexes,]<-Sub_coords
     }
     ### See if the object is completed. 
     new_ref<-Array_simul[1,,1]
@@ -1228,98 +1847,416 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Bool_filled<-TRUE
     }
   }
-  
+
   # Conversion --------------------------------------------------------------
   # ------------------------------------------------------------------------
   LISTE_Frechet_SIMUL<-list()
   LISTE_simul<-list()
   LISTE_obs_exts<-list()
-  if(result_transformation[["type_transfo"]]=="Mixture_emp_GPD"){
+  print(Length_T)
+  if(result_transformation[["type_transfo"]]=="_Mixt_transf_"){
     for(k in c(1:length(l_variables))){
       name_variable_for_conv<-l_variables[k]
-      Simul_whole_kunif<-Array_simul[k,,]
+      D<-Length_T[[name_variable_for_conv]]
+      Simul_whole_kunif<-Array_simul[k,,c(1:D)]
+      
       ### Unif-->Pareto to compare in the scale of obs.
       # If GPD(1,0,1) in conversion
       Conv_for_analyse<-apply(Simul_whole_kunif,MARGIN=2,
-                              FUN = evd::qgpd,loc=0,
-                              scale=Shape_evd, shape=Shape_evd)
+            FUN = evd::qgpd,loc=0,
+            scale=Shape_evd, 
+            shape=Shape_evd)
+      Times_used<-Times_per_FCG[[name_variable_for_conv]]
       # if Frechet in conversion. 
       #Conv_for_analyse<-(1-Simul_whole_kunif)**(-1)
-      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-Conv_for_analyse
+      DF<-as.data.frame(Conv_for_analyse)
+      colnames(DF)<-Times_used
+      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-DF
       INDICES_ACP<-1:nrow(Z_varj)
       ### Unif--> Pareto for conversion
-      NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
-                     df=(1-Simul_whole_kunif^(-1)))
+      # NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
+      #                df=(1-Simul_whole_kunif^(-1)))
       
       # Reconversion in the good scale--------------------------------------
-      K<-Liste_all[[name_variable_for_conv]]$K
-      LEVT<-Liste_all[[name_variable_for_conv]]$LEVT
-      Variables_reconversion_ACP<-lapply(NO_ACP,function_reconversion_Pareto,
-                                         K=K,
-                                         list_evt=LEVT)
-      Variables_reconversion_ACP<-do.call(rbind.data.frame,
-                                          Variables_reconversion_ACP)
-      colnames(Variables_reconversion_ACP)<-1:ncol(Variables_reconversion_ACP)
+      Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
+      K<-Theta_EXTGPD_k$K
+      LEVT<-Theta_EXTGPD_k$LEVT
+      # if(name_variable_for_conv=="U"){
+      #   return(list("sim"=Simul_whole_kunif,
+      #               "k"=K,
+      #               "evt"=LEVT,"Times"=Times_used)
+      #   )
+      # }
+      #_fromImport
+      DFF<-as.data.frame(Simul_whole_kunif)
+      colnames(DFF)<-Times_used
+      Variables_reconversion_ACP<-lapply(Times_used,
+                    function_reconversion_Pareto_fromDframes,
+                     Df_K=K,variable_uplift=DFF,
+                     Df_evt=LEVT)
+      Variables_reconversion_ACP<-do.call(cbind.data.frame,
+                     Variables_reconversion_ACP)
+      colnames(Variables_reconversion_ACP)<-Times_used
       LISTE_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
       
       # Observation extreme -----------------------------------------------------
       obs_ext<-result_transformation$orig[[name_variable_for_conv]][Indices_exts,]
-      colnames(obs_ext)<-c(1:ncol(obs_ext))
+      colnames(obs_ext)<-Times_used
       LISTE_obs_exts[[name_variable_for_conv]]<-obs_ext
     }
   }else{
     for(k in c(1:length(l_variables))){
       name_variable_for_conv<-l_variables[k]
-      Simul_whole_kunif<-Array_simul[k,,]
+      D<-Length_T[[name_variable_for_conv]]
+      
+      Simul_whole_kunif<-Array_simul[k,,c(1:D)]
       #Conv_for_analyse<-(-1)*(log(Simul_whole_kunif))^(-1)
       ### Unif-->Pareto to compare in the scale of obs.
       Conv_for_analyse<-apply(Simul_whole_kunif,MARGIN=2,
                               FUN = evd::qgpd,loc=0,
                               scale=Shape_evd, 
                               shape=Shape_evd)
+      Times_used<-Times_per_FCG[[name_variable_for_conv]]
       #Conv_for_analyse<-(1-Simul_whole_kunif)**(-1)
       INDICES_ACP<-1:nrow(Simul_whole_kunif)
       ### Unif-->Frechet to compare in Frechet scale of obs.
-      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-Conv_for_analyse
+      DF<-as.data.frame(Conv_for_analyse)
+      colnames(DF)<-Times_used
+      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-DF
       NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
                      df=Simul_whole_kunif)
       
       # Reconversion in the good scale--------------------------------------
+      ### Change the colnames using correct times
       Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
       Variables_reconversion_ACP<-lapply(NO_ACP,
-                                         function_reconversion_Unif_EXTGPD,
-                                         Theta_k=Theta_EXTGPD_k)
-      Variables_reconversion_ACP<-do.call(rbind.data.frame,
-                                          Variables_reconversion_ACP)
-      colnames(Variables_reconversion_ACP)<-1:ncol(Variables_reconversion_ACP)
+                    function_reconversion_Unif_EXTGPD,
+                    Theta_k=Theta_EXTGPD_k)
+      
+      Variables_reconversion_ACP<-do.call(rbind,
+                      Variables_reconversion_ACP)
+      colnames(Variables_reconversion_ACP)<-Times_used
       LISTE_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
       
       # Observation extreme -----------------------------------------------------
       obs_ext<-result_transformation$orig[[name_variable_for_conv]][Indices_exts,]
-      colnames(obs_ext)<-c(1:ncol(obs_ext))
+      colnames(obs_ext)<-Times_used
       LISTE_obs_exts[[name_variable_for_conv]]<-obs_ext
     }
     
   }
   if(M_Theta=="GaussMixture"){
-    Object_modelisation<-Mod_Gauss
+    Object_modelisation<-Model_coords
   }
   else{
-    Object_modelisation<-Modele_coords
+    Object_modelisation<-Model_coords
   }
-  return(list("Risk_MV"=l_prime[Indices_exts],
-              "Param_found"=Theta_opt,"simul"=LISTE_simul,
+  return(list("Param_found"=Theta_opt,"simul"=LISTE_simul,
               "obs_exts"=LISTE_obs_exts,"Indices_exts"=Indices_exts,
               "coords_simul"=Coords_simul, "coords_data"=Scores,
               "Frechet_normal"=list("obs"=LISTE_Frechet_OBS,
                                     "simul"=LISTE_Frechet_SIMUL),
               "EIGEN_functions"= EIGEN_functions,
-              "object_model_theta"=Object_modelisation,
-              "threshold"=Seuil_lprime,
+              "threshold"=Threshold,
               "Vect_RiskF_transf"=Vect_l_transf,
-              "model_EGPD"=L_Transf_vect_l))
+              "model_EGPD"=L_Transf_vect_l,
+              "mqu"=MQU,"vect_transf_EGPD"=Vect_Pareto_margins,
+              "Model_Coords"=Model_coords,
+              "CHULL_HTAWN"=CHULL))
 }
 
+Chi_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
+                                    t,s){
+  Couple<-Matrix_df_unif[,c(t,s)]
+  Max_<-apply(X = Couple,MARGIN = 1,FUN = max)
+  prob_max<-mean(as.numeric(Max_<=Order_quantile))
+  #prob_denom<-1-Order_quantile
+  #From chimeas
+  chi <- 2 - log(prob_max)/log(Order_quantile)
+  return(chi)
+}
+AD_test_pair<-function(Matrix_df,Mat_cthresh,
+                       t,s){
+  Couple<-Matrix_df[,c(t,s)]
+  Cts<-Mat_cthresh[t,s]
+  Test_ad<-taildep.test(Couple[,1], Couple[,2],cthresh = Cts)
+  if(s==27){
+    print(c(t,s))
+    print(Test_ad)
+  }
+  PVAL<-as.numeric(Test_ad$p.value)
+  Prop<-as.numeric(Test_ad$parameter[4])*(10)^(-2)
+  df<-as.data.frame(cbind(PVAL,Prop))
+  colnames(df)<-c("pval","prop")
+  return(df)
+}
+AD_test_analysis<-function(Matrix_df,Mat_cthresh,
+                               Filename=NA,Name_main=NA,
+                           New_breaks_labels=NA,
+                           only_pval=NA,THEME_ad_ai){
+  d<-ncol(Matrix_df)
+  Mat_pval_found<-matrix(NA,nrow = d,
+                       ncol=d)
+  Mat_prop_found<-matrix(NA,nrow = d,
+                         ncol=d)
+  d_minus<-d-1
+  for(i in c(1:d_minus)){
+    beg<-i+1
+    range_i<-c(beg:d)
+    Result_line<-lapply(range_i,FUN = AD_test_pair,
+                        t=i,Mat_cthresh=Mat_cthresh,
+                        Matrix_df=Matrix_df)
+    Correspdg_df<-do.call(rbind.data.frame,
+                          Result_line)
+    Mat_pval_found[i,range_i]<-as.numeric(Correspdg_df[,"pval"])
+    Mat_prop_found[i,range_i]<-as.numeric(Correspdg_df[,"prop"])
+  }
+  Mat_pval_found<-t(Mat_pval_found)
+  rownames(Mat_pval_found)<- as.character(c(1:ncol(Mat_pval_found)))
+  colnames(Mat_pval_found) <- as.character(c(1:ncol(Mat_pval_found)))
+  m_pval<- melt(Mat_pval_found)
+  colnames(m_pval) <- c("Row", "Col", "Value")
+  m_pval$category<-rep("pvalue",nrow(m_pval))
+  
+  ### Proportion
+  Mat_prop_found<-t(Mat_prop_found)
+  rownames(Mat_prop_found)<- as.character(c(1:ncol(Mat_prop_found)))
+  colnames(Mat_prop_found) <- as.character(c(1:ncol(Mat_prop_found)))
+  m_prop<- melt(Mat_prop_found)
+  colnames(m_prop) <- c("Row", "Col", "Value")
+  m_prop$category<-rep("exceedance rate",nrow(m_prop))
+  ## NA gives error with ==--> use isTrue to prevent this
+  Case_1<-isTRUE(only_pval)
+  if(Case_1){
+    All_AD_AI<-m_pval
+  }else{
+    ### Concatenation
+    All_AD_AI<-rbind.data.frame(m_pval,m_prop)
+  }
+  ### Title graph
+  Name_main_graph<-paste0("AD test of ",Name_main)
+
+  d<-ncol(Matrix_df)
+  All_AD_AI$round_Value<-round(All_AD_AI$Value,2)
+  GG_complete_AD_AI<-ggplot(All_AD_AI, aes(x = Col, y = Row, fill = Value)) 
+  if(!Case_1){
+    ### if two elements--> facet_wrap
+    GG_complete_AD_AI<-GG_complete_AD_AI+
+    facet_wrap(~category) 
+  }
+  GG_complete_AD_AI<-GG_complete_AD_AI+
+    geom_tile()
+  if(d<5){
+    GG_complete_AD_AI<-GG_complete_AD_AI+
+      geom_text(aes(label = round_Value), color = "black",
+                size = 3)
+  }
+  # strip.text = element_text(size=15),
+  # axis.text  = element_text(size=12),
+  # legend.title = element_text(size=14)
+  GG_complete_AD_AI<-GG_complete_AD_AI+   
+    xlab("")+ylab("")+
+    scale_fill_viridis(na.value="lightgrey",
+                       alpha = 0.8)+
+   # labs(title=Name_main_graph)+
+    labs(fill="Legend")+
+    THEME_ad_ai+theme(legend.text = element_text(size=11))+
+    theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 20),
+          legend.direction="horizontal",
+          legend.position="bottom")
+  if(sum(!is.na(New_breaks_labels))==length(New_breaks_labels)){
+    pb <- ggplot_build(GG_complete_AD_AI)
+    y_breaks <-pb$layout$panel_params[[1]]$y$breaks
+    New_breaks_labels<-New_breaks_labels[y_breaks]
+    GG_complete_AD_AI<-GG_complete_AD_AI+
+      scale_x_continuous(breaks = y_breaks,
+                         labels = New_breaks_labels)+
+      
+      scale_y_continuous(breaks = y_breaks,
+                         labels = New_breaks_labels)
+  }
+  ggsave(filename = Filename,
+         plot = GG_complete_AD_AI,
+         width=12,height = 6)
+  return(GG_complete_AD_AI)
+}
+
+Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
+                               Filename=NA,Name_main=NA){
+  d<-ncol(Matrix_df_unif)
+  Mat_Xi_found<-matrix(NA,nrow = d,
+                       ncol=d)
+  d_minus<-d-1
+  for(i in c(1:d_minus)){
+    beg<-i+1
+    range_i<-c(beg:d)
+    Result_line<-sapply(range_i,FUN = Chi_measure_analysis_pair,
+                        t=i,Order_quantile=Order_quantile,
+                        Matrix_df_unif=Matrix_df_unif)
+    Mat_Xi_found[i,range_i]<-Result_line
+
+  }
+  #All<-t(Mat_Xi_found)+Mat_Xi_found
+  #diag(All)<-diag(All)/2
+  if(is.na(Filename)){
+    #return(All)
+    return(t(Mat_Xi_found))
+  }else{
+    mat <-All
+    rownames(mat) <- as.character(c(1:ncol(mat)))
+    colnames(mat)<- as.character(c(1:ncol(mat)))
+    Name_froot<-expression(chi~"matrix of "~ NAME_VAR)
+    Name_main_modif<-do.call("substitute", 
+                             list(Name_froot[[1]], 
+                                  list(NAME_VAR = Name_main)))  
+    # Convert matrix to long format
+    df <- melt(mat)
+    require(viridis)
+    colnames(df) <- c("Row", "Col", "Value")
+    GGdefault<-ggplot(df, aes(x = Col, y = Row, fill = Value)) +
+      geom_tile() +
+      xlab("")+ylab("")+
+      scale_fill_viridis()+
+      labs(title=Name_main_modif)+
+      labs(fill="Value")+
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+        axis.title = element_text(size=15))
+    ggsave(filename = Filename,
+           plot = GGdefault,
+           width=8,height = 6)
+    return(GGdefault)
+  }
+  
+}
+Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
+                                       t,s){
+  Couple<-Matrix_df_unif[,c(t,s)]
+  Min_<-apply(X = Couple,MARGIN = 1,FUN = min)
+  prob_min<-mean(as.numeric(Min_>Order_quantile))
+  #From chimeas
+  chibar <- 2 * log(1-Order_quantile)/log(prob_min) - 1
+  return(chibar)
+}
+
+Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
+                               Filename=NA,Name_main=NA){
+  d<-ncol(Matrix_df_unif)
+  Mat_Xibar_found<-matrix(NA,nrow = d,
+                       ncol=d)
+  d_minus<-d-1
+  for(i in c(1:d_minus)){
+    beg<-i+1
+    range_i<-c(beg:d)
+    Result_line<-sapply(range_i,FUN = Chi_bar_measure_analysis_pair,
+                        t=i,Order_quantile=Order_quantile,
+                        Matrix_df_unif=Matrix_df_unif)
+    Mat_Xibar_found[i,range_i]<-Result_line
+
+  }
+  # All<-t(Mat_Xibar_found)+Mat_Xibar_found
+  # diag(All)<-diag(All)/2
+  if(is.na(Filename)){
+    #return(All)
+    return(t(Mat_Xibar_found))
+  }else{
+    mat <-All
+    rownames(mat) <- as.character(c(1:ncol(mat)))
+    colnames(mat)<- as.character(c(1:ncol(mat)))
+    
+    # Convert matrix to long format
+    df <- melt(mat)
+    require(viridis)
+    input_for_tex<-paste0("$\\bar{\\chi}$ matrix of ",Name_main)
+    Name_main_modif<-latex2exp::TeX(input_for_tex)
+    colnames(df) <- c("Row", "Col", "Value")
+    GGdefault<-ggplot(df, aes(x = Col, y = Row, fill = Value)) +
+      geom_tile() +
+      xlab("")+ylab("")+
+      scale_fill_viridis()+
+      labs(title=Name_main_modif)+
+      labs(fill="Value")+
+      theme(
+        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
+        axis.title = element_text(size=15))
+    ggsave(filename = Filename,
+           plot = GGdefault,
+           width=8,height = 6)
+    return(GGdefault)
+  }
+  
+}
+Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
+                                        Filename=NA,Name_main=NA,
+                                        New_breaks_labels=NA,
+                                        Lim_viridis=NULL){
+  df_chi<-Chi_measure_analysis(
+    Matrix_df_unif = Matrix_df_unif,
+    Order_quantile = Order_quantile,Filename = NA,
+    Name_main = Name_main)
+  rownames(df_chi) <- as.character(c(1:ncol(df_chi)))
+  colnames(df_chi) <- as.character(c(1:ncol(df_chi)))
+  m_chi<- melt(df_chi)
+  colnames(m_chi) <- c("Row", "Col", "Value")
+  m_chi$category<-rep("chi",nrow(m_chi))
+  
+  df_chi_bar<-Chi_bar_measure_analysis(
+    Matrix_df_unif = Matrix_df_unif,
+    Order_quantile = Order_quantile,Filename = NA,
+    Name_main = Name_main)
+  colnames(df_chi_bar)<- as.character(c(1:ncol(df_chi_bar)))
+  rownames(df_chi_bar)<- as.character(c(1:ncol(df_chi_bar)))
+
+  m_chi_bar<- melt(df_chi_bar)
+  colnames(m_chi_bar) <- c("Row", "Col", "Value")
+  m_chi_bar$category<-rep("chi_bar",
+                          nrow(m_chi_bar))
+  ### Concatenation
+  All_chi<-rbind.data.frame(m_chi,m_chi_bar)
+  ### Title graph
+  Name_main_graph<-paste0("Correlation matrix of ",Name_main)
+  cat_labels<-c("chi"="chi",
+                "chi_bar"="bar(chi)")
+  d<-ncol(Matrix_df_unif)
+  All_chi$round_Value<-round(All_chi$Value,2)
+  GG_complete_chi<-ggplot(All_chi, aes(x = Col, y = Row, fill = Value)) +
+      facet_wrap(~category,
+             labeller=as_labeller(cat_labels,label_parsed))+
+      geom_tile()
+  if(d<5){
+    GG_complete_chi<-GG_complete_chi+
+      geom_text(aes(label = round_Value), color = "black",
+                size = 3)
+  }
+  GG_complete_chi<-GG_complete_chi+   
+      xlab("")+ylab("")+
+      scale_fill_viridis_c(na.value="lightgrey",
+                       alpha = 0.8,
+                limits=Lim_viridis)+
+      labs(fill="Value")+
+      theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 20),
+        strip.text = element_text(size=14),
+        axis.text  = element_text(size=12),
+        legend.title = element_text(size=13),
+        axis.title=element_text(size=14),
+        legend.direction = "horizontal",
+        legend.position = "bottom")
+  if(sum(!is.na(New_breaks_labels))==length(New_breaks_labels)){
+    pb <- ggplot_build(GG_complete_chi)
+    y_breaks <-pb$layout$panel_params[[1]]$y$breaks
+    New_breaks_labels<-New_breaks_labels[y_breaks]
+    GG_complete_chi<-GG_complete_chi+
+      scale_x_continuous(breaks = y_breaks,
+                         labels = New_breaks_labels)+
+      
+      scale_y_continuous(breaks = y_breaks,
+                         labels = New_breaks_labels)
+  }
+  ggsave(filename = Filename,
+         plot = GG_complete_chi,
+         width=8,height = 6)
+  return(GG_complete_chi)
+}
 #' function_reconversion_Unif_EXTGPD
 #'
 #' @param Simul_Unif: vector. Simulated vector with uniform margins.
@@ -1362,17 +2299,27 @@ function_reconv_each_dim_EGPD<-function(Simul_Unif,Theta_k,index_dim){
 
 
 Function_one_couple_l<-function(Params_Biv,z,Th,one_u){
-  
+
   realisation<-Function_mixture(Params_Biv =Params_Biv ,u = one_u,
-                                Th =Th,z = z)
+                   Th =Th,z = z)
   realisation_y<-Simul_cond_one(input_x = realisation,
-                                Params_biv = Params_Biv,
-                                Th = Th,
-                                z = z)
+                 Params_biv = Params_Biv,
+                 Th = Th,
+                 z = z)
   return(c(realisation,realisation_y))
 }
 
-Min_function_conv<-function(Shape_d){
+#' Function_conv_univ
+#'
+#' @param Shape_d: df. Matrix of observations for one forcing condition. 
+#'
+#' @return Vect[float]. Mean absolute coordinates in 8 basis functions (sin) 
+#' for the input df. 
+#' @export 
+#'
+#' @examples
+Function_conv_univ<-function(Shape_d){
+  
   pas_x<-1/ncol(Shape_d)
   vecteur_temps<-c(1:ncol(Shape_d))/ncol(Shape_d)
   #Fonction propre. 
@@ -1389,7 +2336,8 @@ Min_function_conv<-function(Shape_d){
     
     # approx de Rieman --------------------------------------------------------
     coordonnees<-(Shape_d%*%fonction_obtenue)*(pas_x)
-    LISTE_convergence<-c(LISTE_convergence,mean(abs(coordonnees)))
+    LISTE_convergence<-c(LISTE_convergence,
+                         mean(abs(coordonnees)))
   }
   
   return(LISTE_convergence)
@@ -1410,10 +2358,10 @@ DIndex_Poisson_Thresholds<-function(Vect_l_function,U,V,Decimal_date,Nb_years){
   return(DIndex)
 }
 Analyse_extreme_proj_gfunction<-function(base_RV,L,M1,M2,function_g){
-  
+
   fnct_k<-function(Obs,k,function_g){
     LISTE_p<-function_analyse_convergence_gPto(Obs=Obs,K= k,
-                                               function_g=function_g)
+                                          function_g=function_g)
     return(LISTE_p)
   }
   vecteur_k<-seq(50,L,by=1)
@@ -1518,10 +2466,10 @@ mindist_update<-function (data, ts = 0.15, method = "mad")
 #' @examples
 Couple_s_t_chi_measure<-function(t,s,matrix_,tail_quantile){
   
-  Sub_matrix<-matrix_[,c(t,s)]
-  Min_st<-apply(X = Sub_matrix,MARGIN = 1,FUN = min)
-  prob_intersection<-mean(as.numeric(Min_st>tail_quantile))
-  return(prob_intersection/(1-tail_quantile))
+    Sub_matrix<-matrix_[,c(t,s)]
+    Min_st<-apply(X = Sub_matrix,MARGIN = 1,FUN = min)
+    prob_intersection<-mean(as.numeric(Min_st>tail_quantile))
+    return(prob_intersection/(1-tail_quantile))
 }
 #'Matrix_chi_measure
 #'
@@ -1539,11 +2487,244 @@ Matrix_chi_measure<-function(Data_unif,tail_quantile){
   for(i in c(1:ncol(matrix_chi))){
     sup_ij<-c(i:d)
     Values_chi<-sapply(X = sup_ij,FUN = Couple_s_t_chi_measure,
-                       t=i,matrix_=Data_unif,tail_quantile=tail_quantile)
+           t=i,matrix_=Data_unif,tail_quantile=tail_quantile)
     matrix_chi[i,sup_ij]<-Values_chi
   }
   Comb<-t(matrix_chi)+matrix_chi
   diag(Comb)<-diag(Comb)/2
   return(Comb)
 }
+ALD_reg_XY<-function(data_XY,basis_functionGAM,
+                     Level_Thresh,Sim_X){
+  colnames(data_XY)<-c("X_regressor","Y_target")
+  mu_data<-colMeans(data_XY)
+  sd_data<-apply(X = data_XY,MARGIN = 2,
+                 FUN = sd)
+  if(is.null(dim(Sim_X))){
+    N_sim<-length(Sim_X)
+  }else{
+    N_sim<-nrow(Sim_X)
+  }
+  
+  if(is.null(dim(Sim_X))){
+    Sim_X1<-scale(Sim_X,center = mu_data[1],
+                  scale = sd_data[1])
+    Sim_X2<-scale(Sim_X,center = mu_data[2],
+                  scale = sd_data[2])
+    N_sim<-length(Sim_X)
+    Sim_for_output<-matrix(
+      rep(Sim_X,2),nrow = N_sim,byrow = FALSE)
+  }else{
+    Sim_X1<-scale(Sim_X[,1],center = mu_data[1],
+                  scale = sd_data[1])
+    Sim_X2<-scale(Sim_X[,2],center = mu_data[2],
+                  scale = sd_data[2])
+    N_sim<-nrow(Sim_X)
+    Sim_for_output<-Sim_X
+  }
+  Sim_X1<-Sim_for_output[,1]
+  Sim_X2<-Sim_for_output[,2]
+  tau_used<-rep(Level_Thresh,2*N_sim)
+  if(basis_functionGAM=="cr"){
+    fmla_ald<-paste0('Y_target ~ s(X_regressor,bs="cr" )')
+  }
+  if(basis_functionGAM=="tp"){
+    fmla_ald<-paste0('Y_target ~ s(X_regressor,bs="tp" )')
+  }
+  
+  ###Normalising first coordinate
+  data_1<-data_XY
+  data_1[,1]<-scale(data_1[,1])
+  Ald_model<-evgam::evgam(as.formula(fmla_ald), 
+              data=data_1, 
+              family="ald", 
+              ald.args=list(tau=Level_Thresh))
 
+  ### Inverse 
+  data_flip<-data_XY[,c(2,1)]
+  data_flip[,1]<-scale(data_flip[,1])
+  colnames(data_flip)<-colnames(data_1)
+  Ald_model_flip<-evgam::evgam(as.formula(fmla_ald), 
+              data=data_flip, 
+              family="ald", 
+              ald.args=list(tau=Level_Thresh))
+  ### Predictions from simulations (first)
+  ##########
+  Y_pred_Tau_withse<-predict(Ald_model, 
+               newdata=list(X_regressor=Sim_X1),
+               type="response",se.fit=TRUE)
+  ### Use confidence band
+  Y_pred_Tau<-Y_pred_Tau_withse[["fitted"]][["location"]]
+  Sd_found<-Y_pred_Tau_withse[["se.fit"]][["location"]]
+  Bounds<-t(sapply(c(1:length(Y_pred_Tau)),
+         function(x,vect_reg){
+      MU<-vect_reg[x]
+      Sd<-Sd_found[x]
+      Q_min_max<-qnorm(p = c(0.025,0.975),mean = MU,
+                sd = Sd)
+      return(Q_min_max)
+         },vect_reg=Y_pred_Tau))
+  data_1case<-cbind(Sim_for_output[,1],
+                    Y_pred_Tau,Bounds)
+  ### Predictions from simulations (second)
+  ##########
+  Y_pred_Tau_flip_withse<-predict(Ald_model_flip, 
+                newdata=list(X_regressor=Sim_X2),
+                type="response",
+                se.fit=TRUE)
+  ### Use confidence band
+  Y_pred_Tau_flip<-Y_pred_Tau_flip_withse[["fitted"]][["location"]]
+  Sd_found_flip<-Y_pred_Tau_flip_withse[["se.fit"]][["location"]]
+  Bounds_flip<-t(sapply(c(1:length(Y_pred_Tau_flip)),
+       function(x,vect_reg){
+         MU<-vect_reg[x]
+         Sd<-Sd_found_flip[x]
+         Q_min_max<-qnorm(p = c(0.025,0.975),mean = MU,
+                          sd = Sd)
+         return(Q_min_max)},
+        vect_reg=Y_pred_Tau_flip)
+  )
+  
+  data_2case<-cbind(Y_pred_Tau_flip,
+                    Sim_for_output[,2],Bounds_flip)
+  Descrip_case<-rep("first",N_sim)
+  Descrip_case_flip<-rep("second",N_sim)
+  Descrip_case_wh<-c(Descrip_case,
+                Descrip_case_flip)
+  Descrip_case_wh<-cbind(tau_used,Descrip_case_wh)
+  Couple_XY<-rbind(data_1case,
+                   data_2case)
+  Df_obtained_full<-cbind.data.frame(Couple_XY,
+                    Descrip_case_wh)
+  colnames(Df_obtained_full)<-c("X_reg","Y_target",
+                                "ymin","ymax","Tau",
+                                "origin")
+  return(Df_obtained_full)
+
+}
+craft_mex_tform<-function (x, margins, r = NULL, method = "mixture", divisor = "n+1", 
+                           na.rm = TRUE) 
+{
+  margins <- list(casefold(margins), p2q = switch(casefold(margins), 
+                                                  gumbel = function(p) -log(-log(p)), laplace = function(p) ifelse(p < 
+                                                                                                                     0.5, log(2 * p), -log(2 * (1 - p)))), q2p = switch(casefold(margins), 
+                                                                                                                                                                        gumbel = function(q) exp(-exp(-q)), 
+                                                                                                                                                                        laplace = function(q) ifelse(q < 
+                                                                                                                                                                                                       0, exp(q)/2, 1 - 0.5 * exp(-q))))
+  if (!is.element(method, c("mixture", "empirical"))) 
+    stop("method should be either 'mixture' or 'empirical'")
+  if (!is.element(divisor, c("n", "n+1"))) 
+    stop("divisor can be 'n' or 'n+1'")
+  if (is.null(r)) {
+    r <- x
+    r$transData <- lapply(1:dim(x$data)[2], function(i) x$data[, 
+                                                               i])
+  }
+  transFun <- function(i, x, r, mod, th, divisor, method) {
+    x <- x[, i]
+    r <- r[[i]]
+    mod <- mod[[i]]
+    th <- th[i]
+    if (divisor == "n") 
+      divisor <- length(r)
+    else if (divisor == "n+1") 
+      divisor <- length(r) + 1
+    ox <- order(x)
+    r <- sort(r)
+    run <- rle(r)
+    p <- cumsum(run$lengths)/divisor
+    p <- rep(p, run$lengths)
+    Femp <- p[sapply(x, function(y) which.min(abs(r - y)))]
+    if (method == "mixture") {
+      sigma <- exp(mod$coefficients[1])
+      xi <- mod$coefficients[2]
+      Para <- (1 + xi * (x - th)/sigma)^(-1/xi)
+      Para <- 1 - mean(r > th) * Para
+      res <- ifelse(x <= th, Femp, Para)
+    }
+    else res <- Femp
+    res[ox] <- sort(res)
+    res
+  }
+  res <- sapply(1:ncol(x$data), transFun, x = x$data, r = r$transData, 
+                mod = r$models, th = r$mth, divisor = divisor, method = method)
+  dimnames(res) <- list(NULL, names(r$models))
+  x$transformed <- margins$p2q(res)
+  invisible(x)
+}
+laplace_function<-function(p) {ifelse(p < 
+                                        0.5, log(2 * p), 
+                              -log(2 * (1 - p)))
+}
+
+### Plot functions density Mclust
+CRAFt_plot_density_D<-function (x, data = NULL, nlevels = 11, levels = NULL, prob = c(0.25, 
+                                                                                      0.5, 0.75), points.pch = 1, points.col = 1, points.cex = 0.8, 
+                                gap = 0.2, cex.annot,...) 
+{
+  object <- x
+  mc <- match.call(expand.dots = TRUE)
+  mc$x <- mc$points.pch <- mc$points.col <- mc$points.cex <- mc$gap <- NULL
+  mc$nlevels <- nlevels
+  mc$levels <- levels
+  mc$prob <- prob
+  if (!is.null(mc$type)) 
+    if (mc$type == "level") 
+      mc$type <- "hdr"
+  if (is.null(data)) {
+    data <- mc$data <- object$data
+    addPoints <- FALSE
+  }
+  else {
+    data <- as.matrix(data)
+    stopifnot(ncol(data) == ncol(object$data))
+    addPoints <- TRUE
+  }
+  nc <- object$d
+  oldpar <- par(mfrow = c(nc, nc), mar = rep(gap/2, 4), oma = rep(3, 
+                                                                  4), no.readonly = TRUE)
+  on.exit(par(oldpar))
+  for (i in seq(nc)) {
+    for (j in seq(nc)) {
+      if (i == j) {
+        plot(data[, c(i, j)], type = "n", xlab = "", 
+             ylab = "", axes = FALSE)
+        text(mean(par("usr")[1:2]), mean(par("usr")[3:4]), 
+             colnames(data)[i], cex =cex.annot, adj = 0.5)
+        box()
+      }
+      else {
+        par <- object$parameters
+        if (is.null(par$pro)) 
+          par$pro <- 1
+        par$mean <- par$mean[c(j, i), , drop = FALSE]
+        par$variance$d <- 2
+        sigma <- array(dim = c(2, 2, par$variance$G))
+        for (g in seq(par$variance$G)) sigma[, , g] <- par$variance$sigma[c(j, 
+                                                                            i), c(j, i), g]
+        par$variance$sigma <- sigma
+        par$variance$Sigma <- NULL
+        par$variance$cholSigma <- NULL
+        par$variance$cholsigma <- NULL
+        mc$parameters <- par
+        mc$data <- object$data[, c(j, i)]
+        mc$axes <- FALSE
+        mc[[1]] <- as.name("surfacePlot")
+        eval(mc, parent.frame())
+        box()
+        if (addPoints & (j > i)) 
+          points(data[, c(j, i)], pch = points.pch, col = points.col, 
+                 cex = points.cex)
+      }
+      if (i == 1 && (!(j%%2))) 
+        axis(3)
+      if (i == nc && (j%%2)) 
+        axis(1)
+      if (j == 1 && (!(i%%2))) 
+        axis(2)
+      if (j == nc && (i%%2)) 
+        axis(4)
+    }
+  }
+  invisible()
+}

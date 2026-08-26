@@ -184,3 +184,74 @@
 #                 Convert_todata[Inds_exts]<-Seuil_lprime*(1-V)^(-1)
 #                 return(Convert_todata)
 #               })
+# Dot product --MRV test
+Nobs<-nrow(Vectors_HTAIL)
+# Rank transformation. F--> Pareto
+################
+# if((convert_HTAIL)==TRUE){
+#   Vectors_HTAIL<-apply(X =Vectors_HTAIL,MARGIN = 2,FUN = function(x){
+#     Denom<-Nobs+1-rank(x)
+#     return(Nobs/Denom)
+#   })
+# }
+# if(length(I)==1){
+#   Name_i<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_",NAME_Vars[I],".png")
+#   GGi<-Graphics_estimators_gamma(series = Vectors_HTAIL[,I],
+#                                  vect_k =Vect_k,
+#                                  Title_graphic =" ",
+#                                  dims_elt_text = dims_elt_text,
+#                                  y_lims = LIMS_Y)
+#   ggsave(filename = Name_i,plot =GGi,width=8,
+#          height=6)
+# }
+# if(length(J)==1){
+#   Name_j<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_",NAME_Vars[J],".png")
+#   obj<-Graphics_estimators_gamma(series = Vectors_HTAIL[,J],
+#                                  vect_k =Vect_k,
+#                                  Title_graphic =" ",
+#                                  dims_elt_text = dims_elt_text,
+#                                  y_lims = LIMS_Y)
+#   ggsave(filename = Name_j,plot =obj,width=8,
+#          height=6)
+# }
+# L_i<-length(NAME_Vars[I])
+# if(L_i>1){
+#   First_i<-NAME_Vars[I][1]
+#   for(j in c(2:L_i)){
+#     First_i<-paste0(First_i,"_",NAME_Vars[I][j])
+#   }
+# }else{
+#   First_i<-NAME_Vars[I]
+# }
+# L_j<-length(NAME_Vars[J])
+# if(L_j>1){
+#   Second_j<-NAME_Vars[J][1]
+#   for(j in c(2:L_j)){
+#     Second_j<-paste0(Second_j,"_",NAME_Vars[J][j])
+#   }
+# }else{
+#   Second_j<-NAME_Vars[J]
+# }
+# Name_max<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_max_",
+#                  First_i,"_",Second_j,".png")
+# Max_Risk_functionals<-apply(X =  Vectors_HTAIL[,c(I,J)],MARGIN = 1,
+#                             FUN = max)
+# GG_max<-Graphics_estimators_gamma(series = Max_Risk_functionals,
+#                                   vect_k =Vect_k,
+#                                   Title_graphic =" ",
+#                                   dims_elt_text = dims_elt_text,
+#                                   y_lims = LIMS_Y)
+# ggsave(filename = Name_max,plot = GG_max,width=8,
+#        height=6)
+# 
+# Name_min<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_min_",
+#                  First_i,"_",Second_j,".png")
+# Min_Risk_functionals<-apply(X =  Vectors_HTAIL[,c(I,J)],MARGIN = 1,
+#                             FUN = min)
+# GG_min<-Graphics_estimators_gamma(series = Min_Risk_functionals,
+#                                   vect_k =Vect_k,
+#                                   Title_graphic =" ",
+#                                   dims_elt_text = dims_elt_text,
+#                                   y_lims = LIMS_Y)
+# ggsave(filename = Name_min,plot = GG_min,width=8,
+#        height=6)

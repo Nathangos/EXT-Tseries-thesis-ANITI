@@ -215,8 +215,9 @@ Sample_cond_g<-function(Mu_vector,Cov_mat,
 Simul_from_Htawn<-function(model_mex_all,n_sim,d,Name_vars,
                            prop_class,ind_ref,
                            thresh_censor,Q_sim){
-  Data_rad<-data.frame(matrix(NA,nrow = n_sim,ncol=d))
-  colnames(Data_rad)<-Name_vars
+  Data_rad<-data.frame(matrix(NA,nrow = n_sim,
+                    ncol=d))
+  colnames(Data_rad)<-c(Name_vars)
   ### same value for prob above threshold.
   list_sample<-list()
   probs_class<-prop_class/sum(prop_class)
@@ -229,9 +230,11 @@ Simul_from_Htawn<-function(model_mex_all,n_sim,d,Name_vars,
     Qsim_z<-Q_sim[z]
     n_sim_z<-length(Ind_z)
     Pop_sims_z<-t(replicate(n_sim_z,
-                  HTAWN_censorshisp(model_z = Model_z,
-                    prop_z = Qsim_z,thresh_censor = thresh_censor,
-                    ind_ref = ind_ref,z = z)))
+      HTAWN_censorshisp(model_z = Model_z,
+        prop_z = Qsim_z,thresh_censor = thresh_censor,
+        ind_ref = ind_ref,z = z,
+        l_name=Name_vars)))
+    #return(Pop_sims_z)
     for(variable in Name_vars){
       Data_rad[Ind_z,variable]<-Pop_sims_z[,variable]
     }
@@ -239,18 +242,211 @@ Simul_from_Htawn<-function(model_mex_all,n_sim,d,Name_vars,
   }
   return(Data_rad)
 }
-HTAWN_censorshisp<-function(model_z,prop_z,thresh_censor,ind_ref,z){
+### Convergence of the defined "angles" of the radial vector
+Extreme_covRad_per_K<-function(Df_Rad_Orig,l_name,k,
+                                   vect_lg){
+  Order_lg<-order(vect_lg,
+                  decreasing = TRUE)
+  vect_lg_sort<-sort(vect_lg,
+                     decreasing = TRUE)
+  Threshold_lg<-vect_lg_sort[k]
+  Inds_exts<-which(vect_lg>=Threshold_lg)
+  ### Subset of extreme events.
+  sub_order<-Order_lg[c(1:k)]
+  Sub_Rad<-Df_Rad_Orig[Inds_exts,]
+  Sub_Lg<-vect_lg[Inds_exts]
+  ###
+  Theta_of_rad<-t(t(Sub_Rad)%*%diag(Sub_Lg^(-1)))
+  Theta_of_rad<-as.data.frame(Theta_of_rad)
+  colnames(Theta_of_rad)<-l_name
+  Mat_corr<-Fct_correlations(method_corr = "kendall",
+                    df1 = Theta_of_rad,
+                   Intersect_times = l_name,
+                   df2 =NA,mat_corr=FALSE)
+  Mat_corr$number_exceed<-rep(k,nrow(Mat_corr))
+  return(Mat_corr)
+}
+Extreme_covRad_evol<-function(Df_Rad_Orig,l_name,vector_k,
+                           Ref_RiskF,CPU_hearts){
+  All_results<-lapply(X = vector_k,
+                 Extreme_covRad_per_K,
+                 l_name=l_name,
+                 Df_Rad_Orig=Df_Rad_Orig,
+                 vect_lg=Ref_RiskF)
+  return(do.call(what = rbind.data.frame,
+                 All_results))
+}
+Loop_TexmexCarlo_Extrapol<-function(nSample, mexList, pqu_extrapol,mult = 10){
+  d<-length(mexList)
+  Matrix_full<-matrix(NA,nrow = nSample,ncol = d)
+  N_obtained<-0
+  while(N_obtained<nSample){
+    Turn_j<-TexmexMCarlo_Extrapol(nSample = nSample,mexList = mexList,
+                                  mult = mult,pqu_extrapol = pqu_extrapol)
+    Df_j<-do.call("rbind",
+                  Turn_j$list_craft)
+    CNAMES<-colnames(Df_j)
+    Nturn<-nrow(Df_j)
+    N_taken<-min(Nturn,nSample)
+    
+    Gap<-min(N_taken,nSample-N_obtained)
+    Beg<-1+N_obtained
+    End<-Gap+N_obtained
+    Matrix_full[Beg:End,]<-Df_j[1:Gap,]
+    N_obtained<-End
+  }
+  colnames(Matrix_full)<-CNAMES
+  return(Matrix_full)
+}
+TexmexMCarlo_Extrapol<-function (nSample, mexList, pqu_extrapol,mult = 10) 
+{
+  d <- length(mexList)
+  data <- mexList[[1]]$margins$data
+  margins <- mexList[[1]]$dependence$margins
+  nData <- dim(data)[1]
+  which <- sample(1:nData, size = nSample, replace = TRUE)
+  MCsampleOriginal <- data[which, ]
+  dataLaplace <- Craft_MEX_transform(mexList[[1]]$margins, margins = margins, 
+                              method = "mixture")$transformed
+  MCsampleLaplace <- dataLaplace[which, ]
+  ### Where does the maximum appears ? 
+  whichMax <- apply(MCsampleLaplace, 1, which.max) 
+  
+  ### with the traditional package function
+  ### dth <- sapply(mexList, function(l) l$dependence$dth)
+  ### with the traditional package function
+  ### dqu <- sapply(mexList, function(l) l$dependence$dqu)
+  
+  ### As we do not use the CEV models with the modeling thresholds,
+  ### we need to provide these thresholds 
+  dth_extrapol<-sapply(1:d,function(index_coord){
+    Lev_quant<-pqu_extrapol[index_coord]
+    return(as.numeric(quantile(dataLaplace[, index_coord], 
+                               Lev_quant)))
+  })
+  
+  ### When does the maximum is above the desired threshold--> CEV can be used
+  whichMaxAboveThresh <- sapply(1:nSample, function(i) MCsampleLaplace[i, 
+                                    whichMax[i]] >= dth_extrapol[whichMax[i]])
+  mexKeep <- lapply(1:d, function(i) {
+    ### to extrapolate--> use new argument pqu_extrapol
+    mc <- predict(mexList[[i]], pqu = pqu_extrapol[i], nsim = nSample * 
+                        d * mult,smoothZdistribution=TRUE)
+    ### keep in memory only the simulations for which the maximum appears 
+    ### for the ith model
+    mc$data$simulated[mc$data$CondLargest, order(c(i, c(1:d)[-i]))]
+  })
+  N_computed<-sum(sapply(mexKeep,FUN = function(x){
+    return(nrow(x))
+  }))
+  N_totake<-min(N_computed,nSample)
+  nR <- rep(0, d)
+  names(nR) <- names(data)
+  list_reals<-list()
+  cond_max<-whichMaxAboveThresh
+  for (i in 1:d) {
+    ### When does the simulations from the ith model can be used --> 1) when the ith coordinate is the maximum,
+    ### and 2) this maximum is above the threshold => what we are looking for
+    replace <- whichMax == i & whichMaxAboveThresh
+    cond_i<-replace
+    ### instead of using the indexes of replace (much too few),
+    ### we estimate the mixing weight--> draw the convenient number for each 
+    ### model
+    prob_cli<-sum(cond_i)/sum(cond_max)
+    print(prob_cli)
+    # proportion of simulated samples--> number is N_totake,
+    # not automatically nSample
+    nReplace_i<-round(N_totake*prob_cli)
+    print("To take")
+    print(N_totake)
+    if (nReplace_i > 0) {
+      nR[i] <- nReplace_i
+      Mat_cl_i<-as.matrix(mexKeep[[i]])
+      Number_sampled_i<-min(nrow(Mat_cl_i),nReplace_i)
+      realisations_i<-Mat_cl_i[c(1:Number_sampled_i), ]
+      ### Originally the data resampled
+      MCsampleOriginal[c(1:Number_sampled_i), ] <-realisations_i
+      print(paste0("i=",i))
+      print(Number_sampled_i)
+      ### Must be after the conditional simulations in our case
+      ### If we cannot obtain many samples--> we have a large number of observations
+      list_reals[[i]]<-realisations_i
+    }
+  }
+  res <- list(nR = nR, MCsample = MCsampleOriginal, whichMax = whichMax, 
+              whichMaxAboveThresh = whichMaxAboveThresh)
+  oldClass(res) <- "mexMC"
+  return(list("orig_reyy"=res,"list_craft"=list_reals))
+}
+
+Craft_MEX_transform<-function (x, margins, r = NULL, method = "mixture", divisor = "n+1", 
+                               na.rm = TRUE) 
+{
+  if (!is.element(method, c("mixture", "empirical"))) 
+    stop("method should be either 'mixture' or 'empirical'")
+  if (!is.element(divisor, c("n", "n+1"))) 
+    stop("divisor can be 'n' or 'n+1'")
+  if (is.null(r)) {
+    r <- x
+    r$transData <- lapply(1:dim(x$data)[2], function(i) x$data[, 
+                                                               i])
+  }
+  transFun <- function(i, x, r, mod, th, divisor, method) {
+    x <- x[, i]
+    r <- r[[i]]
+    mod <- mod[[i]]
+    th <- th[i]
+    if (divisor == "n") 
+      divisor <- length(r)
+    else if (divisor == "n+1") 
+      divisor <- length(r) + 1
+    ox <- order(x)
+    r <- sort(r)
+    run <- rle(r)
+    p <- cumsum(run$lengths)/divisor
+    p <- rep(p, run$lengths)
+    Femp <- p[sapply(x, function(y) which.min(abs(r - y)))]
+    if (method == "mixture") {
+      sigma <- exp(mod$coefficients[1])
+      xi <- mod$coefficients[2]
+      Para <- (1 + xi * (x - th)/sigma)^(-1/xi)
+      Para <- 1 - mean(r > th) * Para
+      res <- ifelse(x <= th, Femp, Para)
+    }
+    else res <- Femp
+    res[ox] <- sort(res)
+    res
+  }
+  res <- sapply(1:ncol(x$data), transFun, x = x$data, r = r$transData, 
+                mod = r$models, th = r$mth, divisor = divisor, method = method)
+  dimnames(res) <- list(NULL, names(r$models))
+  x$transformed <- margins$p2q(res)
+  invisible(x)
+}
+
+HTAWN_censorshisp<-function(model_z,prop_z,thresh_censor,ind_ref,z,
+                            l_name){
     accept<-FALSE
     while(accept==FALSE){
-      Sims_Cond_z<-predict(object= model_z,
-                                    pqu=prop_z,nsim =2,
-                                    which = z)$data$simulated
+      Sims_Cond_z<-predict(object= model_z,pqu=prop_z,
+                     nsim =2,which = z,
+                     smoothZdistribution=TRUE)$data$simulated
+      ###Select the first one (breaks if nsim=1)
       Sims_Cond_z<-unlist(Sims_Cond_z[1,])
-      u_z<-Sims_Cond_z[z]
+      d<-length(Sims_Cond_z)
       if(z==ind_ref){
+        #c(ind_ref
         return(Sims_Cond_z)
       }else{
-        if(u_z<thresh_censor){
+        z_minus<-z-1
+        Sims_Cond_z<-Sims_Cond_z[l_name]
+        Rest_vector<-Sims_Cond_z[1:z_minus]
+        M<-max(Rest_vector)
+        ### If we use the third model, 
+        ### we must not simulate 
+        ### extreme obs for the first second obs
+        if(M<thresh_censor){
+          #c(z,
           return(Sims_Cond_z)
         }
       }
@@ -327,4 +523,13 @@ Fit_HGD_from_Laplace<-function(Lap_vectors,Model_Lap_inits){
 }
 Convert_marg_model_ghyp<-function(vect,model_univ){
   return(ghyp::qghyp(vect,object = model_univ))
+}
+F_find_Quantile<-function(Vect,Target){
+  Dce_Target_Tau<-function(Tau){
+    Q_<-1-Tau
+    Threshold_estim<-as.numeric(quantile(Vect,Q_))
+    return(Threshold_estim-Target)
+  }
+  Qsurv_star_found<-uniroot(Dce_Target_Tau, lower = 0, upper = 1, tol = .Machine$double.eps^0.5)$root
+  return(Qsurv_star_found)
 }

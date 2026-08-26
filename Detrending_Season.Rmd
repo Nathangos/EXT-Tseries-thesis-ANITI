@@ -27,9 +27,9 @@ F_names<-ls()
 nb_CPU_hearts<-detectCores()-4
 CPU_hearts<-makeCluster(nb_CPU_hearts)
 clusterExport(CPU_hearts,varlist=F_names)
-name_variable<-"Surge"
+name_variable<-"Hs"
 df<-read.csv(file = paste0("Data/Data_",
-                           name_variable,".csv"))[,c(2:39)]
+            name_variable,".csv"))[,c(2:39)]
 ```
 
 ```{r}
@@ -37,6 +37,7 @@ df<-read.csv(file = paste0("Data/Data_",
 SELECT<-TRUE
 step_delta<-3
 ```
+
 
 ```{r}
 

@@ -25,3 +25,36 @@
 #   MATRIX_TRANSFO[,t]<-UNIF_t
 #   
 # }
+# if(Approach=="Gauss"){
+#   ### To do: correct Sample_cond_g
+#   Sim_l<-t(replicate(n =N_sim,
+#                      expr = Sample_cond_g_Rjection_Sampling(Mu_vector = Mu_vector,
+#                                                             Cov_mat = Cov_mat,
+#                                                             g=List_Params_RF[["function"]],
+#                                                             Th_g=Mu_Gauss)))
+#   ### Conversion to uniform margins.
+#   print("here")
+#   Sim_l_tf<-apply(Sim_l,MARGIN=2,
+#                   FUN = pnorm)
+#   ### Mixture model
+#   
+# }
+# if(Approach=="Laplace"){
+#   Sim_l<-t(replicate(n =N_sim,
+#                      expr = Sample_cond_Laplacian_Rjection_Sampling(
+#                        Mu_ALD = Model_ALD$center,
+#                        Scatter_ALD=Model_ALD$Scatter,
+#                        g=List_Params_RF[["function"]],
+#                        Th_g=Mu_Laplace)))
+#   Sim_l_tf<-apply(Sim_l,MARGIN=2,
+#                   FUN = L1pack::plaplace)
+# }
+# if(Approach=="HGD"){
+#   Sim_l<-t(replicate(n =N_sim,
+#                      expr = Sample_cond_HGD_Rjection_Sampling(
+#                        Model_HGD = Model_HGD,
+#                        g=List_Params_RF[["function"]],
+#                        Th_g=Mu_Gauss)))
+#   Sim_l_tf<-apply(Sim_l,MARGIN=2,
+#                   FUN =pnorm)
+# }

@@ -1,6 +1,8 @@
 rm(list=ls())
 set.seed(133)
 require(mev)
+require(reshape2)
+require(ggplot2)
 ### Source des fonctions. ####
 #Functions from univariate case. 
 source("../fonctions/fonctions_Pareto.R")
@@ -130,4 +132,108 @@ Result_pval<-Test_procedure(N_test = 1000,prob_classes = prob_classes,
                             nu = nu,n = 1000)
 Mat_R<-colMeans(t(apply(X = Result_pval,MARGIN = 2,FUN = unlist)))
 
+### Test Quantile regression
+N_mev<-1000
+N_sim<-500
+MStable_sims<-mev::rmev(n = N_mev,d = 2,param = 0.7,model = "log")
+Tau_seqce<-seq.int(from = 0.5,to = 0.95,
+                   by = 0.1)
+Exp_sims<-as.data.frame(-log(1-exp(-MStable_sims^(-1))))
+colnames(Exp_sims)<-c("X_regressor","Y_target")
+New_X<-rexp(N_sim)
+BASISF_qreg<-"tp"
+Qreg_lines<-lapply(Tau_seqce,
+                   ALD_reg_XY,data_XY = Exp_sims,
+                   basis_functionGAM =BASISF_qreg ,Sim_X=New_X
+)
+Combinations<-do.call(rbind,Qreg_lines)
+Combinations$Tau<-as.numeric(Combinations$Tau)
+list_ggplot<-list()
+First_name<-"V1"
+Scd_name<-"V2"
+for(j in c(1:length(unique(Combinations$origin)))){
+  cat<-unique(Combinations$origin)[j]
+  ind_spe<-which(Combinations$origin==cat)
+  Sub_comb<-Combinations[ind_spe,]
+  Orig<-ggplot(data=Exp_sims,aes(x=X_regressor,
+                                    y=Y_target))+
+    geom_point()+
+    xlab(First_name)+ylab(Scd_name)
+  if(cat=="first"){
+    Half<-Orig+
+      geom_line(data=Sub_comb,aes(x=X_reg,y=Y_target,
+                                  group=interaction(Tau,origin),
+                                  col=Tau,linetype=origin))+
+      guides(linetype="none")+
+      scale_color_continuous(palette = "viridis")
+    
+    
+  }else{
+    Half<-Orig+
+      coord_flip()+
+      geom_line(data=Sub_comb,aes(x=X_reg,y=Y_target,
+                                  group=interaction(Tau,origin),
+                                  col=Tau,linetype=origin))+
+      guides(linetype="none")+
+      scale_color_continuous(palette = "viridis")
+    
+    
+  }
+  Full<-Half+
+    geom_abline(slope = 1,intercept = 0,linetype="dashed")+
+    theme(axis.title=element_text(size=20),
+          legend.text=element_text(size=12),
+          legend.title = element_text(size=13),
+          axis.text = element_text(size=14))
+  ggsave(filename = paste0(getwd(),"/functions_MV/test_MEV_qreg_",j,".png"),
+         plot = Full,width=8,height=6)
+}
 
+#### Graphics to explain confidence bands for return level lines
+levels_used<-c(0.7)
+Curves_found<-sapply(levels_used,FUN = function(x){
+  CURVE<-texmex::JointExceedanceCurve(Sample = Exp_sims,
+                               ExceedanceProb = x)
+  return(CURVE)
+})
+Curves_found_1sample<-do.call(cbind.data.frame,
+  Curves_found)
+colnames(Curves_found_1sample)<-colnames(Exp_sims)
+Fction_new__fast_new_RL<-function(obs){
+  Inds_t_s<-sample(x = c(1:nrow(obs)),size = nrow(obs),
+                   replace = TRUE)
+  New_data<-obs[Inds_t_s,]
+  Curves_found_1sample<-sapply(levels_used,FUN = function(x){
+    texmex::JointExceedanceCurve(Sample =  New_data,
+                                 ExceedanceProb = x)
+  })
+  df<-as.data.frame(Curves_found_1sample)
+  return(df)
+}
+N_test<-20
+Ex_biv_rl_curves<-replicate(N_test,
+            expr = Fction_new__fast_new_RL(Exp_sims))
+GG_for_explan<-ggplot()+
+  geom_jointExcCurve(x = Curves_found_1sample,
+                     aes(x=X_regressor,y=Y_target,
+                     col="estimator_data"))
+palette_colors <- colors()
+require(texmex)
+for(z in c(1:N_test)){
+  GG_for_explan<-GG_for_explan+
+    geom_jointExcCurve(x = Ex_biv_rl_curves[[z]],
+                aes(x=X_regressor,y=Y_target,
+                 ), col=palette_colors[z],
+                alpha=0.7)
+}
+theta_vect<-seq.int(from = 0,to = pi/2,length.out = 5)
+
+for(theta in theta_vect){
+  GG_for_explan<-GG_for_explan+
+  geom_abline(slope =tan(theta),intercept = 0,col="black")
+}
+GG_for_explan<-GG_for_explan+
+  labs(col="Legend")
+
+ggsave(paste0(getwd(),"/functions_MV/showMethod_confRL.png"),
+       width=8,height=6,plot = GG_for_explan)

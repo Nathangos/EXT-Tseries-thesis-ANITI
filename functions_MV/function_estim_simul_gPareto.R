@@ -91,7 +91,7 @@ Non_param_LEGRAND_RiskF<-function(Data_scale_exp,nb_simul,Threshold_EXP){
   IndepCop_chosen<-VineCopula::BiCopIndTest(UNIF_for_test[,1],
                                       UNIF_for_test[,2])
   print(IndepCop_chosen)
-  
+
   # Sample Delta ------------------------------------------------------------
   Delta_tilde<-sample(Delta_i,size = nb_simul,
                       replace = TRUE)
@@ -139,7 +139,8 @@ Estim_param_RF_homogeneous<-function(Params_risk_Function,Q_thresh,Vect_l_functi
   if(Params_risk_Function[["name_RF"]]=="max"){
     l_AIC<-list()
     l_models<-list()
-    vect_models<-c("log", "alog", "hr", "neglog", "aneglog", "bilog",
+    vect_models<-c("log", "alog", "hr", "neglog", 
+      "aneglog", "bilog",
       "negbilog", "ct", "amix")
     for(nameModel in vect_models){
       sub_ob<-evd::fbvpot(x = Vect_l_function,

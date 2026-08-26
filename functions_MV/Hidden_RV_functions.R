@@ -34,80 +34,81 @@ compute_Nik<-function(Eta_star,k,i){
   Mean_ki<-sum(as.numeric(Sub_set<=Value_ref))
   return(Mean_ki)
 }
-Run_diagnostics_Gamma_G<-function(LIMS_Y,dims_elt_text,Vectors_HTAIL,I,J,
-                                  Vect_k,NAME_Vars,q,convert_HTAIL){
-  # Dot product --MRV test
-  Nobs<-nrow(Vectors_HTAIL)
-  # Rank transformation. F--> Pareto
-  ################
-  if((convert_HTAIL)==TRUE){
-    Vectors_HTAIL<-apply(X =Vectors_HTAIL,MARGIN = 2,FUN = function(x){
-      Denom<-Nobs+1-rank(x)
-      return(Nobs/Denom)
-    })
-  }
-  if(length(I)==1){
-    Name_i<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_",NAME_Vars[I],".png")
-    GGi<-Graphics_estimators_gamma(series = Vectors_HTAIL[,I],
-                              vect_k =Vect_k,
-                              Title_graphic =" ",
+Run_diagnostics_Gamma_G<-function(dims_elt_text,Vectors_HTAIL,
+                                  Vect_k,q,root_export,YLIM_MV){
+  Mat_combs<-t(utils::combn(x = c(1:ncol(Vectors_HTAIL)),
+                        m = 2))
+  list_gg<-list()
+  Names<-colnames(Vectors_HTAIL)
+  for(j in c(1:nrow(Mat_combs))){
+    pair<-Mat_combs[j,]
+    pair_names<-Names[pair]
+    Sub_vector<-Vectors_HTAIL[,pair]
+    Minj<-apply(X = Sub_vector,MARGIN = 1,FUN = min)
+    GG<-Graphics_estimators_gamma(series = Minj,
+                              vect_k = Vect_k,
+                              Title_graphic = " ",
                               dims_elt_text = dims_elt_text,
-                              y_lims = LIMS_Y)
-    ggsave(filename = Name_i,plot =GGi,width=8,
-           height=6)
+                              SELECT_estim = c("ML_gamma"))
+    DF_j<-GG$data
+    DF_j$pair_vars<-rep(paste0("Min(",pair_names[1],",",
+                               pair_names[2],")"),nrow(DF_j))
+    list_gg[[j]]<-DF_j
   }
-  if(length(J)==1){
-    Name_j<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_",NAME_Vars[J],".png")
-    obj<-Graphics_estimators_gamma(series = Vectors_HTAIL[,J],
-                                   vect_k =Vect_k,
-                                   Title_graphic =" ",
-                                   dims_elt_text = dims_elt_text,
-                                   y_lims = LIMS_Y)
-    ggsave(filename = Name_j,plot =obj,width=8,
-           height=6)
-  }
-  L_i<-length(NAME_Vars[I])
-  if(L_i>1){
-    First_i<-NAME_Vars[I][1]
-    for(j in c(2:L_i)){
-      First_i<-paste0(First_i,"_",NAME_Vars[I][j])
-    }
-  }else{
-    First_i<-NAME_Vars[I]
-  }
-  L_j<-length(NAME_Vars[J])
-  if(L_j>1){
-    Second_j<-NAME_Vars[J][1]
-    for(j in c(2:L_j)){
-      Second_j<-paste0(Second_j,"_",NAME_Vars[J][j])
-    }
-  }else{
-    Second_j<-NAME_Vars[J]
-  }
-  Name_max<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_max_",
-                   First_i,"_",Second_j,".png")
-  Max_Risk_functionals<-apply(X =  Vectors_HTAIL[,c(I,J)],MARGIN = 1,
-                              FUN = max)
-  GG_max<-Graphics_estimators_gamma(series = Max_Risk_functionals,
-                            vect_k =Vect_k,
-                            Title_graphic =" ",
-                            dims_elt_text = dims_elt_text,
-                            y_lims = LIMS_Y)
-  ggsave(filename = Name_max,plot = GG_max,width=8,
-         height=6)
-  
-  Name_min<-paste0("graphiques_MV/Evol_gamma/Evol_gamma_min_",
-                   First_i,"_",Second_j,".png")
-  Min_Risk_functionals<-apply(X =  Vectors_HTAIL[,c(I,J)],MARGIN = 1,
-                              FUN = min)
-  GG_min<-Graphics_estimators_gamma(series = Min_Risk_functionals,
-                            vect_k =Vect_k,
-                            Title_graphic =" ",
-                            dims_elt_text = dims_elt_text,
-                            y_lims = LIMS_Y)
-  ggsave(filename = Name_min,plot = GG_min,width=8,
-         height=6)
-  
+  Df_all<-do.call(rbind.data.frame,list_gg)
+  COLS_chosen<-c("gam_ref"="red",
+                 "ML_gamma"="blue",
+                 "confidence_band"="darkblue",
+                 "threshold"="red")
+  LINETYPE_chosen<-c("gam_ref"=3,
+                     "Hill_gamma"=2,
+                     "ML_gamma"=4,
+                     "confidence_band"=5,
+                     "threshold"=6)
+  Df_all$pair_vars<-sapply(Df_all$pair_vars,
+                           FUN =function(x){
+                             Fct_correct_name(x = x,target = "Surcote",
+                                              replacement = "Surge")})
+  GG_shape_AD<-ggplot(data=Df_all,aes(x=number_excesses,y =gamma_estimed,color=source,
+                                      group=interaction(source),
+                                      linetype=source))+
+    geom_line()+
+    facet_wrap(~pair_vars)+
+    ylab(expression(gamma))+
+    xlab("Number of exceedances")+
+    ylim(YLIM_MV)+
+    geom_ribbon(mapping = aes(ymin=bound_inf,ymax=bound_sup,
+                              col="confidence_band",
+                              linetype = "confidence_band"),alpha=0.15,
+                fill="grey")+
+    geom_hline(aes(yintercept=Shape_chosen,col="gam_ref",
+                   linetype="gam_ref"))+
+    labs(col="Legend", linetype = "Legend")
+  LABELS_shape<-names(COLS_chosen)
+  LEGEND_shape<-sapply(LABELS_shape,
+                       function(x){
+                         if(x=="gam_ref"){
+                           return(latex2exp::TeX("$\\gamma_{0}$"))
+                         }else{
+                           return(x)
+                         }
+                       })
+  GG_shape_new<-GG_shape_AD+
+    scale_linetype_manual(values = LINETYPE_chosen,
+                          labels=LEGEND_shape)+
+    scale_color_manual(values = COLS_chosen,
+                       labels=LEGEND_shape)+
+    theme_bw()+
+    theme(axis.title=element_text(size=dims_elt_text[1]),
+          legend.title = element_text(size=dims_elt_text[2]),
+          legend.text=element_text(size=dims_elt_text[3]),
+          axis.text=element_text(size=dims_elt_text[4]))+
+    theme(legend.position="bottom",
+          legend.direction = "horizontal")
+  ggsave(filename = paste0(root_export,"/ADiag_shape_d=",ncol(Vectors_HTAIL),
+                           ".png"),
+         plot=GG_shape_new,width = 8,height = 6)
+  return(NA)
   # Confidence bands (ML) --------------------------------------------------------
   ####################
   # pdf(file = paste0("graphiques_MV/Evol_gamma/Evol_gamma_min_",
@@ -360,4 +361,68 @@ Mixture_d<-function(prop_bernoulli, nb_simulations,d,RiskFunction){
                              Sample_one_mixture_d(prop_bernoulli = prop_bernoulli,
                                                   d = d,RiskFunction = RiskFunction))
   return(Result_mixtures)
+}
+Window_std_per_threshold<-function(k_end,bandwidth_h,series_orig){
+  Inds_taken<-k_end-bandwidth_h
+  ### take results found with higher threshold--> go backwards
+  sub_series<-series_orig[Inds_taken:k_end]
+  return(sd(sub_series))
+}
+Stability_criterion_choice_threshold<-function(series_sorted_stats,k_max,
+                                               bandwidth_h){
+  ind_beg<-bandwidth_h
+  Inds_candidates<-c(ind_beg:k_max)
+  Vect_std_window<-sapply(Inds_candidates,
+         FUN = Window_std_per_threshold,
+         series_orig=series_sorted_stats,
+         bandwidth_h=bandwidth_h)
+  ### Detect local minimal for the std vector
+  Differences<-diff(Vect_std_window)
+  L_end<-length(Differences)-1
+  ### The previous index gives a higher value
+  Index_1<-which(Differences[1:L_end]<0)+1
+  ### The next index gives a higher value
+  d2<-Differences
+  Index_2<-which(d2>=0)
+  ind_min_local<-intersect(Index_1,Index_2)
+  
+  ### Determine the local minimum giving a value smaller
+  ### than the mean
+  ref_val<-mean(Vect_std_window)
+  All_candidates<-Vect_std_window[ind_min_local]
+  sub_ind_candidates<-which(All_candidates<ref_val)
+  index_special<-ind_min_local[sub_ind_candidates]
+  
+  ### Since we go back to the statistic--> we need to
+  ### recover the original index--> add bandwidth_h
+  Anchor<-index_special[1]+bandwidth_h
+  end_anchor<-index_special[1]
+  Inds_sub<-c(Anchor:end_anchor)
+  ### select the observations close to the chosen beta
+  Sub_stat<-series_sorted_stats[Inds_sub]
+  
+  ### pick among these observations the one closer to the median
+  Med_sub_stat<-median(Sub_stat)
+  Ind_beta_star<-which.min(abs(Sub_stat-Med_sub_stat))
+  beta_star<-Inds_sub[Ind_beta_star]
+  ### (graphics) recover the associated standard deviation (if available)
+  newbeta_star<-ifelse(beta_star>bandwidth_h,
+                    yes = beta_star-bandwidth_h,
+         no = NA)
+  print(c(beta_star,newbeta_star))
+  STAT_beta<-ifelse(beta_star>bandwidth_h,
+                    yes=Vect_std_window[newbeta_star],
+                    no=NA)
+  return(list("evol_std"=Vect_std_window,
+              "beta_found"=newbeta_star,
+              "candidates"=index_special,
+              "stat_candidates"=Vect_std_window[index_special],
+              "stat_beta"=STAT_beta))
+}
+Concatenate_entries_same_key<-function(list_,key_target){
+  vector_results<-c(sapply(which(names(list_)==key_target),
+           FUN=function(x){
+             return(list_[[x]])
+           }))
+  return(vector_results)
 }

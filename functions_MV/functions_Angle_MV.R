@@ -64,10 +64,11 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
 Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
                                  NbScores_Omega,l_variables,
                                  Indices_exts,d,f_transf){
-  Length_T<-ncol(LIST_all[[l_variables[1]]]$transf)
-  Omega<-matrix(NA,ncol=d*Length_T,
-                nrow =length(Indices_exts))
-  
+  #ncol(LIST_all[[l_variables[1]]]$transf)
+  Length_T<-list()
+  # Omega<-matrix(NA,ncol=d*Length_T,
+  #               nrow =length(Indices_exts))
+  Omega<-list()
   Ind_final<-0
   LIST_Frechet_OBS<-list()
   L<-length(l_variables)-1
@@ -76,19 +77,22 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
   for(w in c(1:d)){
     NE<-paste0(Name_for_export,"_",l_variables[w])
   }
-  
   for(Z in c(1:d)){
-    Beg<-1+(Z-1)*Length_T
-    End<-as.numeric(Length_T*(Z))
     nom_v<-l_variables[Z]
-    DF_nom<-LIST_all[[nom_v]]$transf[Indices_exts,]
+    DF_base<-LIST_all[[nom_v]]$transf
+    DF_nom<-DF_base[Indices_exts,]
     LIST_Frechet_OBS[[nom_v]]<-DF_nom
     colnames(DF_nom)<-c(1:ncol(DF_nom))
     Excedents_l<-apply(X = DF_nom,MARGIN = 1,
                        FUN = calcul_norm_L2)
     FORME_v<-t(t(DF_nom)%*%diag(Excedents_l^(-1)))
-    Omega[,c(Beg:End)]<-f_transf(FORME_v)
+    Length_T[[nom_v]]<-ncol(FORME_v)
+    Omega[[Z]]<-f_transf(FORME_v)
   }
+  ### Retrieve matrix form
+  Omega<-do.call(cbind.data.frame,
+                 Omega)
+  print(ncol(Omega))
   mu_Omega<-colMeans(Omega)
   sigma_Omega<-apply(Omega, 2,FUN = sd)
   Name_for_export_Omega<-paste0(Name_for_export,"_shape_Theta.png")
@@ -98,11 +102,11 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
   dev.off()
   ANALYSE_PCA<-FactoMineR::PCA(X =Omega ,
                                scale.unit = TRUE,graph = TRUE,
-                               ncp = 10)
+                               ncp = NbScores_Omega)
   val_lambda<-ANALYSE_PCA$eig[,1]
   vect_diff<-cumsum(c(0,val_lambda))/sum(val_lambda)
   vecteur_propvarexp<-1-vect_diff
-  
+  Inertia_explained<-vect_diff[NbScores_Omega+1]
   Name_for_export_inertia<-paste0(Name_for_export,
                                   "Theta/evol_inertia_Single_Theta")
   
@@ -111,11 +115,11 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
   }
   Name_for_export_inertia<-paste0(Name_for_export_inertia,"_",l_variables[length(l_variables)],
                                   ".png")                               
-  png(filename = Name_for_export_inertia,width = 1200,
+  png(filename = Name_for_export_inertia,width = 800,
       height = 600)
   plot(vecteur_propvarexp,type="o",
        ylab="Proportion of unexplained inertia",
-       xlab="Number of components")
+       xlab="Number of components",cex.lab = 3)
   abline(v=NbScores_Omega+1,col="red")
   dev.off()
   F_propres<-ANALYSE_PCA$svd$V
@@ -124,11 +128,11 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
                                           "_eigen_functions.png")
   png(filename = Name_for_export_eigen_functions,width = 1200,
       height = 600)
-  END<-37*d
+  END<-length(Omega)
   plot(c(1:END),ANALYSE_PCA$svd$V[,1],ylab=expression(nu),xlab="Time/variable")
   points(c(1:END),ANALYSE_PCA$svd$V[,2],col="green")
   points(c(1:END),ANALYSE_PCA$svd$V[,3],col="red")
-  abline(v=37,col="blue")
+  #abline(v=37,col="blue")
   dev.off()
   ### Select J eigenfunctions.
   Functions_eigen<-F_propres[,1:NbScores_Omega]
@@ -139,7 +143,9 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
               "Mu"=mu_Omega,
               "Sig"=sigma_Omega,
               "L_Frechet"=LIST_Frechet_OBS,
-              "Length_TS"=Length_T))
+              "Length_TS"=Length_T,
+              "Omega_target"=Omega,
+              "inertia_explained"=Inertia_explained))
 }
 ######### Simulation from one PCA basis.
 Simul_Omega_One_PCA_base<-function(list_Mod_One_PCA,
@@ -186,10 +192,29 @@ Simul_Omega_Mult_PCA_base<-function(list_Mod_Mult_PCA,M,d,list_nb_scores,
 Inner_k_l<-function(l_kl,Mat){
   k<-l_kl[1]
   l<-l_kl[2]
-  Vk<-Mat[,k]
-  Vl<-Mat[,l]
+  First_fcg<-Mat[[k]]
+  Second_fcg<-Mat[[l]]
+  names_intersected<-intersect(colnames(First_fcg),
+                              colnames(Second_fcg))
+  Vk<-as.numeric(unlist(First_fcg[,names_intersected]
+                        ))
+  #L2k<-calcul_norm_L2(Vk)**2
+  L2k<-as.numeric(t(Vk)%*%Vk)/length(Vk)
+  Vl<-as.numeric(unlist(Second_fcg[,names_intersected]
+                        ))
+  #L2l<-calcul_norm_L2(Vl)**2
+  L2l<-as.numeric(t(Vl)%*%Vl)/length(Vl)
+  ## prod scal
   Prod_scal<-as.numeric(t(Vk)%*%Vl)/length(Vk)
-  return(Prod_scal)
+  # 
+  #   # prod L2
+  #   Prod_sig<-prod(L2k,L2l)
+  return(c(Prod_scal,L2k,L2l))
+  # return(list("sig_XY"=Prod_scal,
+  #             "sig_X"=c(L2k,L2l)))
+  #prod(colMeans(All_cov[,c(2:END_index)])**(1/2))
+  # return(list("prod_scal"=Prod_scal,
+  #             "sig_scal"=)
 }
 #' Extreme_cov_per_K
 #'
@@ -205,43 +230,229 @@ Inner_k_l<-function(l_kl,Mat){
 #' @export
 #'
 #' @examples
-Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,L,d,
-                             Thresh_lg){
-  
-  Mat<-matrix(NA,nrow = L,
-              ncol = d)
+Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,d,
+                             Thresh_lg,center_GPD=FALSE){
+  Mat<-list()
+  L2_found<-list()
   for(l in c(1:d)){
     Name<-l_name[l]
     Df<-liste_MV_simul[[Name]]
-    Mat[,l]<-unlist(Df[j,])/Thresh_lg
+    if(!isFALSE(center_GPD)){
+      Df<-Df-center_GPD
+    }
+    Mat[[l]]<-Df[j,]/Thresh_lg
   }
-  ###  NL2_per_var
-  Squared_norms<-apply(X = Mat,MARGIN = 2,
-        FUN = calcul_norm_L2)**2
   
   ### Scalar_product
-  vect_pair<-list()
-  i<-1
-  for(l in c(1:d)){
-    rest_<-c(1:d)
-    one_<-rest_[l]
-    rest_<-rest_[-l]
-    for(l_tilde in c(1:length(rest_))){
-      other<-rest_[l_tilde]
-      pair<-c(one_,other)
-      Reponse_bool<-sapply(vect_pair,function(x,ref){
-        return(all(ref%in%x))
-      },ref=pair)
-      cond<-any(TRUE%in%Reponse_bool)
-      if(cond==FALSE){
-        vect_pair[[i]]<-pair
-        i<-i+1
-      }
-    }
+  Combinations<-t(utils::combn(x = c(1:d),
+                               m = 2))
+  list_IKL<-list()
+  for(j in c(1:nrow(Combinations))){
+    IKL<-Inner_k_l(l_kl = Combinations[j,],
+                   Mat = Mat)
+    list_IKL[[j]]<-IKL
   }
-  Scal_product_XY<-sapply(vect_pair,Inner_k_l,
-                Mat=Mat)
-  return(c(Scal_product_XY,Squared_norms))
+  return(list_IKL)
+}
+Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,d,
+                             Thresh_lg,center_GPD=FALSE){
+  Mat<-list()
+  L2_found<-list()
+  for(l in c(1:d)){
+    Name<-l_name[l]
+    Df<-liste_MV_simul[[Name]]
+    if(!isFALSE(center_GPD)){
+      Df<-Df-center_GPD
+    }
+    Mat[[l]]<-Df[j,]/Thresh_lg
+  }
+  
+  ### Scalar_product
+  Combinations<-t(utils::combn(x = c(1:d),
+                               m = 2))
+  list_IKL<-list()
+  for(j in c(1:nrow(Combinations))){
+    IKL<-Inner_k_l(l_kl = Combinations[j,],
+                   Mat = Mat)
+    list_IKL[[j]]<-IKL
+  }
+  return(list_IKL)
+}
+Scale_norm_per_Ind<-function(j,liste_MV_simul,l_name,
+                             center_GPD){
+  Mat<-list()
+  d<-length(l_name)
+  L2_found<-list()
+  for(l in c(1:d)){
+    Name<-l_name[l]
+    Df<-liste_MV_simul[[Name]]
+    if(!isFALSE(center_GPD)){
+      Df<-Df-center_GPD
+    }
+    Mat[[l]]<-Df[j,]
+  }
+  
+  ### Scalar_product
+  Combinations<-t(utils::combn(x = c(1:d),
+                               m = 2))
+  list_IKL<-list()
+  for(z in c(1:nrow(Combinations))){
+    IKL<-Inner_k_l(l_kl = Combinations[z,],
+                   Mat = Mat)
+    list_IKL[[z]]<-IKL
+  }
+  return(list_IKL)
+}
+Launch_extreme_confcov_per_K<-function(l_name,k,
+                                       vect_lg,
+                                       Nboot,alpha_param,
+                                       CPU_hearts,list_sig_L2){
+  Order_lg<-order(vect_lg,
+                  decreasing = TRUE)
+  vect_lg_sort<-sort(vect_lg,
+                     decreasing = TRUE)
+  Threshold_lg<-vect_lg_sort[k]
+  ### Subset of extreme events.
+  sub_order<-Order_lg[c(1:k)]
+  Resampled_results<-replicate(n = Nboot,
+            Result_1sample_ext(list_sig_L2 = list_sig_L2,
+                l_name = l_name,k = k,
+                Threshold_lg=Threshold_lg,
+                Inds_exts=sub_order,
+                CPU_hearts=CPU_hearts))
+ 
+  G<-apply(Resampled_results,
+           FUN = function(x){
+             df<-melt(as.data.frame(x))},MARGIN=2)
+  Melt<-do.call(rbind.data.frame,G)
+  Ind_sub<-which(Melt$variable=="gamXY")
+  result_resamp<-Melt[Ind_sub,"variable"]
+  summary_QQ<-as.data.frame(Melt %>% 
+    group_by(pair_vars,variable) %>% 
+    summarise(Q1=quantile(value,(alpha_param/2)),
+              Q2=quantile(value,1-(alpha_param/2)))
+    )
+  Indexes<-which(summary_QQ$variable!="k")
+  summary_QQ<-summary_QQ[Indexes,]
+  summary_QQ$k<-rep(k,nrow(summary_QQ))
+  return(summary_QQ)
+}
+
+Result_1sample_ext<-function(list_sig_L2,l_name,k,
+                     Threshold_lg,Inds_exts,
+                     CPU_hearts){
+  L_ext<-length(Inds_exts)
+  Indexes_sampled<-sample(x = c(1:L_ext),
+                          size = L_ext,replace = TRUE)
+  Pairs_found<-t(utils::combn(x = c(1:length(l_name)),
+                              m = 2))
+  END_index<-nrow(Pairs_found)
+  list_Sig_RHO<-list()
+  for(Z in c(1:END_index)){
+    Mat_ZSIG<-list_sig_L2[[Z]]
+    ## Take extreme individuals
+    Sub_matrix_Z<-Mat_ZSIG[Inds_exts,]
+    rownames(Sub_matrix_Z)<-c(1:nrow(Sub_matrix_Z))
+    ## Resample obs
+    Resampled_mat<-Sub_matrix_Z[Indexes_sampled,]
+    rownames(Resampled_mat)<-c(1:nrow(Resampled_mat))
+    Resampled_mat<-matrix(Resampled_mat,nrow = nrow(Resampled_mat),
+                          ncol=ncol(Resampled_mat))
+    ###Gam XY computations
+    Scal_prod_penalised<-apply(Resampled_mat,MARGIN = 1,
+          FUN = function(x){
+            L1<-sqrt(x[2])
+            L2<-sqrt(x[3])
+            Scal_prod<-x[1]
+            y<-Scal_prod/(L1*L2)
+            return(y)
+          })
+    #Scal_prod_penalised<-Resampled_mat[,1]/(Resampled_mat[,2]*Resampled_mat[,3])
+    print(head(Resampled_mat))
+    print(head(Scal_prod_penalised))
+    Gam_XY<-mean(Scal_prod_penalised)
+    print(Threshold_lg)
+    ## Sigma/ Rho computations
+    Mu_whole<-colMeans(Resampled_mat)
+    Sig<-Mu_whole[1]/(Threshold_lg**(2))
+    prod_sig<-prod(Mu_whole[-1]**(1/2))
+    Pair_z<-l_name[Pairs_found[Z,]]
+    Category<-paste0("(",Pair_z[1],",",Pair_z[2],")")
+    list_Sig_RHO[[Z]]<-c(k,Sig,Mu_whole[1]/prod_sig,
+                         Gam_XY,Category)
+  }
+  DF_whole_NEW<-do.call(rbind.data.frame,list_Sig_RHO)
+  colnames(DF_whole_NEW)<-c("k","sigXY","rhoXY",
+                            "gamXY","pair_vars")
+  Toconvert<-c("sigXY","k","rhoXY","gamXY")
+  DF_whole_NEW[,Toconvert]<-sapply(Toconvert,
+                               function(x)
+                               {return(as.numeric(DF_whole_NEW[,x]))
+                               })
+  return(DF_whole_NEW)
+}
+
+Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
+                                   vect_lg,center){
+  Order_lg<-order(vect_lg,
+                  decreasing = TRUE)
+  vect_lg_sort<-sort(vect_lg,
+                     decreasing = TRUE)
+  Threshold_lg<-vect_lg_sort[k]
+  ### Subset of extreme events.
+  sub_order<-Order_lg[c(1:k)]
+  Df<-list()
+  for(nameV in l_name){
+    Whole<-liste_MV_Orig[[nameV]]
+    Sub_Mat<-Whole[sub_order,]
+    Df[[nameV]]<-Sub_Mat
+  }
+  Dims<-dim(Sub_Mat)
+  d<-length(l_name)
+  L<-Dims[2]
+  All_results<-lapply(c(1:k),
+                      FUN = Extreme_cov_per_K,
+                      liste_MV_simul = Df,
+                      l_name = l_name,d = d,
+                      Thresh_lg=Threshold_lg,
+                      center_GPD=center)
+  Pairs_found<-t(utils::combn(x = c(1:length(l_name)),
+                              m = 2))
+  END_index<-nrow(Pairs_found)
+  list_Sig_RHO<-list()
+  for(Z in c(1:END_index)){
+    Conv_rho_sig_PairZ<-t(sapply(X = All_results,
+                                 FUN = function(x){
+                                   return(x[[Z]])
+                                 }))
+    Mu_whole<-colMeans(Conv_rho_sig_PairZ)
+    ##Gam 
+    Vgam<-apply(Conv_rho_sig_PairZ,MARGIN = 1,
+                               FUN = function(x){
+                                 L1<-sqrt(x[2])
+                                 L2<-sqrt(x[3])
+                                 Scal_prod<-x[1]
+                                 y<-Scal_prod/(L1*L2)
+                                 return(y)
+                               })
+    ### remove the weight of the threshold
+    Gam<-mean(Vgam)
+    prod_sig<-prod(Mu_whole[-1]**(1/2))
+    Pair_z<-l_name[Pairs_found[Z,]]
+    Category<-paste0("(",Pair_z[1],",",Pair_z[2],")")
+    Result_Z<-c(k, Mu_whole[1],Mu_whole[1]/prod_sig,
+                Gam,Category)
+    list_Sig_RHO[[Z]]<-Result_Z
+  }
+  DF_whole<-do.call(rbind.data.frame,list_Sig_RHO)
+  colnames(DF_whole)<-c("k","sigXY","rhoXY",
+                        "gamXY","pair_vars")
+  Toconvert<-c("sigXY","k","rhoXY","gamXY")
+  DF_whole[,Toconvert]<-sapply(Toconvert,
+                               function(x)
+                               {return(as.numeric(DF_whole[,x]))
+                               })
+  return(DF_whole)
 }
 
 #' Launch_extrem_cov_per_K
@@ -255,74 +466,222 @@ Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,L,d,
 #' @export
 #'
 #' @examples
-Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
-                                  vect_lg){
+# Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
+#                                   vect_lg,center){
+#   Order_lg<-order(vect_lg,
+#                       decreasing = TRUE)
+#   vect_lg_sort<-sort(vect_lg,
+#                      decreasing = TRUE)
+#   Threshold_lg<-vect_lg_sort[k]
+#   ### Subset of extreme events.
+#   sub_order<-Order_lg[c(1:k)]
+#   Df<-list()
+#   for(nameV in l_name){
+#     Whole<-liste_MV_Orig[[nameV]]
+#     Sub_Mat<-Whole[sub_order,]
+#     Df[[nameV]]<-Sub_Mat
+#   }
+#   Dims<-dim(Sub_Mat)
+#   d<-length(l_name)
+#   L<-Dims[2]
+#   All_results<-lapply(c(1:k),
+#                       FUN = Extreme_cov_per_K,
+#                       liste_MV_simul = Df,
+#                       l_name = l_name,d = d,
+#                       Thresh_lg=Threshold_lg,
+#                       center_GPD=center)
+#   Pairs_found<-t(utils::combn(x = c(1:length(l_name)),
+#                              m = 2))
+#   END_index<-nrow(Pairs_found)
+#   list_Sig_RHO<-list()
+#   for(Z in c(1:END_index)){
+#     Conv_rho_sig_PairZ<-t(sapply(X = All_results,
+#                          FUN = function(x){
+#                            return(x[[Z]])
+#                          }))
+#     Mu_whole<-colMeans(Conv_rho_sig_PairZ)
+#     prod_sig<-prod(Mu_whole[-1]**(1/2))
+#     Pair_z<-l_name[Pairs_found[Z,]]
+#     Category<-paste0("(",Pair_z[1],",",Pair_z[2],")")
+#     list_Sig_RHO[[Z]]<-c(k, Mu_whole[1],Mu_whole[1]/prod_sig,
+#                          Category)
+#   }
+#   DF_whole<-do.call(rbind.data.frame,list_Sig_RHO)
+#   colnames(DF_whole)<-c("k","sigXY","rhoXY","pair_vars")
+#   # Toconvert<-c("sigXY","k","rhoXY")
+#   # DF_whole[,Toconvert]<-sapply(Toconvert,
+#   #                function(x)
+#   #                {return(as.numeric(DF_whole[,x]))
+#   #                })
+#   return(DF_whole)
+#   # Accelerated version with CPU_hearts
+#   # DF_whole<-Estimator_rho_sig_knowing_K(list_inputs = Df,
+#   #                           Thresh_lg = Thresh_lg,
+#   #                           CPU_hearts = CPU_hearts)
+#   # return(DF_whole)
+#   
+# }
+#' Launch_MVconvergence_per_K
+#'
+#' @param liste_MV_Orig: list[df]. 
+#' @param l_name: vect[str].
+#' @param k: int. Number of extreme multivariate extreme time series. 
+#' @param vect_lg: vect[float]. Value of the risk function (gol). 
+#'
+#' @return list. Value for each forcing condition 
+#' for a given k of the mean absolute coordinate for several basis functions.
+#' @export
+#'
+#' @examples
+Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
+                                   vect_lg){
+  
   Order_lg<-order(vect_lg,
-                      decreasing = TRUE)
+                  decreasing = TRUE)
   vect_lg_sort<-sort(vect_lg,
                      decreasing = TRUE)
   Threshold_lg<-vect_lg_sort[k]
   ### Subset of extreme events.
   sub_order<-Order_lg[c(1:k)]
   Df<-list()
+  list_conv<-list()
   for(nameV in l_name){
     Sub_Mat<-liste_MV_Orig[[nameV]][sub_order,]
-    Df[[nameV]]<-Sub_Mat
+    L2_extj<-apply(X = Sub_Mat,MARGIN = 1,
+                   FUN = calcul_norm_L2)
+    Angle_extj<-t(t(Sub_Mat)%*%diag(L2_extj^(-1)))
+    list_conv[[nameV]]<-Function_conv_univ(
+      Shape_d =Angle_extj )
   }
-  Dims<-dim(Sub_Mat)
-  d<-length(l_name)
-  L<-Dims[2]
-  All_cov<-as.data.frame(t(sapply(c(1:k),
-      FUN = Extreme_cov_per_K,
-                  liste_MV_simul = Df,
-                  l_name = l_name,L = L,d = d,
-                  Thresh_lg=Threshold_lg)))
-  Cplmt_cols<-sapply(l_name,function(x){
-    return(paste0(x,"norm"))
-  })
-  colnames(All_cov)<-c("Scal_product",
-                          Cplmt_cols)
-  END_index<-ncol(All_cov)
-  ### Retrieve mean_scal_product
-  Sig_XY<-mean(All_cov[,1])
-  ### Retrieve product of means of squared norms.
-  Denominator_rohXY<-prod(colMeans(All_cov[,c(2:END_index)])**(1/2))
-  RHO_XY<-Sig_XY/Denominator_rohXY
-  return(list("Sig_XY"=Sig_XY,"RHO_XY"=RHO_XY))
+  return(list_conv)
 }
 
+#' Title
+#'
+#' @param liste_MV_Orig 
+#' @param l_name 
+#' @param vector_k 
+#' @param Ref_RiskF 
+#'
+#' @return Determine the evolution of the sigma and
+#'  rho coreelation coefficient
+#' @export
+#'
+#' @examples
 Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
-                            Ref_RiskF){
-  All_results<-t(sapply(X = vector_k,Launch_extreme_cov_per_K,
+                            Ref_RiskF,CPU_hearts,center=FALSE){
+  #cl = CPU_hearts,
+  All_results<-lapply(vector_k,Launch_extreme_cov_per_K,
                       l_name=l_name,
                       liste_MV_Orig=liste_MV_Orig,
-                      vect_lg=Ref_RiskF))
-  All_results_df<-data.frame(apply(X = All_results,
-                   MARGIN = 2,FUN = unlist))
-  return(All_results_df)
+                      vect_lg=Ref_RiskF,
+                      center=center)
+  return(do.call(what = rbind.data.frame,
+                 All_results))
 }
+Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
+                           Ref_RiskF,CPU_hearts,center=FALSE,
+                           Nboot,alpha_param){
+  N<-nrow(liste_MV_Orig[[1]])
+  Results<-parLapply(cl = CPU_hearts,X = c(1:N),
+         fun = Scale_norm_per_Ind,liste_MV_simul = liste_MV_Orig,
+                            l_name = l_name,
+                            center_GPD = center
+                            )
+  Pairs_found<-t(utils::combn(x = c(1:length(l_name)),
+                              m = 2))
+  END_index<-nrow(Pairs_found)
+  list_Sig_RHO<-list()
+  for(Z in c(1:END_index)){
+    Conv_rho_sig_PairZ<-t(sapply(X = Results,
+                                 FUN = function(x){
+                                   return(x[[Z]])
+                                 }))
+    list_Sig_RHO[[Z]]<-Conv_rho_sig_PairZ
+  }
+
+  All_results<-lapply(X = vector_k,Launch_extreme_confcov_per_K,
+                        l_name=l_name,vect_lg=Ref_RiskF,
+                        Nboot=Nboot,
+                        alpha_param=alpha_param,
+                      CPU_hearts=CPU_hearts,list_sig_L2=list_Sig_RHO)
+  return(do.call(what = rbind.data.frame,
+                 All_results))
+}
+#' Title
+#'
+#' @param liste_MV_Orig 
+#' @param l_name 
+#' @param vector_k 
+#' @param Ref_RiskF 
+#'
+#' @return Determine the evolution of the convergence
+#' of the angular component for each forcing condition. 
+#' @export
+#'
+#' @examples
+Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
+                            Ref_RiskF){
+  
+  All_results<-lapply(X = vector_k,
+                  Launch_MVconvergence_per_K,
+                        l_name=l_name,
+                        liste_MV_Orig=liste_MV_Orig,
+                        vect_lg=Ref_RiskF)
+  # All_results_df<-data.frame(apply(X = All_results,
+  #                                  MARGIN = 2,FUN = unlist))
+  return(All_results)
+}
+  
 ### Computing confidence band for this statistic
-Estimator_rho_sig_knowing_K<-function(indexes_used,list_obs_exts,
-                                      l_name,L,d,Thresh_lg){
-  Stats_sigma<-as.data.frame(t(sapply(indexes_used,
-              Extreme_cov_per_K,
-              liste_MV_simul=list_obs_exts,
-              l_name=l_name,
-              L=L,d=d,
-              Thresh_lg=Thresh_lg)))
-  Cplmt_cols<-sapply(l_name,function(x){
-    return(paste0(x,"norm"))
-  })
-  colnames(Stats_sigma)<-c("Scal_product",
-                           Cplmt_cols)
-  END_index<-ncol(Stats_sigma)
-  ### Retrieve mean_scal_product
-  Sig_XY<-mean(Stats_sigma[,1])
-  ### Retrieve product of means of squared norms.
-  Denominator_rohXY<-prod(
-    colMeans(Stats_sigma[,c(2:END_index)])**(1/2))
-  RHO_XY<-Sig_XY/Denominator_rohXY
-  return(list("Sig_XY"=Sig_XY,"RHO_XY"=RHO_XY))
+#' Estimator_rho_sig_knowing_K
+#'
+#' @param list_inputs: list[df]. Multivariate time series
+#' @param Thresh_lg: float. Threshold used.
+#' @param CPU_hearts: object parallel. CPU used for parallel computing
+#'
+#' @return Estimator for the given multivariate time series of the extremal correlation
+#'  coefficient
+#' @export
+#'
+#' @examples
+Estimator_rho_sig_knowing_K<-function(list_inputs,Thresh_lg,
+                                      CPU_hearts,center=FALSE){
+  N<-nrow(list_inputs[[1]])
+  d<-length(list_inputs)
+  l_name<-names(list_inputs)
+  All_results<-parLapply(cl = CPU_hearts,X=c(1:N),
+       fun = Extreme_cov_per_K,
+       liste_MV_simul = list_inputs,
+       l_name = l_name,d = d,
+       Thresh_lg = Thresh_lg,
+       center_GPD=center)
+  Pairs_found<-t(utils::combn(x = c(1:length(l_name)),
+                              m = 2))
+  END_index<-nrow(Pairs_found)
+  list_Sig_RHO<-list()
+  for(Z in c(1:END_index)){
+    Conv_rho_sig_PairZ<-t(sapply(X = All_results,
+                                 FUN = function(x){
+                                   return(x[[Z]])
+                                 }))
+    Mu_whole<-colMeans(Conv_rho_sig_PairZ)
+    prod_sig<-prod(Mu_whole[-1]**(1/2))
+    Pair_z<-l_name[Pairs_found[Z,]]
+    Category<-paste0("(",Pair_z[1],",",Pair_z[2],")")
+    Vect_input<-c(N, Mu_whole[1],Mu_whole[1]/prod_sig,
+                  Category)
+    list_Sig_RHO[[Z]]<-Vect_input
+    
+  }
+  Estimator_<-do.call(rbind.data.frame,list_Sig_RHO)
+  colnames(Estimator_)<-c("k","sigXY","rhoXY","pair_vars")
+  Toconvert<-c("sigXY","k","rhoXY")
+  Estimator_[,Toconvert]<-sapply(Toconvert,
+             function(x)
+             {return(as.numeric(Estimator_[,x]))
+             })
+  return(Estimator_)
 }
 
 #' Estimator_1boostrap_sample
@@ -335,61 +694,64 @@ Estimator_rho_sig_knowing_K<-function(indexes_used,list_obs_exts,
 #'
 #' @examples
 Estimator_1boostrap_sample<-function(list_obs_exts,
-                                     l_name,
-                                     Thresh_lg){
-  
+                                     l_name,Thresh_lg,CPU_hearts,
+                                     center){
   DIMS<-dim(list_obs_exts[[1]])
   N<-DIMS[1]
-  L<-DIMS[2]
   d<-length(l_name)
   new_indexes<-sample(c(1:N),size = N,replace = TRUE)
-  Estimator_1_sample<-Estimator_rho_sig_knowing_K(indexes_used = new_indexes,
-                              l_name = l_name,L = L,
-                              list_obs_exts = list_obs_exts,
-                  d = d,Thresh_lg = Thresh_lg)
-  return(Estimator_1_sample)
-  
-}
-Conv_scalar_product<-function(list_TS,Nb_inds_exts,l_name_variables,
-                              g_function){
-  L<-length(l_name_variables)
-  L2_d1<-apply(list_TS[[l_name_variables[1]]],MARGIN = 1,
-               FUN = calcul_norm_L2)
-  M<-length(L2_d1)
-  Base_l<-matrix(NA,nrow = M,
-                 ncol=L)
-  Base_l[,1]<-L2_d1
-  for(j in c(2:L)){
-    L2_dj<-apply(list_TS[[l_name_variables[j]]],MARGIN = 1,
-                 FUN = calcul_norm_L2)
-    Base_l[,j]<-L2_dj
+  list_sampled<-list()
+  for(nameV in l_name){
+    Df<-list_obs_exts[[nameV]]
+    list_sampled[[nameV]]<-Df[new_indexes,]
   }
-  Lg<-apply(X = Base_l,
-            MARGIN = 1,
-            FUN = g_function)
-  M<-length(L2_dj)
-  Qlevel<-1-(Nb_inds_exts/M)
-  Inds_extremes<-which(Lg>quantile(Lg,Qlevel))
-  list_extj<-list()
-  list_conv_j<-list()
-  for(j in c(1:L)){
-    L2_extj<-Base_l[Inds_extremes,j]
-    Ext_j<-list_TS[[l_name_variables[j]]][Inds_extremes,]
-    #convergence of first moments.
-    Angle_extj<-t(t(Ext_j)
-                  %*%diag(L2_extj^(-1)))
-    list_extj[[l_name_variables[j]]]<-Ext_j
-    list_conv_j[[l_name_variables[j]]]<-Min_function_conv(
-      Shape_d =Angle_extj )
-  }
-  #convergence of scalar products.
-  Sigmaxy<-sapply(c(1:length(Inds_extremes)),
-                  liste_MV_simul = list_extj,
-                  Extreme_corr,
-                  l_name =l_name_variables,
-                  L = ncol(Ext_j),
-                  d = length(l_name_variables))
-  return(list("corr"=mean(Sigmaxy),
-              "sd_corr"=sd(Sigmaxy),
-              "first_moments"=list_conv_j))
+  Estimation_1sample<-Estimator_rho_sig_knowing_K(
+    list_inputs = list_sampled,
+        Thresh_lg = Thresh_lg,
+        CPU_hearts = CPU_hearts,
+        center=center)
+  return(Estimation_1sample)
 }
+
+# Conv_scalar_product<-function(list_TS,Nb_inds_exts,l_name_variables,
+#                               g_function){
+#   L<-length(l_name_variables)
+#   L2_d1<-apply(list_TS[[l_name_variables[1]]],MARGIN = 1,
+#                FUN = calcul_norm_L2)
+#   M<-length(L2_d1)
+#   Base_l<-matrix(NA,nrow = M,
+#                  ncol=L)
+#   Base_l[,1]<-L2_d1
+#   for(j in c(2:L)){
+#     L2_dj<-apply(list_TS[[l_name_variables[j]]],MARGIN = 1,
+#                  FUN = calcul_norm_L2)
+#     Base_l[,j]<-L2_dj
+#   }
+#   Lg<-apply(X = Base_l,
+#             MARGIN = 1,
+#             FUN = g_function)
+#   M<-length(L2_dj)
+#   Qlevel<-1-(Nb_inds_exts/M)
+#   Inds_extremes<-which(Lg>quantile(Lg,Qlevel))
+#   list_extj<-list()
+#   list_conv_j<-list()
+#   for(j in c(1:L)){
+#     L2_extj<-Base_l[Inds_extremes,j]
+#     Ext_j<-list_TS[[l_name_variables[j]]][Inds_extremes,]
+#     #convergence of first moments.
+#     Angle_extj<-t(t(Ext_j)
+#                   %*%diag(L2_extj^(-1)))
+#     list_extj[[l_name_variables[j]]]<-Ext_j
+#     
+#   }
+#   #convergence of scalar products.
+#   Sigmaxy<-sapply(c(1:length(Inds_extremes)),
+#                   liste_MV_simul = list_extj,
+#                   Extreme_corr,
+#                   l_name =l_name_variables,
+#                   L = ncol(Ext_j),
+#                   d = length(l_name_variables))
+#   return(list("corr"=mean(Sigmaxy),
+#               "sd_corr"=sd(Sigmaxy),
+#               "first_moments"=list_conv_j))
+# }

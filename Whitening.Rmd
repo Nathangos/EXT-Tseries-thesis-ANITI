@@ -46,7 +46,8 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
   l_Orig<-list()
   l_Transf<-list()
   for(nom_variable in list_variable){
-    lien_donnees<-paste0(repertory,"Data_",nom_variable,".csv")
+    lien_donnees<-paste0(repertory,nom_variable
+                         ,"_detrend.csv")
     Donnes<-read.csv(file=lien_donnees)[,2:38]
     colnames(Donnes)<-c(1:37)
     rownames(Donnes)<-c(1:nrow(Donnes))
@@ -128,7 +129,7 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
 
 
 ```{r}
-lNAME<-c("Hs","Surge")
+lNAME<-c("Hs","Surge","U")
 vecteur<-list()
 S<-37
 C_TH<--0.5
