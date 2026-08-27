@@ -28,13 +28,15 @@ source("fonctions/fonctions.r")
 
 #Specific multivariate functions. 
 source("functions_MV/function_simul_MV.r")
-source("functions_MV/F_simulations_cond.R")
-source("functions_MV/GenericEGPDg_carrer.R")
-# import G pareto ---------------------------------------------------------
+
+# import G pareto --------------------------------------------------------
 source("functions_MV/function_estim_simul_gPareto.R")
 
 # Consistency results -----------------------------------------------------
 source("functions_MV/Fonctions_consistency.R")
+source("Choice_auto_thresh/src/eqd.R")
+source("Choice_auto_thresh/src/helper_functions.R")
+
 F_names<-ls()
 nb_coeurs<-detectCores()-4
 
