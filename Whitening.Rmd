@@ -15,7 +15,21 @@ require(POT)
 require(tibble)
 require(threshr)
 require(tseries)
+require(patchwork)
+require(cowplot)
+require(viridis)
 
+### Use defined functions
+source("functions_MV/function_simul_MV.R")
+```
+
+```{r}
+
+COMMON_theme<-theme(axis.title = element_text(size=20),
+                    strip.text=element_text(size=20),
+                    legend.title = element_text(size=20),
+                    legend.text=element_text(size=13),
+                    axis.text=element_text(size=17))
 ```
 
 
@@ -28,9 +42,115 @@ nb_coeurs<-detectCores()-4
 coeurs<-makeCluster(nb_coeurs)
 clusterExport(coeurs,varlist=F_names)
 
-dates_Johanna<-c("08/03/2008","09/03/2008","10/03/2008")
-date_indu_ext_plus<-"17/12/1989"
+### times bound
+Time_lag<-8
+Times_bound<-c(19-Time_lag,19+Time_lag)
+Dnew<-length(c(Times_bound[1]:Times_bound[2]))
 ```
+
+```{r}
+Area_sub<-c(Dnew)**2
+Area_total<-(37)**2
+Ratio<-Area_sub/Area_total
+c<-sqrt(Area_sub)
+Bound_minus<-19-(c/2)
+Bound_plus<-19+(c/2)
+
+XXpoly<-c(rep(Bound_minus,2),
+          rep(Bound_plus,2))
+YYpoly<-c(Bound_minus,rep(Bound_plus,2),
+          Bound_minus)
+df_poly<-cbind.data.frame(XXpoly,YYpoly)
+colnames(df_poly)<-c("Row","Col")
+```
+
+
+```{r}
+root_import<-"data_detrend_Winter/"
+NEW_labels<-c("-3","-1.5","0","1.5","3")
+y_breaks <-c(1,10,19,28,37)
+vectName<-c("Hs","Surge","U")
+list_FGD_detrend<-list()
+for(INDEX in c(1:length(vectName))){
+    new_name<-vectName[INDEX]
+    lien_donnees<-paste0(root_import,new_name,"_detrend.csv")
+    Donnes<-read.csv(file=lien_donnees)[,2:38]
+    list_FGD_detrend[[new_name]]<-Donnes
+    Title_graph_obj<-paste0(new_name," time series")
+    Filename_DepMat_whole<-paste0("Graphics_MV/Asymp_",
+                                new_name,
+                              "_MatDep_whole.png")
+    
+    GG_orig<-Complete_chi_measure_analysis(
+      Matrix_df_unif = VineCopula::pobs(Donnes),
+      Order_quantile = 0.97,Filename =Filename_DepMat_whole,
+      Name_main = Title_graph_obj,
+      Lim_viridis = c(0.1,1))+
+      theme(legend.position="bottom",
+            legend.direction = "horizontal")+
+      ggtitle(new_name)+
+      scale_x_continuous(breaks = y_breaks,
+                         labels = NEW_labels)+
+      scale_y_continuous(breaks = y_breaks,
+                         labels =NEW_labels)
+      COMMON_theme
+    if(vectName[INDEX]=="U"){
+      GG_orig<-GG_orig+
+        geom_polygon(data=df_poly,aes(x=Row,y=Col,col="Truncation"),
+                   fill=NA)+
+        scale_color_manual(values="red",labels="Subset")+
+        labs(fill="Value",col="Truncation")
+      LGD<-ggpubr::get_legend(GG_orig)
+      ### Remove the additional legend from U 
+      ### before adding the ggplot obj
+      GG_orig<-GG_orig+
+        guides(col="none")
+    }else{
+      GG_orig<-GG_orig+
+        labs(fill="Value")
+    }
+    
+    if(INDEX==1){
+      LGD<-ggpubr::get_legend(GG_orig)
+      GG_complete<-GG_orig+
+        guides(fill="none")
+    }else{
+        GG_complete<-GG_complete+GG_orig+
+          guides(fill="none")
+    }
+}
+```
+
+```{r}
+TITLE<-"Time (hour) with respect to tidal peak"
+GG_complete<-GG_complete+plot_annotation(caption = TITLE,
+                theme = theme(
+                  plot.caption=element_text(size=20,
+                                            hjust=0.5)))
+LGD_plot<-cowplot::plot_grid(LGD)
+GG_final<-plot_grid(GG_complete,LGD_plot,
+          rel_heights = c(10,1),
+          nrow = 2)
+f_GG_final<-ggdraw()+
+  draw_plot(GG_final)+
+  theme(plot.background = element_rect(fill = "white", 
+                                       color = NA))
+f_GG_final
+```
+
+```{r}
+Times_<-c(Times_bound[1]:Times_bound[2])
+
+### Use truncated dataset
+
+Data_whole<-list_FGD_detrend[["U"]]
+Data_whole_detrend<-Data_whole[,Times_]
+
+write.csv(x = Data_whole_detrend,
+          file = paste0(root_import,
+                    "U_trunc_detrend.csv"))
+```
+
 
 ```{r}
 ### Create sub folder
@@ -45,83 +165,127 @@ try({
 function_AR_MV<-function(coeurs,list_variable,repertory){
   l_Orig<-list()
   l_Transf<-list()
-  for(nom_variable in list_variable){
-    lien_donnees<-paste0(repertory,nom_variable
-                         ,"_detrend.csv")
-    Donnes<-read.csv(file=lien_donnees)[,2:38]
-    colnames(Donnes)<-c(1:37)
-    rownames(Donnes)<-c(1:nrow(Donnes))
-    l_Orig[[nom_variable]]<-Donnes
-    N<-nrow(Donnes)
-    l_Transf[[nom_variable]]<-matrix(data =NA,
-                                     ncol=ncol(Donnes),
-                                     nrow=nrow(Donnes)-1)
-  }
-  d<-length(list_variable)
-  p<-d+2
-  D<-ncol(Donnes)
-  MATRIX_Mod_VAR<-matrix(NA,nrow=D*p,ncol=d)
-  for(t in c(1:D)){
-    Data_time_t<-matrix(NA,nrow = nrow(Donnes),
-                        ncol=length(list_variable))
-    for(Z in c(1:d)){
-      NAMEV<-list_variable[[Z]]
-      Data_time_t[,Z]<-l_Orig[[NAMEV]][,t]
+  D_full<-0
+  for(name_variable in list_variable){
+    if(name_variable=="U"){
+      lien_donnees<-paste0(repertory,
+                      name_variable,
+                      "_trunc_detrend.csv")
+      Donnes<-read.csv(file=lien_donnees)
+      ### Look at the variable.
+      ### If U replace, replace by the real time values.
+      D<-ncol(Donnes)
+      Donnes<-Donnes[,c(2:D)]
+      Times<-as.character(Times_)
+    }else{
+      lien_donnees<-paste0(repertory,name_variable,
+                           "_detrend.csv")
+      Donnes<-read.csv(file=lien_donnees)
+      Donnes<-Donnes[,2:38]
+      Times<-as.character(c(1:37))
     }
+    colnames(Donnes)<-Times
+    rownames(Donnes)<-c(1:nrow(Donnes))
+    D_full<-max(D_full,
+            ncol(Donnes))
+    l_Orig[[name_variable]]<-Donnes
+    
+    # N<-nrow(Donnes)
+    # Mat_df<-data.frame(l_Transf)
+    ### Replace c(1:37) by the real variable names
+    ### Will be the actual df exported. 
+    #colnames(Mat_df)<-Times
+    l_Transf[[name_variable]]<-Donnes[c(2:nrow(Donnes)),]
+  }
+  #return(l_L2)
+  d<-length(list_variable)
+  # p<-d+2
+  # MATRIX_Mod_VAR<-matrix(NA,nrow=D*p,ncol=d)
+  # print(dim(MATRIX_Mod_VAR))
+  for(t in c(1:D_full)){
+    ### VAR depends on the number of available variables
+    ### per forcing condition. 
+    # If always same number of obs per forcing
+    # Data_time_t<-matrix(NA,nrow = nrow(Donnes),
+    #                     ncol=length(list_variable))
+    Data_time_t<-list()
+    for(NAMEV in list_variable){
+      DF<-l_Orig[[NAMEV]]
+      t_str<-as.character(t)
+      if(t_str%in% colnames(DF)){
+        Data_time_t[[NAMEV]]<-DF[,t_str]
+      }
+    }
+    Namevariables_found<-names(Data_time_t)
+    Data_time_t<-as.data.frame(Data_time_t)
     par(mfrow=c(1,2))
+    name_first<-Namevariables_found[1]
+    name_second<-Namevariables_found[2]
     png(filename=paste0("whitening_MV/corr_intervar_",
-                        list_variable[1],"_",
-                        list_variable[2],".png"))
-    Objet_ccf<-ccf(x = Data_time_t[,1],y = Data_time_t[,2],
+                        name_first,"_",name_second
+                        ,".png"))
+    Objet_ccf<-ccf(x = Data_time_t[,name_first],
+                   y = Data_time_t[,name_second],
         type="correlation",
         plot = FALSE,
         lag.max = 1000,main= " ")
     plot(Objet_ccf,ylim=c(-1,1))
     dev.off()
     ### VAR(1) model.
-    beg<-(t-1)*p+1
-    end<-t*p
-    Indexes_VAR_t<-c(beg:end)
-    model_VAR<-vars::VAR(Data_time_t,p = 1,type = "both")
+    model_VAR<-vars::VAR(Data_time_t,p = 1,
+                         type = "const")
     Coefficients<-coef(model_VAR)
     Coefficients_matrix<-sapply(Coefficients,FUN=function(x){
       return(x[,1])})
-    MATRIX_Mod_VAR[Indexes_VAR_t,]<-Coefficients_matrix
-    Resid_VAR<-residuals(model_VAR)
+    MATRIX_Mod_VAR_t<-Coefficients_matrix
+    Resid_VAR<-as.data.frame(residuals(model_VAR))
+    # l_name_other<-list_variable[-ind_missing]
+    colnames(Resid_VAR)<-Namevariables_found
     png(filename=paste0("whitening_MV/corr_intervar_",
-                        list_variable[1],"_",
-                        list_variable[2],"residuals.png"))
-    Objet_cff2<-ccf(x = Resid_VAR[,1],y = Resid_VAR[,2],
+                        name_first[1],"_",
+                        name_second,"_",
+                        length(list_variable),
+                        "residuals.png"))
+    Objet_cff2<-ccf(x = Resid_VAR[,name_first],
+        y = Resid_VAR[,name_second],
         type="correlation",
         plot = FALSE,
         lag.max =  1000,main=" ")
     plot(Objet_cff2,ylim=c(-1,1))
     dev.off()
+    ### Result of the Var(1) model. 
+    ######
+    # mtext(text=paste0("Correlation at time ", t ," for the first two variables"),
+    #       outer=TRUE,line=-3)
     par(mfrow=c(1,1))
-    
-    par(mfrow=c(1,d))
-    for(Z in c(1:d)){
-      NAMEV<-list_variable[[Z]]
-      l_Transf[[NAMEV]][,t]<-Resid_VAR[,Z]
+    for(nameFull in  Namevariables_found){
+      t_str<-as.character(t)
+      l_Transf[[nameFull]][,t_str]<-Resid_VAR[,nameFull]
     }
     par(mfrow=c(1,1))
-    
+    ### MATRIX_MOD_VAR originally
+    colnames(MATRIX_Mod_VAR_t)<-Namevariables_found
+    write.csv(file=paste0("whitening_MV/VAR_model_",t,".csv"),
+              x = MATRIX_Mod_VAR_t)
   }
   ### Export VAR model
-  colnames(MATRIX_Mod_VAR)<-lNAME
-  write.csv(file="whitening_MV/VAR_model.csv",
-            x = MATRIX_Mod_VAR)
+  # colnames(MATRIX_Mod_VAR)<-lNAME
+  # write.csv(file="whitening_MV/VAR_model.csv",
+  #           x = MATRIX_Mod_VAR)
   
   ### Export residuals
+  #### ATTENTION)
+  ### 09/03, use param to distinguish two residuals
+  
   for(Z in c(1:d)){
-    NAMEV<-list_variable[[Z]]
+    NAMEV<-list_variable[Z]
     Data_toexport_Z<-l_Transf[[NAMEV]]
     write.csv(file = paste0(
       "residuals_MV/",NAMEV,
-      "_residuals.csv"
-    ),x=Data_toexport_Z)
+      "_residuals_",d,".csv"
+    ),x=Data_toexport_Z,row.names = FALSE)
   }
-  return(model_VAR)
+  #return(model_VAR)
 }
 ```
 
@@ -134,9 +298,9 @@ vecteur<-list()
 S<-37
 C_TH<--0.5
 CF<--0.1
-l_root<-"../Univariate_whitening/residus_clust/"
+
 ### Repertory where detrended data can be found
-RPTY<-"Data/"
+RPTY<-"data_detrend_Winter/"
 R<-function_AR_MV(coeurs = coeurs, 
                   list_variable = lNAME,
                   repertory=RPTY)
