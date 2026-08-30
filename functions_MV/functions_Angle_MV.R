@@ -368,10 +368,8 @@ Result_1sample_ext<-function(list_sig_L2,l_name,k,
             return(y)
           })
     #Scal_prod_penalised<-Resampled_mat[,1]/(Resampled_mat[,2]*Resampled_mat[,3])
-    print(head(Resampled_mat))
-    print(head(Scal_prod_penalised))
     Gam_XY<-mean(Scal_prod_penalised)
-    print(Threshold_lg)
+
     ## Sigma/ Rho computations
     Mu_whole<-colMeans(Resampled_mat)
     Sig<-Mu_whole[1]/(Threshold_lg**(2))

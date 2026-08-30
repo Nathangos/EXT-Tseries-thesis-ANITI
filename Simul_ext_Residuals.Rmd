@@ -342,7 +342,7 @@ LINETYPE_chosen<-c("gam_ref"=3,
                    "threshold"=6,
                    "gam_ref"=6)
 
-### Shape param transformation
+### Shape param transformation --------------
 ##################
 DIMS<-c(20,14,13,10)
 YMV<-c(-0.5,1)
@@ -358,8 +358,7 @@ for(nameV in l_name){
   DF_tf_j<-GG_var$data
   DF_tf_j$variable<-rep(nameV,nrow(DF_tf_j))
   ALL_gam_transf[[nameV]]<-DF_tf_j
-  # ggsave(filename = paste0(path_graph,"T",nameV,"_L2gamma.png"),
-  #        plot = GG_var,height=4,width=6)
+
 }
 ```
 
@@ -370,17 +369,19 @@ DF_wholeTF$variable<-sapply(DF_wholeTF$variable,
                          FUN =function(x){
                            Fct_correct_name(x = x,target = "Surcote",
                                             replacement = "Surge")})
-GGgam_tf<-ggplot(data=DF_wholeTF,aes(x=number_excesses,y =gamma_estimed,color=source,
-                                    group=interaction(source),
-                                    linetype=source))+
+GGgam_tf<-ggplot(data=DF_wholeTF,aes(x=number_excesses,
+          y =gamma_estimed,color=source,
+          group=interaction(source),
+          linetype=source))+
   geom_line()+
   facet_wrap(~variable)+
   ylab(expression(gamma))+
   xlab("Number of exceedances")+
   COMMON_theme+
-  geom_ribbon(mapping = aes(ymin=bound_inf,ymax=bound_sup,
-                            col="confidence_band",
-                            linetype = "confidence_band"),alpha=0.15,
+  geom_ribbon(
+      mapping = aes(ymin=bound_inf,ymax=bound_sup,
+      col="confidence_band",
+      linetype = "confidence_band"),alpha=0.15,
               fill="grey")+
   geom_hline(aes(yintercept=Shape_chosen,col="gam_ref",
                  linetype="gam_ref"))+
@@ -392,11 +393,11 @@ LABELS_shape<-names(COLS_chosen)
 
 LEGEND_shape<-sapply(LABELS_shape,
                      function(x){
-                       if(x=="gam_ref"){
-                         return(comment_go)
-                       }else{
-                         return(x)
-                       }
+     if(x=="gam_ref"){
+       return(comment_go)
+     }else{
+       return(x)
+     }
                      })
 GG_gamtf_varwise<-GGgam_tf+
   scale_linetype_manual(values = LINETYPE_chosen,
@@ -455,9 +456,7 @@ TEST_GPD_110<-apply(SUMMARY[[l_name[3]]]$transf,MARGIN = 2,
       loc=0,shape=Shape_chosen,scale=Shape_chosen)
 head(TEST_GPD_110)
 summary(SUMMARY[[l_name[3]]]$transf)
-for (j in c(1:ncol(TEST_GPD_110))){
-  print(goftest::ad.test(TEST_GPD_110[,j]))
-}
+
 ```
 
 ```{r}
@@ -518,7 +517,6 @@ if(Name_riskF=="Weighted_NQ"){
 ```
 
 ```{r}
-### Create subfolders
 
 path <- paste0(getwd(),"/residuals_MV")
 path_graph<-paste0(getwd(),"/Graphics_MV/resid")
@@ -680,6 +678,7 @@ ggsave(filename = paste0(Lg_path,"/",l_name[1],
 ```{r}
 ### Pareto law of the cost functional of exceedances.
 ## Distance depends on a truncation of the density -------------------------
+
 ## So quite important ! ----------------------------------------------------
 
 TS_param<-0.15
@@ -714,7 +713,8 @@ comment_thresh<-latex2exp::TeX("$u_{\\ell,g}$")
 comment_gl<-latex2exp::TeX("$g_{\\ell}(.)$ metric value")
 
 # Evolution of the metric -------------------------------------------------
-# ######
+#######
+
 METRIC_plot_used<-"mad"
 k_metric<-mindist_update(data = Riskf_data,
                          ts = TS_param,method = METRIC_plot_used)
@@ -951,8 +951,9 @@ if(Launch_graph_conv){
   ### Add stability plots based on standard deviation
   Evol_conv_criterion$pair_vars<-sapply(Evol_conv_criterion$pair_vars,
                                         FUN = function(x){
-                                          return(Fct_correct_name(x,target = "Surcote",
-                                                                  replacement = "Surge"))})
+                          return(Fct_correct_name(x,target = "Surcote",
+                            replacement = "Surge"))
+                                          })
   pairs<-Evol_conv_criterion %>% 
     group_by(pair_vars) %>% summarise(count_=n())
   Pairs<-pairs$pair_vars
@@ -974,9 +975,12 @@ if(Launch_graph_conv){
   EXPRESSIONS<-c(latex2exp::TeX("$\\rho_{kk'}$ value"),
                  latex2exp::TeX("$\\sigma_{kk'}$ value"),
                  latex2exp::TeX("$\\gamma_{kk'}$ value"))
-  EXPRESSIONS_stab<-c(latex2exp::TeX("standard deviation of $\\rho_{kk'}$"),
-                      latex2exp::TeX("standard deviation of $\\sigma_{kk'}$"),
-                      latex2exp::TeX("standard deviation of $\\gamma_{kk'}$"))
+  EXPRESSIONS_stab<-c(latex2exp::TeX(
+    "standard deviation of $\\rho_{kk'}$"),
+                      latex2exp::TeX(
+    "standard deviation of $\\sigma_{kk'}$"),
+                      latex2exp::TeX(
+    "standard deviation of $\\gamma_{kk'}$"))
   
   for(J in c(1:length(v_corr))){
     elt<-v_corr[J]
@@ -987,10 +991,12 @@ if(Launch_graph_conv){
     list_result<-Result_criterion_stability[,elt2][[1]]
     EVOL_std_whole<-Concatenate_entries_same_key(list_ = list_result,
                                                  key_target = "evol_std")
-    beta_found_whole<-Concatenate_entries_same_key(list_ = list_result,
-                                                   key_target = "beta_found")
-    candidates_whole<-unlist(Concatenate_entries_same_key(list_ = list_result,
-                                                          key_target = "candidates"))
+    beta_found_whole<-Concatenate_entries_same_key(
+            list_ = list_result,
+             key_target = "beta_found")
+    candidates_whole<-unlist(Concatenate_entries_same_key(
+              list_ = list_result,
+              key_target = "candidates"))
     set_indexed_C<-which(names(list_result)=="candidates")
     vector_call_pvars<-c()
     J_seen<-1
@@ -1002,23 +1008,25 @@ if(Launch_graph_conv){
       )
       J_seen<-J_seen+1
     }
-    stat_beta_whole<-Concatenate_entries_same_key(list_ = list_result,
-                                                  key_target = "stat_beta")
-    stat_cand_whole<-unlist(Concatenate_entries_same_key(list_ = list_result,
-                                                         key_target = "stat_candidates"))
+    stat_beta_whole<-Concatenate_entries_same_key(
+              list_ = list_result,
+              key_target = "stat_beta")
+  stat_cand_whole<-unlist(Concatenate_entries_same_key(
+                           list_ = list_result,
+                           key_target = "stat_candidates"))
     Ratio<-length(EVOL_std_whole)/length(Pairs)
     Ratio_bfound<-length(beta_found_whole)/length(Pairs)
     Ratio_C<-length(candidates_whole)/length(Pairs)
     
     ### fill the required pair_vars column for each quantity of interest
     Pairs_whole<-c(sapply(Pairs,
-                          FUN=function(x){
-                            rep(x,Ratio)
-                          }))
+              FUN=function(x){
+                rep(x,Ratio)
+              }))
     Pairs_bFound<-c(sapply(Pairs,
-                           FUN=function(x){
-                             rep(x,Ratio_bfound)
-                           }))
+               FUN=function(x){
+                 rep(x,Ratio_bfound)
+               }))
     
     df_stat_std<-data.frame(EVOL_std_whole,Pairs_whole)
     colnames(df_stat_std)<-c("value","pair_vars")
@@ -1080,17 +1088,18 @@ if(Launch_graph_conv){
 
 ```{r}
 if(Launch_graph_conv){
-  ### Data confidence band for each correlation coefficient ####
+  # Data confidence band for each correlation coefficient ---------
   ################
-  Conf_band<-Extreme_cov_confevol(liste_MV_Orig = ALL_transf,l_name = l_name,
-                                  vector_k =Vector_K2,Ref_RiskF = Riskf_data,
+  Conf_band<-Extreme_cov_confevol(liste_MV_Orig = ALL_transf,
+                      l_name = l_name,
+                      vector_k =Vector_K2,Ref_RiskF = Riskf_data,
                                   CPU_hearts = coeurs,center=CGPD,
                                   Nboot = 500,alpha_param = 0.05)
   
   Conf_band$pair_vars<-sapply(Conf_band$pair_vars,
-                              FUN = function(x){
-                                return(Fct_correct_name(x,target = "Surcote",
-                                                        replacement = "Surge"))})
+        FUN = function(x){
+          return(Fct_correct_name(x,target = "Surcote",
+                                  replacement = "Surge"))})
   
   centerGPD<-NULL
   colnames(Evol_conv_criterion)[c(2:4)]<-c("sigma[kk']",
@@ -1106,9 +1115,9 @@ if(Launch_graph_conv){
     Conf_band2<-Conf_band[which(Conf_band$variable==elt2),]
     df_forgg<-melt(gg)
     df_forgg$pair_vars<-sapply(df_forgg$pair_vars,
-                               FUN = function(x){
-                                 return(Fct_correct_name(x,target = "Surcote",
-                                                         replacement = "Surge"))})
+       FUN = function(x){
+         return(Fct_correct_name(x,target = "Surcote",
+                                 replacement = "Surge"))})
     ratio<-nrow(df_forgg)/nrow(Evol_conv_criterion)
     df_forgg$k<-rep(Evol_conv_criterion$k,ratio)
     
@@ -1155,7 +1164,7 @@ GGCorr_evol
 ################
 
 if(Launch_graph_conv){
-  ### Convergence for the radius
+  # Convergence for the radius --------
   #################################
   Evol_Theta_ofRad_criterion<-Extreme_covRad_evol(
     Df_Rad_Orig = Vect_l_function,
@@ -1203,6 +1212,8 @@ if(Launch_graph_conv){
 OPT_FRECH<-FALSE
 par(mfrow=c(1,1))
 require(patchwork)
+
+# 3) Simulation of extreme multivariate time series ############
 re<-Simul_MV_residuals(result_transformation = Result_MV,
                        l_variables = l_name, Q_thresh = Qfound,
                        list_nb_scores = LIST_NB_SCORES,
