@@ -4,7 +4,10 @@ set.seed(133)
 par(mfrow=c(1,1))
 
 #### Import des packages. #####
+require(cowplot)
+require(ggguides)
 require(copula)
+require(latex2exp)
 require(dplyr)
 require(ggplot2)
 require(reshape2)
@@ -20,15 +23,23 @@ require(ggside)
 require(mev)
 require(scales)
 require(gamlss)
+require(texmex)
+require(patchwork)
 
+COMMON_theme<-theme(axis.title = element_text(size=20),
+                    strip.text=element_text(size=20),
+                    legend.title = element_text(size=20),
+                    legend.text=element_text(size=17),
+                    axis.text=element_text(size=17))
 ### Source des fonctions. ####
 #Functions from univariate case. 
-source("fonctions/fonctions_Pareto.R")
-source("fonctions/fonctions.r")
-
+source("../fonctions/fonctions_Pareto.R")
+source("../fonctions/fonctions.r")
+source("../fonctions/fonctions_r_pareto_EVOLTAU.r")
 
 #Specific multivariate functions. 
 source("functions_MV/function_simul_MV.r")
+source("functions_MV/functions_Angle_MV.r")
 source("functions_MV/F_simulations_cond.R")
 source("functions_MV/GenericEGPDg_carrer.R")
 # import G pareto ---------------------------------------------------------
@@ -37,30 +48,44 @@ source("functions_MV/Stat_test_MV.R")
 source("functions_MV/Hidden_RV_functions.R")
 
 # Choice of threshold -----------------------------------------------------
-# source("Choice_auto_thresh/src/eqd.R")
-# source("Choice_auto_thresh/src/helper_functions.R")
+source("Choice_auto_thresh/src/eqd.R")
+source("Choice_auto_thresh/src/helper_functions.R")
 
 # Consistency results -----------------------------------------------------
 source("functions_MV/Fonctions_consistency.R")
+
 F_names<-ls()
 nb_coeurs<-detectCores()-4
+```
 
+```{r}
 # Ouverture des clusters --------------------------------------------------
 coeurs<-makeCluster(nb_coeurs)
 clusterExport(coeurs,varlist=F_names)
-cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue",
-         "model"="red")
+cols_<-c("data"="blue","simulations"="orange",
+         "confidence_band"="darkblue",
+         "model"="red","threshold"="red",
+         "egpd"="#00BE67",
+         "mixture"="blue")
+Shapes_<-c("candidates"=0,
+          "threshold"=1)
+
 l_root<-"residuals_MV/"
 path <- paste0(getwd(),"/residuals_MV")
-l_name<-c("Surge","Hs")
+l_name<-c("Surcote","Hs","U")
 newfolder <- "Conversion"
+#METHOD_MGtransf<-"_EGPD_transf_"
+METHOD_MGtransf<-"_Mixt_transf_"
 METHOD_ANGLE<-"GaussMixture"
+
+#Prefix<-paste0(CPLMT_graph_theta,"_",METHOD_ANGLE)
+Prefix<-""
 Name_model<-"hr"
 try({
   dir.create(file.path(path, newfolder))
 })
 path_conversion<-paste0(path,"/",newfolder,"/")
-path_graph<-paste0(getwd(),"/Graphics_MV/resid/")
+path_graph<-paste0(getwd(),"/graphiques_MV/resid/")
 
 ### Import conversion and original data
 Result_MV<-list()
@@ -69,59 +94,336 @@ SUMMARY_convergence<-list()
 DF_RF<-list()
 DF_orig<-list()
 ALL_transf<-list()
-Shape_chosen<-1/3
+#Try with 1/4
+Shape_chosen<-2/5
+
+### Mean of the GPD law to use extremal correlation coefficient
+CGPD<-Shape_chosen/(1-Shape_chosen)
+comment_go<-latex2exp::TeX("$\\gamma_{0}$")
+d<-length(l_name)
+
+##########
+XLAB<-'Time(hour) with respect to tidal peak'
+TITLE<-ggdraw() +
+  draw_label(XLAB,size=20)
+Z_seen<-1
+YLIM<-c(0,5)
+YTheta_Lim<-c(0,2)
+NV_DKG<-"Hs"
+###[,c(2:38)]
+DF_transf<-read.csv(file = paste0(path_conversion,NV_DKG,
+                                  METHOD_MGtransf,d,".csv"))
+Variable_ref<-DF_transf[,19]
+ind_DKG<-order(Variable_ref,decreasing = TRUE)[1:4]
+
+DROP_DKG<-FALSE
+DATES<-read.csv(file = "../ss_tend/HIVER/dates_prises.csv")[,2]
+DATES[ind_DKG]
+
+```
+
+
+```{r}
+
 for(nameV in l_name){
-  DF_transf<-read.csv(file = paste0(path_conversion,nameV,"_EGPD_transf.csv"))[,c(2:38)]
-  colnames(DF_transf)<-c(1:37)
+  ###[,c(2:38)]
+  DF_transf<-read.csv(file = paste0(path_conversion,nameV,
+                                METHOD_MGtransf,d,".csv"))
+  ### remove pbtic value
+  if(DROP_DKG){
+    DF_transf<-DF_transf[-ind_DKG,]
+  }
+  
   ### Convert_to_Pareto(pow_transform)
   DF_transf<-(DF_transf+1)^(Shape_chosen)-1
   
   rf_j<-apply(X = DF_transf,MARGIN = 1,FUN = calcul_norm_L2)
+  ### Export Z_vs_Theta with nameV
+  ##############
+  Inds_shown<-sample(c(1:nrow(DF_transf)),size = 20,
+                  replace = FALSE)
+  DF_mini<-DF_transf[Inds_shown,]
+  Cpdg_L2<-rf_j[Inds_shown]
+  Cpdg_theta<-t(t(DF_mini)%*%diag(Cpdg_L2^(-1)))
+  Melting_df<-melt(t(DF_mini))
+  Melting_theta<-melt(t(Cpdg_theta))
+  colnames(Melting_df)<-c("Time","index","value")
+  colnames(Melting_theta)<-c("Time","index","value")
+  Melting_df$Time<-as.numeric(substr(Melting_df$Time,start = 2,
+                                     stop = 3))
+  Melting_df$Time<-(Melting_df$Time-19)/6
+  Melting_theta$Time<-Melting_df$Time
+  Melting_df$index<-as.character(Melting_df$index)
+  Melting_theta$index<-Melting_df$index
+  
+  #### print variable name
+  nameGraph<-Fct_correct_name(x = nameV,
+                      target = "Surcote",
+                      replacement = "Surge")
+  Variable<-paste0("T(",nameGraph,")")
+  Df_for_annotate<-cbind.data.frame(0,3,Variable)
+  colnames(Df_for_annotate)<-c("xspec","yspec",
+                               "label_spec")
+  #### 
+  Melting_df$forcg_cond<-rep(Variable,
+                             nrow(Melting_df))
+  if(Z_seen==1){
+    YLAB<-paste0("Series")
+    YLAB_univ<-paste0("Series of ",Variable)
+    YLAB_theta<-paste0("Angle series (.)")
+    YLAB_theta_univ<-paste0("Angle series of ",Variable)
+  }else{
+    YLAB<-NULL
+    YLAB_theta<-NULL
+  }
+  GG_Zuniv<-ggplot(data=Melting_df)+
+    geom_line(aes(x=Time,
+                  y=value,group=interaction(index),
+                  col=index))+
+    ylab(YLAB_univ)+xlab(NULL)+
+    scale_y_continuous(limits = YLIM)+
+    COMMON_theme+
+    guides(col="none")
+  GG_Z<-ggplot(data=Melting_df)+
+    geom_line(aes(x=Time,
+                      y=value,group=interaction(index),
+                      col=index))+
+    geom_text(
+      data=Df_for_annotate,
+      aes(x=xspec,y=yspec,label=label_spec),
+      size=10)+
+    ylab(YLAB)+xlab(NULL)+
+    scale_y_continuous(limits = YLIM)+
+    COMMON_theme+
+    guides(col="none")
+  
+  ### GG theta
+  ########
+  GG_Theta_univ<-ggplot(data=Melting_theta,aes(x=Time,
+                          y=value,
+                          group=interaction(index),
+                            col=index))+
+    geom_line()+
+    ylab(YLAB_theta_univ)+xlab(NULL)+
+    scale_y_continuous(limits=YTheta_Lim)+
+    COMMON_theme+
+    guides(col="none")
+  
+  GG_Theta<-ggplot(data=Melting_theta,aes(x=Time,
+            y=value,group=interaction(index),
+            col=index))+
+    geom_line()+
+    ylab(YLAB_theta)+xlab(NULL)+
+    scale_y_continuous(limits=YTheta_Lim)+
+    COMMON_theme+
+    guides(col="none")
+  GG_sum<-GG_Z+GG_Theta+
+    plot_layout(axis_titles = "collect",
+                ncol = 1,nrow=2)
+  
+  ###### Z vs theta univ
+  GGsum_unif<-GG_Zuniv+GG_Theta_univ+
+    plot_layout(axis_titles = "collect",
+       ncol = 2,nrow=1)
+  ggh_univ<-plot_grid(GGsum_unif,TITLE,
+                 ncol=1,nrow=2,
+                 rel_heights = c(12,1))
+  plot_ggh_univ<-ggdraw()+
+    draw_plot(ggh_univ)+
+    theme(plot.background = element_rect(fill = "white", 
+                                         color = NA))
+  ggsave(filename = paste0(path_graph,"Z_vs_Theta_d="
+             ,d,"_",nameGraph, ".png"),
+        plot = plot_ggh_univ, width = 10,height = 6)
+  
+  if(Z_seen==1){
+    Combn_Z_vs_Theta<-GG_sum
+  }else{
+    ### 
+    Rest<-(Z_seen-1)
+    Combn_Z_vs_Theta<-plot_grid(Combn_Z_vs_Theta,
+            GG_sum,rel_widths = c(Rest,1))
+  }
+
+  #################
   DF_RF[[nameV]]<-rf_j 
-  Orig_j<-read.csv(file = paste0(path_conversion,nameV,"_data_ref.csv"))[,c(2:38)]
-  colnames(Orig_j)<-c(1:37)
+  Link_j<-paste0(l_root,nameV,"_residuals_",
+                 d,".csv")
+  Orig_j<-read.csv(Link_j)
+  ### Remove the DKG
+  if(DROP_DKG){
+    Orig_j<-Orig_j[-ind_DKG,]
+  }
   DF_orig[[nameV]]<-Orig_j
-  PARAMS_EGPD<-read.csv(file = paste0(path_conversion,nameV,"_EDPD_params.csv"))[,c(2:4)]
-  colnames(PARAMS_EGPD)<-c("mu","sigma","nu")
-  list_form<-apply(PARAMS_EGPD,function(x){return(
-    list("mu"=x[1],"sigma"=x[2],"nu"=x[3]))},
-                   MARGIN=1)
+  
+  list_form<-list()
+  PARAMS_GPD<-read.csv(file = paste0(path_conversion,nameV,
+                                      "_GPD_params_",d,".csv"))
+  K_hat<-read.csv(file = paste0(path_conversion,nameV,
+                                "_Kdens_estim_",d,".csv"))
+  list_form[["K"]]<-K_hat
+  list_form[["LEVT"]]<-PARAMS_GPD
+  
   SUMMARY[[nameV]]<-list("transf"=DF_transf,
-                         "params_transfo"=list_form)
+                       "params_transfo"=list_form)
   ALL_transf[[nameV]]<-DF_transf
+  Z_seen<-Z_seen+1
 }
 
 ```
 
 ```{r}
+ggh<-plot_grid(Combn_Z_vs_Theta,TITLE,
+               ncol=1,nrow=2,
+               rel_heights = c(12,1))
+plot_ggh<-ggdraw()+
+  draw_plot(ggh)+
+  theme(plot.background = element_rect(fill = "white", 
+                                       color = NA))
+ggsave(filename = paste0(path_graph,"Z_vs_Theta_d="
+        ,d,".png"),plot = plot_ggh,
+       width = 10,height = 6)
+###########
+################
+
+pow_tried<-seq.int(from = 2,to = 4,
+                   length.out = 10)
+k<-3
+CHOSEN_var<-l_name[k]
+T_chosen<-19
+Precise_var<-ALL_transf[[CHOSEN_var]]
+colnames(Precise_var)<-substr(colnames(Precise_var),
+                              start = 2,stop = 3)
+var_1<-Precise_var[,as.character(T_chosen)]
+Mean_found<-sapply(pow_tried,
+       FUN = function(x){
+         return(mean(var_1^x))
+       })
+New_expr<-expression(Espcy (Z[comment_sub]^j) ^delta)
+YLAB<-do.call("substitute", 
+        list(New_expr[[1]], 
+              list(j =T_chosen,
+                   comment_sub=paste0("M,",k),
+             Espcy="Mean of ")))
+DF_summy<-cbind.data.frame(pow_tried,Mean_found)
+colnames(DF_summy)<-c("delta","mean")
+
+GG_RV_test<-ggplot(data=DF_summy,aes(x=delta,y=mean))+
+  geom_line()+
+  geom_point()+
+  xlab(expression(delta))+
+  ylab(YLAB)+
+  geom_vline(aes(xintercept = 1/Shape_chosen,
+                 col="chosen index"))+
+  labs(col="Legend")
+ggsave(filename = paste0(path_graph,"exs_RV_",
+                         T_chosen,"_var=",
+                         CHOSEN_var,".png"),
+       plot = GG_RV_test,width = 6,height=6)
+Inds_dates_pos<-read.csv(file=paste0(path_conversion,"inds_egpd.csv"))
+Inds_dates_pos
+
+```
+
+```{r}
+
+COLS_chosen<-c("gam_ref"="red",
+               "ML_gamma"="blue",
+               "confidence_band"="darkblue",
+               "threshold"="red",
+               "gam_ref"="black")
+LINETYPE_chosen<-c("gam_ref"=3,
+                   "Hill_gamma"=2,
+                   "ML_gamma"=4,
+                   "confidence_band"=5,
+                   "threshold"=6,
+                   "gam_ref"=6)
+
 ### Shape param transformation
+##################
+DIMS<-c(20,14,13,10)
+YMV<-c(-0.5,1)
+ALL_gam_transf<-list()
 for(nameV in l_name){
   df_transf<-SUMMARY[[nameV]]$transf
   NL2_TF<-apply(X = df_transf,MARGIN = 1,FUN = calcul_norm_L2)
   GG_var<-Graphics_estimators_gamma(series = NL2_TF,
                                     vect_k = c(50:300),
                                     Title_graphic = " ",
-                                    dims_elt_text = c(20,14,13,12))
-  ggsave(filename = paste0(path_graph,"T",nameV,"_L2gamma.png"),
-         plot = GG_var,height=4,width=6)
+                                    dims_elt_text = c(20,14,13,12),
+                                    SELECT_estim = "ML_gamma")
+  DF_tf_j<-GG_var$data
+  DF_tf_j$variable<-rep(nameV,nrow(DF_tf_j))
+  ALL_gam_transf[[nameV]]<-DF_tf_j
+  # ggsave(filename = paste0(path_graph,"T",nameV,"_L2gamma.png"),
+  #        plot = GG_var,height=4,width=6)
 }
-df_surge<-SUMMARY[["Surcote"]]$transf
-t<-37
-var_t<-df_surge[,t]
+```
 
-Inds_dates_pos<-read.csv(
-  file=paste0(path_conversion,"inds_egpd.csv"))[,2]
+```{r}
+DF_wholeTF<-do.call(rbind.data.frame,ALL_gam_transf)
+
+DF_wholeTF$variable<-sapply(DF_wholeTF$variable,
+                         FUN =function(x){
+                           Fct_correct_name(x = x,target = "Surcote",
+                                            replacement = "Surge")})
+GGgam_tf<-ggplot(data=DF_wholeTF,aes(x=number_excesses,y =gamma_estimed,color=source,
+                                    group=interaction(source),
+                                    linetype=source))+
+  geom_line()+
+  facet_wrap(~variable)+
+  ylab(expression(gamma))+
+  xlab("Number of exceedances")+
+  COMMON_theme+
+  geom_ribbon(mapping = aes(ymin=bound_inf,ymax=bound_sup,
+                            col="confidence_band",
+                            linetype = "confidence_band"),alpha=0.15,
+              fill="grey")+
+  geom_hline(aes(yintercept=Shape_chosen,col="gam_ref",
+                 linetype="gam_ref"))+
+  labs(col="Legend", linetype = "Legend")+
+  theme_bw()+
+  theme(legend.direction = "horizontal",
+        legend.position="bottom")
+LABELS_shape<-names(COLS_chosen)
+
+LEGEND_shape<-sapply(LABELS_shape,
+                     function(x){
+                       if(x=="gam_ref"){
+                         return(comment_go)
+                       }else{
+                         return(x)
+                       }
+                     })
+GG_gamtf_varwise<-GGgam_tf+
+  scale_linetype_manual(values = LINETYPE_chosen,
+                        labels=LEGEND_shape)+
+  scale_color_manual(values = COLS_chosen,
+                     labels=LEGEND_shape)+
+  ylim(YMV)
+ggsave(filename = paste0(path_graph,"/Tf_shape_varwise_d=",
+                      length(l_name),".png"),
+       plot=GG_gamtf_varwise,width = 8,height = 6)
+```
+
+
+```{r}
+
 Result_MV<-list("resume"=SUMMARY,"orig"=DF_orig,
                 "df"=as.data.frame(DF_RF),
-                "type_transfo"="EXTGPD")
+                "type_transfo"=METHOD_MGtransf)
+testw<-SUMMARY$Surcote$params_transfo$K
+which(testw$time_analysed==1)
+hh<-testw[,3]
 namei<-l_name[1]
 namej<-l_name[2]
 t1<-1
 t2<-37
 couple<-cbind(Result_MV$orig[[namei]][,t1],
               Result_MV$orig[[namej]][,t2])
-Filename<-paste0("Graphics_MV/asymp_dependencies/ext_dep_",namei,"_t=",t1,"_",namej,"_tprime=",t2,".png")
-png(filename= Filename,
+Filename<-paste0("graphiques_MV/asymp_dependencies/ext_dep_",namei,"_t=",t1,
+                 "_",namej,"_tprime=",t2,".png")
+png(filename = Filename,
     width=800,height=600)
 par(mfrow = c(1, 2),  # 1 row, 2 plots
     cex.lab = 1,    # axis label size
@@ -140,14 +442,16 @@ mtext(expression(bar(chi)),cex=2,las=2,
       outer=TRUE,line=-25)
 par(mfrow=c(1,1))
 dev.off()
-
+Filename
 expr_kunif<-function_expression_chi(j = 3,term = "chi")
-
+print(expr_kunif)
 Vect_l_function<-Result_MV$df
-summary(SUMMARY[[l_name[1]]]$transf)
-TEST_GPD_110<-apply(SUMMARY[[l_name[1]]]$transf,MARGIN = 2,FUN = evd::pgpd,
+SUMMARY[[l_name[3]]]$transf
+TEST_GPD_110<-apply(SUMMARY[[l_name[3]]]$transf,MARGIN = 2,
+                FUN = evd::pgpd,
       loc=0,shape=Shape_chosen,scale=Shape_chosen)
 head(TEST_GPD_110)
+summary(SUMMARY[[l_name[3]]]$transf)
 for (j in c(1:ncol(TEST_GPD_110))){
   print(goftest::ad.test(TEST_GPD_110[,j]))
 }
@@ -160,12 +464,13 @@ M<-2000
 ONE_PCA_BASIS<-TRUE
 if(ONE_PCA_BASIS){
   LIST_NB_SCORES<-NULL
-  NB_SCORES_OMEGA<-7
+  ### 9
+  NB_SCORES_OMEGA<-9
 }else{
-  LIST_NB_SCORES<-list("U"=4,"Surcote"=3)
+  LIST_NB_SCORES<-list("U"=4,"Surcote"=3,
+                       "Hs")
   NB_SCORES_OMEGA<-NULL
 }
-
 q<-40
 W_chosen<-c(0.3,0.7)
 Name_riskF<-"max"
@@ -209,11 +514,11 @@ if(Name_riskF=="Weighted_NQ"){
 }
 ```
 
-
 ```{r}
-### Create subfolders.
+### Create subfolders
+
 path <- paste0(getwd(),"/residuals_MV")
-path_graph<-paste0(getwd(),"/Graphics_MV/resid")
+path_graph<-paste0(getwd(),"/graphiques_MV/resid")
 newfolder <- Name_riskF2
 try({
   dir.create(file.path(path, newfolder))
@@ -225,6 +530,8 @@ try({
 ROOT_export_graph<-paste0(path_graph,"/",
                           Name_riskF2,"/")
 try({
+  Corr_path<-paste0(ROOT_export_graph,"Corr")
+  dir.create(file.path(Corr_path))
   TEND_path<-paste0(ROOT_export_graph,"Tend")
   dir.create(file.path(TEND_path))
   Lg_path<-paste0(ROOT_export_graph,"RisKfunctions")
@@ -246,7 +553,48 @@ try({
   }
   
 })
-# 3) Running simulations --------------------------------------------------
+```
+
+```{r}
+# Analysis of asumptotic dependencies ----------
+# within the radial vector------
+
+Radial_vector<-Result_MV$df
+Filename_DepRF<-paste0(path_graph,"/Asymp_dep_mat_d=",
+                       ncol(Radial_vector),".png")
+Filename_ADRF<-paste0(path_graph,"/AD_AItest_d=",
+                      ncol(Radial_vector),".png")
+l_name_modif<-sapply(l_name,Fct_correct_name,
+                target = "Surcote",replacement = "Surge")
+Var_graph_AD<-"radial components"
+require(viridis)
+Mat_dep<-Complete_chi_measure_analysis(
+  Matrix_df_unif = VineCopula::pobs(Radial_vector),
+  Order_quantile = 0.95,Filename = Filename_DepRF,
+  Name_main = "",New_breaks_labels = l_name_modif)
+
+### Test ad vs ai.
+CMAT<-rbind(c(-0.3,-0.35,-0.35),
+            c(-0.3,-0.3,-0.3),
+            c(-0.3,-0.3,-0.3))
+GG_found<-AD_test_analysis(Matrix_df = Radial_vector,
+                 Mat_cthresh = CMAT,
+                 Filename = Filename_ADRF,
+                 Name_main = "",New_breaks_labels = l_name_modif,
+                 THEME_ad_ai=COMMON_theme)
+
+Vector_K<-c(50:400)
+Vector_K2<-c(50:250)
+Diags<-Run_diagnostics_Gamma_G(dims_elt_text =DIMS,
+                               Vectors_HTAIL = Radial_vector,
+                               Vect_k = Vector_K2,q = 0.8,
+                               root_export = path_graph,
+                               YLIM_MV = YMV)
+```
+
+
+```{r}
+# 3) Running simulations  --------------------------------------------------
 source("functions_MV/functions_Angle_MV.R")
 USE_log<-FALSE
 if(USE_log){
@@ -307,72 +655,537 @@ List_Params_RF[["general_option"]]<-opt_used
 Riskf_data<-apply(X = Vect_l_function,MARGIN = 1,
                   FUN = Risk_f)
 Vector_K<-c(50:400)
-Graphics_estimators_gamma(series = Riskf_data,
-                          vect_k = Vector_K,
+GG_Exts_RF<-Graphics_estimators_gamma(series = Riskf_data,
+                          vect_k = Vector_K2,
                           Title_graphic = " ",
                           dims_elt_text = c(20,14,13,12))
+GG_Exts_RF
+ggsave(filename = paste0(Lg_path,"/",l_name[1],
+                         "_",l_name[2],"_d=",length(l_name),
+                         "_extremes_shape.png"),
+       plot =GG_Exts_RF,width=8,
+       height = 6)
 
 ```
-
-```{r}
-Evol_conv_criterion<-Extreme_cov_evol(
-  liste_MV_Orig = ALL_transf,l_name = l_name,
-                  vector_k = Vector_K,
-                Ref_RiskF = Riskf_data)
-png(filename = paste0(ROOT_export_graph,"Convergence_MV_Law.png"),
-    width = 1000,height=500)
-par(mfrow = c(1, 2),  # 1 row, 2 plots
-    cex.lab = 1.5,    # axis label size
-    cex.axis = 1.5,   # axis tick label size
-    cex.main = 1.5,   # main title size
-    cex = 1,
-    mar= c(5, 5, 4, 2) + 0.1)
-plot(Vector_K,unlist(Evol_conv_criterion$Sig_XY),type="l",
-     main=expression(sigma[XY]),
-     xlab="Number of exceedances",
-     ylab="Statistic",
-     cex.lab=2)
-plot(Vector_K,unlist(Evol_conv_criterion$RHO_XY),type="l",
-     main=expression(rho[XY]),
-     xlab="Number of exceedances",
-     ylab="Statistic",
-     cex.lab=2)
-dev.off()
-par(mfrow=c(1,1))
-
-
-```
-
 
 ```{r}
 ### Pareto law of the cost functional of exceedances.
-# # Distance depends on a truncation of the density -------------------------
-# # So quite important ! ----------------------------------------------------
+## Distance depends on a truncation of the density -------------------------
+## So quite important ! ----------------------------------------------------
 
-TS_param<-0.30
-Result_k0_metric1<-tea::mindist(data = Riskf_data,method = "ks",
-                                ts =TS_param )
-kstar1<-Result_k0_metric1$k0
-print(paste0("We would take ",kstar1," extreme MV time series with KS"))
-Result_k0_metric2<-tea::mindist(data = Riskf_data,method = "mad",
-                                ts =TS_param )
-kstar2<-Result_k0_metric2$k0
-print(paste0("We would take ",kstar2," extreme MV time series with MAD distance"))
+TS_param<-0.15
+
+Result_k0_mad<-tea::mindist(data = Riskf_data,method = "mad",
+                                ts =TS_param)
+Result_k0_mad$tail.index
+kstar2<-Result_k0_mad$k0
+
+print(paste0("We would take ",kstar2,
+             " extreme MV time series with MAD distance"))
+
+# Using MAD distance to determine number of exts.------
+kstar_test<-kstar2
+
+# Associated quantile  ----
+Qfound<-1-(kstar_test/length(Riskf_data))
+Qfound
+```
+
+```{r}
+Threshold_gamma_0<-as.numeric(quantile(Riskf_data,Qfound))
+Inds_extremes<-which(Riskf_data>=Threshold_gamma_0)
+Exceedances_RF<-Riskf_data[Inds_extremes]
+```
+
+```{r}
+### Use update mindist to use evolution 
+### of the metric
+
+comment_thresh<-latex2exp::TeX("$u_{\\ell,g}$")
+comment_gl<-latex2exp::TeX("$g_{\\ell}(.)$ metric value")
 
 # Evolution of the metric -------------------------------------------------
-#######
+# ######
+METRIC_plot_used<-"mad"
 k_metric<-mindist_update(data = Riskf_data,
-                         ts = TS_param,method = "mad")
+                         ts = TS_param,method = METRIC_plot_used)
+which.min(k_metric$value_metric)
+Graphics_estimators_gamma(series = Riskf_data,
+                          vect_k = c(50:200),
+                          Title_graphic = "test")
 kZero_found<-which.min(k_metric$value_metric)
-png(filename = paste0(Lg_path,"/graph_metric_lg.png"),
-    width = 500,height = 500)
-plot(k_metric$Nb_k,k_metric$value_metric,xlab="Number of exceedances",
-     ylab="score_metric",type="l")
-abline(v=kZero_found,col="red")
-dev.off()
+Inds_subs_plot<-which(unlist(k_metric$Nb_k)%in%c(50:200))
+k_metric_sub<-k_metric[Inds_subs_plot,]
 
-Qfound<-1-(kZero_found/length(Riskf_data))
-Qfound<-0.87
+Sub_graph_GamGl<-Graphics_estimators_gamma(series = Riskf_data,
+                          vect_k = Vector_K2,
+                          Title_graphic = " ",
+                          dims_elt_text = c(20,16,14,13),
+                          SELECT_estim = c("ML_gamma"),
+                          COLS_chosen = COLS_chosen,
+                          LINETYPE_chosen = LINETYPE_chosen)
+
+```
+
+```{r}
+Sub_graph_GamGl_update<-Sub_graph_GamGl+
+  geom_hline(aes(yintercept=Shape_chosen,col="gam_ref",
+                 linetype="gam_ref"))+
+  geom_vline(aes(xintercept=-1,col="threshold",
+                 linetype="threshold"))+
+  xlim(range(Vector_K2))+
+  theme(legend.position="bottom")+
+  COMMON_theme
+
+Origin<-ggplot_build(Sub_graph_GamGl_update)$plot$scales$get_scales("colour")
+Scale_col<-Origin$palette.cache
+Origin_linetype<-Sub_graph_GamGl_update$scales$get_scales("linetype")
+All_results_linetype<-Origin_linetype
+Result<-ggplot_build(Sub_graph_GamGl_update)$plot$scales
+LABELS<-names(Scale_col)
+LEGEND_gam<-sapply(LABELS,
+                   function(x){
+                   if(x=="threshold"){
+                          return(comment_thresh)
+                   }
+                   if(x=="gam_ref"){
+                     return(comment_go)
+                   }
+                  if(x=="ML_gamma"){
+                    return("ML estimator")
+                  }else{
+                    return(x)
+                  }
+                   })
+LINETYPES<-linetype_pal()(length(LABELS))
+v<-unlist(Scale_col)
+Graph_label_value<-Sub_graph_GamGl_update+
+  scale_linetype_manual(values=LINETYPES,
+                        labels=LEGEND_gam)+
+  scale_color_manual(values = v,
+                        labels=LEGEND_gam)+
+  COMMON_theme
+Graph_label_value
+```
+
+```{r}
+# Criterion choice ----------
+###############
+
+GG_criterion_first<-ggplot(k_metric_sub,
+                           aes(x=Nb_k,
+                               y=value_metric))+
+  geom_line()+
+  geom_vline(aes(xintercept=kstar2,
+                 col="threshold"),
+             linetype="dashed")+
+  xlab("Number of exceedances")+
+  ylab(comment_gl)+
+  scale_color_manual(
+    values = COLS_chosen)+
+  scale_linetype_manual(LINETYPE_chosen)+
+  labs(col="Legend")+
+  theme_bw()+
+  COMMON_theme+
+  theme(legend.position="bottom",
+        legend.direction = "horizontal")
+
+
+
+```
+
+```{r}
+# Ggplot settings -----
+############
+
+Origin_criter<-ggplot_build(GG_criterion_first)$plot$scales$get_scales("colour")
+Scale_col_criter<-Origin_criter$palette.cache
+COLS_criter<-unlist(Scale_col_criter)
+LABELS_criter<-names(Scale_col)
+LEGEND_gam_criter<-sapply(LABELS_criter,
+                   function(x){
+                     if(x=="threshold"){
+                            return(comment_thresh)
+                     }
+                     if(x=="gam_ref"){
+                       return(comment_go)
+                     }else{
+                       return(x)
+                     }
+                   })
+```
+
+
+```{r}
+GG_criterion_first<-GG_criterion_first+
+scale_color_manual(values = COLS_criter,
+                   labels=LEGEND_gam_criter)
+GG_criterion_first
+
+LGD_gam<-get_legend(Graph_label_value)
+Sub_gam<-Sub_graph_GamGl_update+
+  COMMON_theme+
+  theme(legend.position="none")+
+  xlab("(a)")
+GG_criterion_up<-GG_criterion_first+
+  theme(legend.position="none")+
+  xlab("(b)")
+require(patchwork)
+GGextra<-(Sub_gam|GG_criterion_up) +
+  plot_annotation(caption = "Number of exceedances",
+                  theme = theme(
+              plot.caption=element_text(size=20,
+                                        hjust=0.5)))
+Conv_Rad<-plot_grid(GGextra,LGD_gam,nrow=2,
+          rel_heights = c(7,1))
+f_Conv_Rad<-ggdraw()+
+  draw_plot(Conv_Rad)+
+  theme(plot.background = element_rect(fill = "white",
+                                       color = NA))
+f_Conv_Rad
+### ADD legend using plot_grid.
+ggsave(plot = f_Conv_Rad,
+       filename = paste0(Lg_path,"/d=",
+          length(l_name),"_criterion_Gl_metric_old_",
+          METRIC_plot_used,".png"),
+       width = 12,height=6)
+
+```
+
+```{r}
+### Convergence of the angle
+###########
+Launch_graph_conv<-TRUE
+if(Launch_graph_conv){
+  Convgce_Angle_criterion<-Convgce_Angle_evol(
+    liste_MV_Orig = ALL_transf,l_name = l_name,
+    vector_k = Vector_K2,
+    Ref_RiskF = Riskf_data)
+  RUT<-lapply(Convgce_Angle_criterion,
+              function(x){
+                Melting<-melt(x)
+                Dim_basis<-nrow(Melting)/length(l_name)
+                Eigen_indices<-rep(c(1:Dim_basis),length(l_name))
+                return(cbind(Melting,Eigen_indices))
+              })
+  nb_per_k<-nrow(RUT[[1]])
+  k_tilde<-c(sapply(Vector_K2,function(x)
+  {return(rep(x,nb_per_k))}))
+  Melting_whole<-do.call(rbind.data.frame,RUT)
+  Melting_whole<-cbind(Melting_whole,k_tilde)
+  colnames(Melting_whole)<-c("value","forcg_cond",
+                             "eigen_index","k")
+  Melting_whole$eigen_index<-paste0("h[", 
+                                    Melting_whole$eigen_index, 
+                                    "]")
+  Melting_whole$forcg_cond<-sapply(Melting_whole$forcg_cond,
+                                   FUN = function(x){
+                                     return(Fct_correct_name(x,target = "Surcote",
+                                                             replacement = "Surge"))
+                                   })
+  COLORS_for_conv<-scale_fill_hue()$palette(length(l_name)+1)
+  GG_conv_MV_Angle<-ggplot(Melting_whole)+
+    facet_wrap(~eigen_index,
+               scales = "free_y",
+               labeller = label_parsed)+
+    geom_vline(aes(xintercept= kstar2,
+                   col="threshold"))+
+    geom_line(aes(x=k,y=value,col=forcg_cond,
+                  group=interaction(forcg_cond)))+
+    labs(col="Legend")+
+    xlab("Number of exceedances")+ylab("Mean projection")+
+    COMMON_theme+
+    theme(legend.position="bottom",axis.text = element_text(size=14))
+  COLS_used<-ggplot_build(GG_conv_MV_Angle)$plot$scales$get_scales("colour")$palette.cache
+  
+  ### Respective labels
+  h<-ggpubr::get_legend(GG_conv_MV_Angle)
+  legendp_grobs9_11 <- unlist(h$grobs[[1]]$grobs[which(grepl("label", h$grobs[[1]]$layout$name))])
+  ### grpel == rexp in python to select names respecting a given structure
+  origin_label<-unname(legendp_grobs9_11[grepl("*text.*label$", 
+                                               names(legendp_grobs9_11))])
+  ## Modify to use expr
+  label_convMV<-sapply(origin_label,
+                       function(x){
+                         if(x=="threshold"){
+                           return(comment_thresh)
+                         }else{
+                           return(x)
+                         }
+                       })
+  GG_conv_MV_Angle<-GG_conv_MV_Angle+
+    scale_color_manual(
+      labels=label_convMV,
+      values=COLS_used
+    )
+  GG_conv_MV_Angle
+  ggsave(paste0(ROOT_export_graph,"/Convergce_MVAngle_d=",
+                length(l_name),".png"),
+         plot = GG_conv_MV_Angle,width = 8,height = 5)
+}
+```
+
+```{r}
+if(Launch_graph_conv){
+  ### Convergence of the extremal correlation coeff
+  Evol_conv_criterion<-Extreme_cov_evol(
+    liste_MV_Orig = ALL_transf,l_name = l_name,
+    vector_k =Vector_K2,
+    Ref_RiskF = Riskf_data,
+    CPU_hearts = coeurs,center=CGPD)
+}
+if(Launch_graph_conv){
+
+  KMAX<-length(Vector_K2)
+  H_window<-10
+  k_shown<-Vector_K2[c(H_window:KMAX)]
+  ### Add stability plots based on standard deviation
+  Evol_conv_criterion$pair_vars<-sapply(Evol_conv_criterion$pair_vars,
+                                        FUN = function(x){
+                                          return(Fct_correct_name(x,target = "Surcote",
+                                                                  replacement = "Surge"))})
+  pairs<-Evol_conv_criterion %>% 
+    group_by(pair_vars) %>% summarise(count_=n())
+  Pairs<-pairs$pair_vars
+  Result_criterion_stability<-Evol_conv_criterion%>% 
+    group_by(pair_vars) %>% 
+    summarise(sigXY=Stability_criterion_choice_threshold(
+      k_max = KMAX,bandwidth_h = H_window,series_sorted_stats=sigXY),
+      rhoXY=Stability_criterion_choice_threshold(
+        k_max = KMAX,bandwidth_h = H_window,series_sorted_stats=rhoXY),
+      gamXY=Stability_criterion_choice_threshold(
+        k_max = KMAX,bandwidth_h = H_window,series_sorted_stats=gamXY)
+    )
+  
+  Result_criterion_stability$sigXY
+  Nb_pairs<-length(l_name)*(length(l_name)-1)/2
+  
+  v_corr<-c("rho[kk']","sigma[kk']","gam[kk']")
+  v_corr2<-c("rhoXY","sigXY","gamXY")
+  EXPRESSIONS<-c(latex2exp::TeX("$\\rho_{kk'}$ value"),
+                 latex2exp::TeX("$\\sigma_{kk'}$ value"),
+                 latex2exp::TeX("$\\gamma_{kk'}$ value"))
+  EXPRESSIONS_stab<-c(latex2exp::TeX("standard deviation of $\\rho_{kk'}$"),
+                      latex2exp::TeX("standard deviation of $\\sigma_{kk'}$"),
+                      latex2exp::TeX("standard deviation of $\\gamma_{kk'}$"))
+  
+  for(J in c(1:length(v_corr))){
+    elt<-v_corr[J]
+    elt2<-v_corr2[J]
+    ### Stability ###
+    ##############
+    expr_j_stab<-EXPRESSIONS_stab[J]
+    list_result<-Result_criterion_stability[,elt2][[1]]
+    EVOL_std_whole<-Concatenate_entries_same_key(list_ = list_result,
+                                                 key_target = "evol_std")
+    beta_found_whole<-Concatenate_entries_same_key(list_ = list_result,
+                                                   key_target = "beta_found")
+    candidates_whole<-unlist(Concatenate_entries_same_key(list_ = list_result,
+                                                          key_target = "candidates"))
+    set_indexed_C<-which(names(list_result)=="candidates")
+    vector_call_pvars<-c()
+    J_seen<-1
+    for(z_ind in c(1:length(set_indexed_C))){
+      nber_candidates<-length(list_result[[set_indexed_C[z_ind]]])
+      pair_studied<-Pairs[J_seen]
+      vector_call_pvars<-c(vector_call_pvars,
+                           rep(pair_studied,nber_candidates)
+      )
+      J_seen<-J_seen+1
+    }
+    stat_beta_whole<-Concatenate_entries_same_key(list_ = list_result,
+                                                  key_target = "stat_beta")
+    stat_cand_whole<-unlist(Concatenate_entries_same_key(list_ = list_result,
+                                                         key_target = "stat_candidates"))
+    Ratio<-length(EVOL_std_whole)/length(Pairs)
+    Ratio_bfound<-length(beta_found_whole)/length(Pairs)
+    Ratio_C<-length(candidates_whole)/length(Pairs)
+    
+    ### fill the required pair_vars column for each quantity of interest
+    Pairs_whole<-c(sapply(Pairs,
+                          FUN=function(x){
+                            rep(x,Ratio)
+                          }))
+    Pairs_bFound<-c(sapply(Pairs,
+                           FUN=function(x){
+                             rep(x,Ratio_bfound)
+                           }))
+    
+    df_stat_std<-data.frame(EVOL_std_whole,Pairs_whole)
+    colnames(df_stat_std)<-c("value","pair_vars")
+    df_stat_std$k<-rep(k_shown,Nb_pairs)
+    df_beta<-data.frame(k_shown[beta_found_whole],
+                        stat_beta_whole,
+                        Pairs_bFound)
+    colnames(df_beta)<-c("beta_f",
+                         "value",
+                         "pair_vars")
+    df_C<-data.frame(k_shown[candidates_whole],
+                     stat_cand_whole,
+                     vector_call_pvars)
+    colnames(df_C)<-c("C_f",
+                      "value",
+                      "pair_vars")
+    GG_stab_j<-ggplot(data=df_stat_std)+
+      facet_wrap(~pair_vars,scales = "free_y")+
+      
+      geom_line(aes(x=k,y=value,
+                    col=pair_vars))+
+      guides(col="none")+
+      geom_vline(aes(xintercept=kstar2,
+                     linetype="thresh"))+
+      
+      geom_point(data=df_C,aes(x=C_f,
+                               y=value,
+                               shape="candidates"))+
+      geom_point(data=df_beta,aes(x=beta_f,
+                                  y=value,
+                                  shape="threshold"))+
+      ylab(expr_j_stab)+
+      xlab("Number of exceedances")+
+      theme_bw()+
+      COMMON_theme+
+      theme(legend.position="bottom")+
+      scale_shape_manual(values=Shapes_)+
+      COMMON_theme+
+      scale_linetype_manual(
+        values = c(3),
+        labels=c(comment_thresh)
+      )+labs(linetype="Legend",
+             shape=" ")+
+      scale_color_manual(
+        values = c(2,3,4),
+        labels=unique(df_stat_std$pair_vars)
+      )+
+      guides(
+        linetype = guide_legend(order = 1)  ,# First legend
+        shape= guide_legend(order = 2)# Second legend
+      )
+    D_nameV<-length(l_name)
+    ggsave(filename = paste0(ROOT_export_graph,"Corr/evol_stability_",elt,"_corr_d=",
+                             D_nameV,".png"),
+           plot=GG_stab_j,width = 4*D_nameV,height = 6)
+  }
+}
+```
+
+```{r}
+if(Launch_graph_conv){
+  ### Data confidence band for each correlation coefficient ####
+  ################
+  Conf_band<-Extreme_cov_confevol(liste_MV_Orig = ALL_transf,l_name = l_name,
+                                  vector_k =Vector_K2,Ref_RiskF = Riskf_data,
+                                  CPU_hearts = coeurs,center=CGPD,
+                                  Nboot = 500,alpha_param = 0.05)
+  
+  Conf_band$pair_vars<-sapply(Conf_band$pair_vars,
+                              FUN = function(x){
+                                return(Fct_correct_name(x,target = "Surcote",
+                                                        replacement = "Surge"))})
+  
+  centerGPD<-NULL
+  colnames(Evol_conv_criterion)[c(2:4)]<-c("sigma[kk']",
+          "rho[kk']","gam[kk']")
+}
+if(Launch_graph_conv){
+  
+  for(J in c(1:length(v_corr))){
+    elt<-v_corr[J]
+    elt2<-v_corr2[J]
+    EXPRj<-EXPRESSIONS[J]
+    gg<-Evol_conv_criterion[,c(elt,"pair_vars")]
+    Conf_band2<-Conf_band[which(Conf_band$variable==elt2),]
+    df_forgg<-melt(gg)
+    df_forgg$pair_vars<-sapply(df_forgg$pair_vars,
+                               FUN = function(x){
+                                 return(Fct_correct_name(x,target = "Surcote",
+                                                         replacement = "Surge"))})
+    ratio<-nrow(df_forgg)/nrow(Evol_conv_criterion)
+    df_forgg$k<-rep(Evol_conv_criterion$k,ratio)
+    
+    GGCorr_evol<-ggplot(df_forgg)+
+      geom_line(aes(x=k,y=value,
+                    group=interaction(pair_vars),
+                    col=pair_vars))+
+      facet_wrap(~pair_vars,
+                 scales = "free_y")+
+      guides(col="none")+
+      geom_ribbon(data=Conf_band2,aes(x=k,ymin=Q1,ymax=Q2,
+                                      linetype="confidence_band")
+                  ,alpha=0.5,fill="lightgrey",
+                  col="darkblue")+
+      ylab(EXPRj)+
+      xlab("Number of exceedances")+
+      theme_bw()+
+      COMMON_theme+
+      theme(legend.position = "bottom",
+            legend.direction = "horizontal")
+    GGCorr_evol<-GGCorr_evol+
+      geom_vline(aes(xintercept=kstar2,
+                     linetype="thresh"))+
+      labs(linetype="Legend")+
+      scale_color_manual(
+        values = c(2,3,4),
+        labels=unique(df_forgg$pair_vars)
+      )+
+      scale_linetype_manual(
+        values = c(2,3),
+        labels=c("confidence_band",comment_thresh)
+      )
+    ggsave(filename = paste0(ROOT_export_graph,"Corr/evol_",elt,"_corr_d=",
+                             length(l_name),".png"),
+           plot=GGCorr_evol,width = 10,height = 5)
+    
+  }
+}
+GGCorr_evol
+```
+
+```{r}
+### Evolution of the raidial vector -------
+################
+
+if(Launch_graph_conv){
+  ### Convergence for the radius
+  #################################
+  Evol_Theta_ofRad_criterion<-Extreme_covRad_evol(
+    Df_Rad_Orig = Vect_l_function,
+    l_name = l_name,
+    vector_k = Vector_K2,
+    CPU_hearts = coeurs,
+    Ref_RiskF = Riskf_data)
+  
+  Evol_Theta_ofRad_criterion$pair<-sapply(Evol_Theta_ofRad_criterion$pair,
+                                          FUN = function(x){
+                                            return(Fct_correct_name(x,target = "Surcote",
+                                                                    replacement = "Surge"))})
+  GGCorr_Radevol<-ggplot(Evol_Theta_ofRad_criterion,
+                         aes(x=number_exceed,y=value,
+                             col=pair))+
+    geom_line()+
+    facet_wrap(~pair,scales = "free_y")+
+    guides(col="none")+
+    labs(linetype="Legend")+
+    ylab("Correlation value")+
+    xlab("Number of exceedances")+
+    geom_vline(aes(xintercept=kstar2,
+                   linetype="thresh"))+
+    scale_linetype_manual(
+      values = c(3),
+      labels=c(comment_thresh)
+    )+
+    theme_bw()+
+    COMMON_theme+
+    theme(legend.position = "bottom")
+    
+  GGCorr_Radevol
+  ggsave(filename = paste0(ROOT_export_graph,"Corr/evol_criterion_corr_Rad_Thetad=",
+                           length(l_name),".png"),
+         plot=GGCorr_Radevol,width = 10,height = 5)
+  
+  par(mfrow=c(1,1))
+}
+
 ```
 
 
@@ -395,7 +1208,6 @@ re<-Simul_MV_residuals(result_transformation = Result_MV,
 ```
 
 ```{r}
-
 ### Gaussian Mixture ? 
 #####
 par(mfrow=c(1,1))
