@@ -889,55 +889,13 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     plot(Choice_threshr_j)
     Q_foundj<-median(Sthresh_j[,4])
     list_Qfound[[nameV]]<-Q_foundj/100
-    # U_thresh<-Choice_threshr$u_vec
-    # summary_results_chce_th<-summary(Choice_threshr)
-    # Quantile_Lvl<-mean(summary_results_chce_th[,3])
-    # Mod1<-texmex::migpd(data = as.data.frame(VECT_lj),
-    #                     mqu = Quantile_Lvl)
-    # Result_mixture<-craft_mex_tform(x=Mod1, margins ="laplace",
-    #                                 method = "mixture",
-    #                                 r = NULL)
-    # UNIF_extgp<-sapply(Result_mixture$transformed[,1], 
-    #                 function(x){
-    #             return(L1pack::qlaplace(x,
-    #                         location = 0,scale=2**(1/2)))
-    #                 })
-    # list_mixt[[name_V]]<-Result_mixture
+
     UNIF_extgp<-sapply(VECT_lj,mev::pextgp,kappa=MLE_EXTGP[["kappa"]],
                             sigma = MLE_EXTGP[["sigma"]],
                             xi=MLE_EXTGP[["xi"]])
     
     Quantile_LEVELS<-c(1:length(VECT_lj))/(length(VECT_lj)+1)
-    ### Confidence bound
-    # Launchable if low number of individuals observed
-    # Result_boot<-Bootstrap_conf_band(M = 500,
-    #                     n = length(VECT_lj),
-    #                     theta_egpd = MLE_EXTGP,
-    #                     order_quantiles = Quantile_LEVELS,
-    #                     alpha = 0.05)
-    # DF_egpd_emp<-Result_boot
-    # DF_egpd_emp$emp<-sort(VECT_lj)
-    # DF_egpd_emp$Levels<-Quantile_LEVELS
-    # DF_egpd_emp<-as.data.frame(DF_egpd_emp)
-    # GG_fit_vect_R<-ggplot(data=DF_egpd_emp,aes(x=emp,y=mean,
-    #             col="model"))+
-    #   geom_point()+
-    #   geom_line(aes(x=emp,y=emp,col="data"))+
-    #   geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
-    #                   col="confidence_band"),
-    #               linetype="dashed",alpha=0.15,
-    #               fill="grey")+
-    #   theme(axis.title=element_text(size=20),
-    #           legend.title = element_text(size=14),
-    #           legend.text=element_text(size=13),
-    #           axis.text=element_text(size=13))+
-    #   scale_color_manual(values=cols_)+
-    #   labs(col="Legend")+
-    #   xlab("Empirical quantiles")+
-    #   ylab("Fitted quantiles")
-    # ggsave(filename = Name_file_plot,
-    #        plot = GG_fit_vect_R,
-    #        width = 8,height=6)
+
     # MLE_EXTGP
     L_Transf_vect_l[[nameV]]<-MLE_EXTGP
     Frechet_j<-(-log(UNIF_extgp))**(-1)
@@ -956,10 +914,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                           Vect_k = c(20:500),
                           l_name = l_variables,q = 0.80)
   Vect_lunif<-exp(-Vect_l_transf^(-1))
-  ### Asymmetry test 
-  # test_asy<-copula::exchTest(Vect_lunif,N = 1000)
-  # print(test_asy)
-  ### What would be the copula
+
   Select_cop_fam<-VineCopula::BiCopSelect(Vect_lunif[,1],
                           Vect_lunif[,2])
   FAMILY_set<-c(1:40,104,114,
@@ -998,38 +953,6 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   IndExceedances_Pareto<-which(l_Pareto>Seuil_Margins_Pareto)
   Exceedances_Pareto<-l_Pareto[Indices_exts]
 
-  # Anderson-Darling test for exceedances (Pareto margins) ----------------------
-  ##########################################
-  # print("p value AD test Pareto (Pareto margins)")
-  # print(goftest::ad.test(x = Exceedances_Pareto, 
-  #                        null = extRemes::"pevd",
-  #                        shape=1,scale=Seuil_Margins_Pareto,
-  #                        threshold=Seuil_Margins_Pareto,
-  #                        type="GP")$p.value)
-  
-  # Export radial extreme elts ----------------------------------------------
-  # Ext_cat<-as.character(as.numeric(l_prime>Seuil_lprime))
-  # Df_rad_ext<-cbind.data.frame(Vect_l_function,Ext_cat)
-  # NC<-length(colnames(Vect_l_function))
-  # Cols_first<-sapply(c(1:NC),function(x){return(paste0("V",x))})
-  # colnames(Df_rad_ext)<-c(Cols_first,"category")
-  # GG_rad_ext_bool<-ggplot(data=Df_rad_ext,aes(x=V1,y=V2,col=category))+
-  #   geom_point()+
-  #   guides(col="none")+
-  #   scale_x_continuous(transform="log10")+
-  #   scale_y_continuous(transform="log10")+
-  #   geom_xsidedensity(data=Df_rad_ext,aes(fill=category), alpha = 0.5)+
-  #   geom_ysidedensity(data=Df_rad_ext,aes(fill=category), alpha = 0.5)+
-  #   labs(fill="Legend")+
-  #   xlab(paste0("T(",l_variables[1],") (.)"))+
-  #   ylab(paste0("T(",l_variables[2],") (.)"))
-  # ggsave(filename = paste0(root_for_export,
-  #                          "repar_points_Rad_",
-  #                          l_variables[1],"_",
-  #                          l_variables[2],".png"),
-  #        plot = GG_rad_ext_bool,
-  #        width = 8,height=6)
-  
   Theta_obtained<-atan(Vect_Pareto_margins[,2]/Vect_Pareto_margins[,1])
   png(filename= paste0(root_for_export,
                        "/RisKfunctions/ang_dens_R_",
@@ -1131,12 +1054,6 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   }
   if(Approach=="HTawn"){
     IREF<-1
-    ### probability of being in each case
-    # Old computation
-    # Q_from_mixt<-apply(Vect_l_function,
-    #    MARGIN = 2,FUN = function(x){
-    #                return(mean(as.numeric(x>Threshold)))})
-    # New computation
     Q_from_mixt<-apply(Vect_l_function,
           MARGIN = 2,
           FUN = function(col_){
@@ -1153,29 +1070,16 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     nb_threshs<-50
     Qtile_candidates<-seq.int(0.70,0.98,
               length.out=nb_threshs)
-    #Extgp
-    #MQU<-0
+
     
-    ## Usin exp as input
-    # MQU<-apply(Vect_l_function,
-    #        FUN = function(x){
-    #          Result_eqd<-Choice_automatic_thresh_per_variable_time(
-    #            var_t = x,
-    #          q_min = 0,q_max = 0.95,
-    #          nb_threshs = 20,plot_graph = TRUE)[["p_u_opt"]]
-    #          return(Result_eqd)
-    #        },MARGIN = 2)
-    ### Threshr used
-    #with DKG= c(0.8,0.6,0.70)
-    #without c(0.75,0.8,0.80)
-    MQU<-c(0.8,0.6,0.70)
+    MQU<-Params_risk_Function[["HTAWN_params_MARG"]]
     DQU_modeling_Htawn<-Params_risk_Function[["HTAWN_params"]]
   
     #Vect_pareto_margins
     Graphics_diags<-Analysis_diag_HTawn_evol_DQU(vect_dqu = Qtile_candidates,
-                          chosen_dqu=DQU_modeling_Htawn,
-                          MQU =MQU,
-                      Vect_obs = Vect_l_function)
+             chosen_dqu=DQU_modeling_Htawn,
+             MQU =MQU,Vect_obs = Vect_l_function)
+    
     GG_theta<-Graphics_diags[["theta"]]
     GG_Indep<-Graphics_diags[["indep"]]
     if(is.list(GG_theta)){

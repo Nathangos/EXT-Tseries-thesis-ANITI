@@ -594,7 +594,9 @@ Diags<-Run_diagnostics_Gamma_G(dims_elt_text =DIMS,
 
 
 ```{r}
-# 3) Running simulations  --------------------------------------------------
+# Generator options --------------------------------------------------
+##############
+
 source("functions_MV/functions_Angle_MV.R")
 USE_log<-FALSE
 if(USE_log){
@@ -606,7 +608,8 @@ if(USE_log){
   FTF<-function(x){return(x)}
   FTF_inv<-function(x){return(x)}
 }
-## parametric=FALSE to use Legrand methods
+## parametric=FALSE to use exponential margins/
+## without AD hypothesis
 Approach<-"HTawn"
 optional_params<-NULL
 if(Approach!="AD"){
@@ -618,18 +621,23 @@ if(Approach!="AD"){
   dyn.load("main.dll")
 }
 if(Approach=="HTawn"){
-  optional_params<-c(0.70,0.75)
+  optional_params<-c(0.86,0.92,0.925)
 }
+
+```
+
+```{r}
 List_Params_RF<-list("parametric"=TRUE,"name_RF"=Name_riskF,
-                     "function"=Risk_f,
-                     "name_model"=Name_model,
-                     "weightFunction"=wFun,
-                     "dWeightFunction"=dwFun,
-                     "init_opt_param"=0.5,
-                     "Method_Angle"=METHOD_ANGLE,
+                     "function"=Risk_f,"name_model"=Name_model,
+                     "weightFunction"=wFun,"dWeightFunction"=dwFun,
+                     "init_opt_param"=0.5,"Method_Angle"=METHOD_ANGLE,
                      "RF_Approach"=Approach,
                      "HTAWN_params"=optional_params,
-                     "Shape_parameter"=Shape_chosen)
+                     "Shape_parameter"=Shape_chosen,
+                     "RUN_Convex_Hull"=TRUE)
+### Parameters of the marginal transformation 
+### of the radial vector
+List_Params_RF[["HTAWN_params_MARG"]]<-c(0.8,0.6,0.70)
 
 if(Approach=="AD"){
   if(List_Params_RF[["parametric"]]==TRUE){
@@ -644,12 +652,10 @@ if(Approach=="AD"){
 
 ### For export
 List_Params_RF[["general_option"]]<-opt_used
-
 ```
 
 
 ```{r}
-
 # 2) Choice of the threshold -------------------------------------------------
 ### Convergence criterion for the correlation coefficient
 Riskf_data<-apply(X = Vect_l_function,MARGIN = 1,
@@ -1142,7 +1148,7 @@ GGCorr_evol
 ```
 
 ```{r}
-### Evolution of the raidial vector -------
+### Evolution of the radial vector -------
 ################
 
 if(Launch_graph_conv){
@@ -1208,63 +1214,175 @@ re<-Simul_MV_residuals(result_transformation = Result_MV,
 ```
 
 ```{r}
-### Gaussian Mixture ? 
-#####
-par(mfrow=c(1,1))
-vect_l<-exp(-re$Vect_RiskF_transf^(-1))
-vect_lgauss<-apply(vect_l,MARGIN = 2,qnorm)
-GM_vectl<-mclust::densityMclust(vect_lgauss,
-                                plot=FALSE)
-png(filename = paste0(Lg_path,"/mod_GM_bic.png"))
-plot(GM_vectl,what="BIC")
-dev.off()
-##(+) test of gaussian miture vs one component
-Vect_l_ID<-scale(vect_lgauss)
-Test_GM_vs_1comp<-TwoGM_versus_normal(vect_Id = Vect_l_ID,
-                    alpha = 0.05)
-Test_GM_vs_1comp
-### We do not reject the null hypothesis--> we are
-### not in the case of contamination model
-n<-1000
-d<-2
-nu<-rep(1,d)
-prob_classes<-c(0.5,0.5)
-Result_Cont_Model<-t(replicate(n =n,
-                               Simul_Contamination_Model(prob_classes = prob_classes,
-                   nu = nu))[1,,])
-plot(Result_Cont_Model,
-     main="Simulation from contamination model",
-     xlab="V1",ylab="V2")
-Test_GM_knowingH1<-TwoGM_versus_normal(vect_Id = Result_Cont_Model,alpha = 0.05)
+FSIZE<-20
 
-################
-Theta_fit<-re$Param_found
-Nu<-re$threshold
-Vect_RiskF<-sapply(Result_MV$df,unlist)
-Vect_RiskF_Frechet_transf<-re$Vect_RiskF_transf
-
-# Symmetric family OR asymmetric family ?  --------------------------------
-######################
-N<-500
-Test_exchangeability<-copula::exchEVTest(x = Vect_RiskF,
-                                         estimator = "CFG",
-                                          N = N)
-print(Test_exchangeability$p.value)
-Test_exchangeability_transf<-copula::exchEVTest(x = Vect_RiskF_Frechet_transf,
-                                        estimator = "CFG",
-                                         N = N)
-print(Test_exchangeability$p.value)
-
-### If null hypothesis is rejected, we need to use
-### asymmetric models. 
-
-# Testing several copula families for the risk functions----------------------------
-#######################
-d<-ncol(Vect_RiskF)
-
+for(Z in c(1:nrow(Combs))){
+  pair_Z<-Combs[Z,]
+  Sub_vect<-re$Vect_RiskF_transf[,pair_Z]
+  
+  ### df for graphic
+  Names<-l_name[pair_Z]
+  Names<-sapply(Names,FUN = function(x){
+    return(Fct_correct_name(x = x,
+                      target = "Surcote",
+                      replacement = "Surge"))
+  })
+  T_names<-sapply(Names,FUN = function(x){
+    EXPR_latex<-latex2exp::TeX(sprintf("$\\ell(T(%s))$",
+                           x))
+    return(EXPR_latex)
+  })
+  Names_col<-paste0(Names[1],"-",Names[2])
+  Sub_vect_Normal<-apply(Sub_vect,MARGIN = 2,
+                  FUN = function(x){
+              return(qnorm(mev::pgp(x,loc = 0,
+                scale = 1,shape = 1)) )     
+                  })
+  Max_sub_vect<-apply(X = Sub_vect_Normal,MARGIN = 1,
+                      FUN = max)
+  Th_found<-quantile(Max_sub_vect,
+                     Qfound)
+  Ext_boolZ<-Max_sub_vect>Th_found
+  data_TH<-data.frame("Th_used"=Th_found)
+  daZ<-cbind.data.frame(Sub_vect_Normal,
+                      rep(Names_col,
+                              nrow(Sub_vect)),Ext_boolZ)
+  colnames(daZ)<-c("u1","u2","pair","cat")
+  daZ$cat<-ifelse(daZ$cat,yes="extreme",no="standard")
+  GG_AD_AI_Qtion<-ggplot(data=daZ)+
+    geom_point(aes(x=u1,y=u2,col=cat))+
+    geom_hline(data_TH,mapping=aes(yintercept = Th_used),
+               col="red",linetype="dashed")+
+    geom_vline(data = data_TH,mapping=aes(xintercept = Th_used),
+               col="red",linetype="dashed")+
+    geom_abline(intercept=0)+
+    labs(col="Legend",linetype="Threshold")+
+    xlab(T_names[1])+ylab(T_names[2])+
+    COMMON_theme+theme(
+          legend.direction = "horizontal",
+          legend.position = "bottom")
+  ggsave(filename = paste0(ROOT_export_graph,
+                      "Ad_NMargins_RiskF_",Z,".png"),
+         plot = GG_AD_AI_Qtion,width = 8,
+         height = 6)
+}
 ```
 
 ```{r}
+# T--RiskF sim vs data ------------------
+########
+OBS_ext<-re$obs_ext
+Simul<-re$simul
+list_RiskF_ext<-lapply(OBS_ext,
+       FUN = function(x){
+         return(apply(X = x,
+            MARGIN = 1,FUN = calcul_norm_L2))
+       })
+Matrix_RiskF_ext<-do.call("cbind",list_RiskF_ext)
+list_RiskF_sim<-lapply(Simul,
+                       FUN = function(x){
+                         return(apply(X = x,
+                                      MARGIN = 1,FUN = calcul_norm_L2))})
+Matrix_RiskF_sim<-do.call("cbind",list_RiskF_sim)
+
+MMD_RFModel_vs_Obs<-eummd::meammd(X=Matrix_RiskF_sim,
+                                     Y=Matrix_RiskF_ext,
+                                     pval = TRUE)$pval
+MMD_RFModel_vs_Obs
+CRAMER_RiskF<-cramer::cramer.test(x = Matrix_RiskF_sim,
+                     y = Matrix_RiskF_ext)
+CRAMER_RiskF
+### FRECHET scale
+list_RiskF_ext_FCHET<-lapply(re$Frechet_normal$obs,
+                       FUN = function(x){
+                         return(apply(X = x,
+                                      MARGIN = 1,FUN = calcul_norm_L2))
+                       })
+Matrix_RiskF_ext_FCHET<-do.call("cbind",list_RiskF_ext_FCHET)
+
+list_RiskF_sim_FCHET<-lapply(re$Frechet_normal$simul,
+                       FUN = function(x){
+                         return(apply(X = x,
+                                      MARGIN = 1,FUN = calcul_norm_L2))})
+Matrix_RiskF_sim_FCHET<-do.call("cbind",list_RiskF_sim_FCHET)
+MMD_RFModel_vs_Obs_FCHET<-eummd::meammd(X=Matrix_RiskF_sim_FCHET,
+                                  Y=Matrix_RiskF_ext_FCHET,
+                                  pval = TRUE)$pval
+MMD_RFModel_vs_Obs_FCHET
+CRAMER_RiskF_FCHET<-cramer::cramer.test(x = Matrix_RiskF_sim_FCHET,
+                                  y = Matrix_RiskF_ext_FCHET)
+CRAMER_RiskF_FCHET$p.value
+```
+
+```{r}
+# Model PCA coords -------------
+#####################
+
+Filename_Graph_Model<-paste0(Theta_path,"/PCAresult_",
+          METHOD_ANGLE,"_d=",
+          length(l_name),".png")
+png(filename = Filename_Graph_Model,
+    width = 700,height = 700)
+
+
+require(mclust)
+if(METHOD_ANGLE=="GaussMixture"){
+  D<-c(1:4)
+  Derived_mclust_obj<-mclust::as.Mclust(re$Model_Coords)
+
+  ### craft method to impose correct annotations size
+  objdens <- as.densityMclust(Derived_mclust_obj)
+  objdens$data <- objdens$data[,  D, drop = FALSE]
+  objdens$varname <- colnames(objdens$data)[D]
+  objdens$range <- apply(objdens$data, 2, range)
+  objdens$d <-max(D)
+  objdens$parameters$mean <- objdens$parameters$mean[ D, 
+                                                     , drop = FALSE]
+  objdens$parameters$variance$d <-  D
+  objdens$parameters$variance$sigma <- objdens$parameters$variance$sigma[ D, 
+                                                                          D, , drop = FALSE]
+  
+  objdens$data <- objdens$data[,  D, drop = FALSE]
+  CRAFt_plot_density_D(x = objdens,cex.annot = 3,
+                       data=re$coords_data[,D],
+                       points.col="blue",points.cex = 2)
+}
+dev.off()
+
+# For thplot.Mclust()# For the PCA model, criterion to choose config ---------------------------
+###########
+Filename_Graph_criterion_config<-paste0(Theta_path,"/PCAconfig_",
+                             METHOD_ANGLE,"_d=",
+                             length(l_name),".png")
+png(filename = Filename_Graph_criterion_config,
+    width = 600,height = 600)
+if(METHOD_ANGLE=="GaussMixture"){
+  mclust::plot.densityMclust(re$Model_Coords,what="BIC")
+}
+mclust::surfacePlot()
+dev.off()
+```
+
+```{r}
+d<-ncol(Vect_RiskF)
+# if(d==2){
+#   gofEVCopula(galambosCopula(), Vect_RiskF, N=N, method="itau")
+#   gofEVCopula(galambosCopula(), Vect_RiskF, N=N, method="irho")
+#   
+#   #gofEVCopula(huslerReissCopula(), Vect_RiskF, N=N)
+#   gofEVCopula(huslerReissCopula(), Vect_RiskF, N=N, method="itau")
+#   gofEVCopula(huslerReissCopula(), Vect_RiskF, N=N, method="irho")
+#   
+#   #gofEVCopula(tevCopula(), Vect_RiskF, N=N)
+#   gofEVCopula(tevCopula(), Vect_RiskF, N=N, method="itau")
+#   gofEVCopula(tevCopula(), Vect_RiskF, N=N, method="irho")
+#   
+#   #gofEVCopula(tevCopula(), Vect_RiskF, N=N)
+#   gofEVCopula(tawnCopula(), Vect_RiskF, N=N, method="itau")
+#   gofEVCopula(tawnCopula(), Vect_RiskF, N=N, method="irho")
+# }
+
+
 ### Analyse Dependence function 
 Mod_biv<-list("model"=Name_model)
 Estimator<-list()
@@ -1278,50 +1396,234 @@ if(Name_model%in%c("ct","bilog")){
 Mod_biv[["estimate"]]<-Estimator
 ```
 
-
 ```{r}
+# Gplots for the angular time series --------
+################
+U_sim_frech<-re$Frechet_normal$simul[[l_name[[1]]]]
+U_obs_frech<-re$Frechet_normal$obs[[l_name[[1]]]]
 
-# (Shapes) Correlation between variables OK -------------------------------
-######################
-First_var<-l_name[1]
-Second_var<-l_name[2]
-Orig<-Result_MV$orig
-ind_var1<-which(names(Orig)==First_var)
-ind_var2<-which(names(Orig)==Second_var)
-liste_ext<-Create_list_fromALL(l_name = l_name,
-                               obj_source = re$obs_exts)
-# Correlations Pareto scale -----------------------------------------------
-Mat_obs_Pareto<-Fct_correlations(method_corr = "kendall",
-                                 df1 =re$obs_exts[[ind_var1]],
-                                 df2=re$obs_exts[[ind_var2]])
-V1<-re$simul[[ind_var1]]
-V2<-re$simul[[ind_var2]]
-Mat_simul_Pareto<-Fct_correlations(method_corr = "kendall",
-                                   df1 =V1,df2=V2)
-summary(Mat_simul_Pareto)
-summary(Mat_obs_Pareto)
-plot(c(1:37),y = Mat_obs_Pareto,ylim=c(-0.5,0))
-lines(c(1:37),y = Mat_simul_Pareto,col="red")
-legend(x="topright",legend=c("data","simul"),
-       col=c(1,2),lwd=2,bty="n")
+Obj_sim<-list()
+Obj_data<-list()
 
-# Correlation var1 var2 ---------------------------------------------------
-Mat_corr<-Fct_correlations(method_corr = "kendall",
-                           df1 =liste_ext[[ind_var2]],
-                           df2=liste_ext[[ind_var1]])
-Mat_corr_simul<-Fct_correlations(method_corr = "kendall",
-                                 df1 =re$simul[[ind_var2]],
-                                 df2=re$simul[[ind_var1]])
+Root_sim<-re$Frechet_normal$simul
+Root_data<-re$Frechet_normal$obs
+List_RiskF<-list()
+List_RiskF_data<-list()
+Z<-0
+Theta_data_whole<-c()
+Theta_sim_whole<-c()
 
-plot(c(1:37),y = Mat_corr,
-     main="Correlations between Hs and S at each time (red in simul)")
-lines(c(1:37),y = Mat_corr_simul,
-      col="red")
+list_CumSum_Time<-list()
+Times_available<-list()
+DFC<-length(l_name)
+for(jn in c(1:DFC)){
+  nameV<-l_name[jn]
+  TA<-colnames(re$obs_exts[[nameV]])
+  Times_available[[nameV]]<-TA
+  if(jn==1){
+    list_CumSum_Time[[nameV]]<-0
+  }else{
+    nameV_previous<-l_name[jn-1]
+    TA_previous<-colnames(re$obs_exts[[nameV_previous]])
+    Nber_times<-length(TA_previous)
+    list_CumSum_Time[[nameV]]<-list_CumSum_Time[[jn-1]]+Nber_times
 
+  }
+}
+lU<-list()
+Nshown<-50
+Time_label<-"Time (hour) with respect to tidal peak"
+common_linetype<-scale_linetype_manual("Legend",
+           values=c("confidence_band"=2,
+                    "mean"=3))
+FSIZE<-15
+for(Z in c(1:DFC)){
+  Name<-l_name[Z]
+  
+  ###Simul turn
+  Df_sim<-Root_sim[[Z]]
+  #colnames(Df_sim)<-c(1:length(names(Df_sim)))
+  INIT<-list_CumSum_Time[[Z]]
+  print(INIT)
+  BEG<-INIT+1
+  NCOL_FC<-ncol(Df_sim)
+  END<-INIT+NCOL_FC
+  
+  Df_sim<-as.matrix(Df_sim)
+  L2_sim<-apply(Df_sim,MARGIN = 1,FUN = calcul_norm_L2)
+  List_RiskF[[Name]]<-L2_sim
+  Theta_sim<-t(t(Df_sim)%*%diag(L2_sim^(-1)))
+  
+  ###Data turn
+  rood<-Root_data[[Z]]
+  colnames(rood)<-colnames(Df_sim)
+  Df_data<-as.matrix(rood)
+  L2_data<-apply(Df_data,MARGIN = 1,FUN = calcul_norm_L2)
+  List_RiskF_data[[Name]]<-L2_data
+  Theta_data<-t(t(Df_data)%*%diag(L2_data^(-1)))
+  Obj_data[[Name]]<-Theta_data
+  
+  mu1<-apply(X = Theta_sim,MARGIN = 2,FUN = mean)
+  mu2<-apply(X = Theta_data,MARGIN = 2,FUN = mean)
+  
+  # Simul -------------------------------------------------------------------
+  estimator_025_simul<-apply(Theta_sim,MARGIN =2,
+                            function(x){
+                              return(as.numeric(quantile(x,0.025)))})
+  estimator_05_simul<-apply(Theta_sim,MARGIN =2,
+                            function(x){
+                              return(as.numeric(quantile(x,0.05)))})
+  estimator_95_simul<-apply(Theta_sim,MARGIN =2,
+                            function(x){
+                              return(as.numeric(quantile(x,0.95)))})
+  estimator_975_simul<-apply(Theta_sim,MARGIN =2,
+                            function(x){
+                              return(as.numeric(quantile(x,0.975)))})
+  
+  ### data estimator
+  estimator_025<-apply(Theta_data,MARGIN =2,
+                      function(x){
+                        return(as.numeric(quantile(x,0.025)))})
+  estimator_05<-apply(Theta_data,MARGIN =2,
+                      function(x){
+                        return(as.numeric(quantile(x,0.05)))})
+  estimator_95<-apply(Theta_data,MARGIN =2,
+                      function(x){
+                        return(as.numeric(quantile(x,0.95)))})
+  estimator_975<-apply(Theta_data,MARGIN =2,
+                      function(x){
+                        return(as.numeric(quantile(x,0.975)))})
+  NB_sample<-sample(c(1:nrow(Theta_sim)),
+                    size = Nshown,replace = FALSE)
+  NB_sample_data<-sample(c(1:nrow(Theta_data)),
+                         size = Nshown,replace = FALSE)
+  Melteur<-melt(t(Theta_sim[NB_sample,]))
+  colnames(Melteur)<-c("Time","Index","valeur")
+  Melteur$Index<-as.character(Melteur$Index)
+  
+  M2<-melt(t(Theta_data[NB_sample_data,]))
+  colnames(M2)<-c("Time","Index","valeur")
+  M2$Index<-as.character(M2$Index)
+  Timenorm<-M2$Time-min(unlist(M2$Time))+1
+  M2$bound_inf<-estimator_025[Timenorm]
+  M2$bound_sup<-estimator_975[Timenorm]
 
+  Timenorm_sim<-Melteur$Time-min(unlist(Melteur$Time)
+  )+1
+  Melteur$bound_inf<-estimator_025_simul[Timenorm_sim]
+  Melteur$bound_sup<-estimator_975_simul[Timenorm_sim]
 
+  min_y<-min(min(M2$valeur),min(Melteur$valeur))
+  max_y<-max(max(M2$valeur),max(Melteur$valeur))
+
+  M2$mu<-mu2[Timenorm]
+  Melteur$mu<-mu1[Timenorm_sim]
+  M2$Time<-(M2$Time-19)/6
+  Melteur$Time<-(Melteur$Time-19)/6
+  Nv_correct<-Fct_correct_name(x =Name,target = "Surcote",
+                               replacement = "Surge")
+  yleft <- paste0("Angle of ",Nv_correct,"(.)")
+  Whole<-rbind.data.frame(Melteur,M2)
+  Whole$origin<-c(rep("simulations",nrow(Melteur)),
+                  rep("data",nrow(M2)))
+  Whole$Index <- as.factor(Whole$Index)
+  GGsum<-ggplot(data=Whole,
+                aes(x=Time,y=valeur,col=Index,
+                    group=Index,
+                ))+
+    guides(col="none")+
+    facet_wrap(~origin,nrow=2)+
+    geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
+                    linetype="confidence_band",
+                    group=1),
+                alpha=0.5,fill="lightgrey",
+                col="darkblue")+
+    geom_line()+
+    xlab(Time_label)+
+    ylab(yleft)+
+    geom_line(aes(x = Time,y=mu,linetype="mean"),
+              col="red",size=1.1)+
+    guides(col="none")+
+    common_linetype+ labs(linetype="Legend")+
+    COMMON_theme+
+    theme(legend.direction = "horizontal")
+  GGsum2<-GGsum+
+    theme(legend.position = 'none',
+          legend.direction = "horizontal")
+  if(Z==1){
+    Cum_exs_simuls<-GGsum2
+    LEGEND_exs<-get_legend(GGsum)
+    
+  }else{
+    Cum_exs_simuls<-Cum_exs_simuls+
+      GGsum2
+  }
+  
+  Obj_sim[[Name]]<-Theta_sim
+  colnames(Theta_sim)<-c(BEG:END)
+  lU[[Name]]<-"(.)"
+  colnames(Theta_data)<-c(BEG:END)
+  Z<-Z+1
+  M_shown<-50
+  Filename_omega<-paste0(ROOT_export_graph,"Theta/",Name,"/",
+                         paste0("Omega_sim_vs_obs_",Name,".png"))
+  Min_y<-min(c(apply(Theta_data,MARGIN = 2,FUN = min),
+               apply(Theta_sim,MARGIN = 2,FUN = min)))
+  Max_y<-max(c(apply(Theta_data,MARGIN = 2,FUN = max),
+               apply(Theta_sim,MARGIN = 2,FUN = max)))
+  png(filename =  Filename_omega,width=1400,
+      height=500)
+  par(mfrow=c(1,2))
+  matplot(t(Theta_data[1:M_shown,]),type="l",
+          xlab="Index",ylim=c(Min_y,Max_y),
+          ylab="value (-)",cex.lab=1.5)
+  matplot(t(Theta_sim[1:M_shown,]),type="l",
+          ylim=c(Min_y,Max_y),xlab="Index",
+          ylab=NA,cex.lab=1.5)
+  par(mfrow=c(1,1))
+  dev.off()
+  ### For next graphic
+  Theta_data_whole<-cbind(Theta_data_whole,
+                         Theta_data[1:M_shown,])
+  Theta_sim_whole<-cbind(Theta_sim_whole,
+                         Theta_sim[1:M_shown,])
+}
 
 ```
+
+```{r}
+LGD_exs<-plot_grid(LEGEND_exs)
+intermed_plot_EXS<-Cum_exs_simuls+
+  plot_layout(axis_titles = "collect_x")
+final_plot_EXS<-plot_grid(intermed_plot_EXS,LGD_exs,ncol=1,
+                          rel_heights =c(10,1))
+f_OmegaEXS_export<-ggdraw()+
+  draw_plot(final_plot_EXS)+
+  theme(plot.background = element_rect(fill = "white", 
+                                       color = NA))
+ggsave(filename = paste0(Theta_path,"/exsOmega_simuls_",Approach,
+                         "_d=",length(l_name),".png"),
+       plot = f_OmegaEXS_export,width=10,height = 6)
+```
+
+
+```{r}
+# Export ------------------------------------------------------------------
+##################
+list_ext<-Create_list_fromALL(l_name = l_name,
+                              obj_source = re$obs_exts)
+for(nameV in l_name){
+  # Add prefix if needed
+  write.csv(x =re$simul[[nameV]],file=paste0(ROOT_export,nameV,
+                  "_simul_", METHOD_MGtransf,"_",opt_used,"_d=",
+                length(l_name),".csv"),row.names = FALSE)
+  write.csv(x =list_ext[[nameV]],file=paste0(ROOT_export,nameV,
+                  "_obs_ext_",METHOD_MGtransf,"_d=",length(l_name),
+                  ".csv"),row.names = FALSE)
+}
+```
+
+
 
 ```{r}
 # Marginal law ------------------------------------------------------------
@@ -1438,7 +1740,6 @@ write.csv(file=paste0(ROOT_export,"log=",USE_log,"_Theta_data.csv"),
 write.csv(file=paste0(ROOT_export,"log=",USE_log,"_Theta_sim.csv"),
           x = Obj_sim)
 
-### Work on distrib of Omega
 ```
 
 ```{r}
@@ -1574,80 +1875,11 @@ ggsave(plot = GG_percent,
        filename =paste0(Theta_path,"/",l_name[2],"/",CPLMT_graph_theta,"_",
                         METHOD_ANGLE,"_Percent_theta_",l_name[2],
                         ".png"),width=8,height = 6)
-j_coord<-1
-j_nl2<-1
-pval_indep<-cor.test(re$coords_data[,j_coord],
-                     y = Vect_l_function[re$Indices_exts,j_nl2],
-                     method = "kendall")$p.value
-pval_indep
-Sub<-cbind(re$coords_data[,1],re$coords_data[,2])
-UNifs<-VineCopula::pobs(Sub)
-
-plot(UNifs[,1],UNifs[,2])
-
-Result<-lm(UNifs[,2]~UNifs[,1]+I(UNifs[,1]^2))
-png("test.png")
-plot(UNifs[,1],UNifs[,2])
-points(UNifs[,1],Result$fitted.values,col="red")
-dev.off()
-
-
-```
-
-
-```{r}
-# Theta_found vs cost evolution ---------------------------------
-######
-model_used<-List_Params_RF[["name_model"]]
-theta<-re$Param_found
-if(Approach=="AD"){
-  if(model_used%in%c("log","hr")){
-    V_11<-2*evd::abvevd(x = (1/2),dep =theta,
-                        model =model_used)
-  }
-  if(model_used%in%c("ct","bilog")){
-    V_11<-2*evd::abvevd(x = (1/2),alpha = theta[1],
-                        beta = theta[2],
-                        model =model_used)
-  }
-  
-  Chi_estim<-2-V_11
-  print(paste0("The Chi would be around ", round(Chi_estim,2)))
-  png(paste0(Lg_path,"/",model_used,"_model_param_vs_data.png"),
-      height=800,width = 1000)
-  par(mfrow=c(1,2))
-  POT::chimeas(data = Result_MV$df,ask = FALSE,which = 1)
-  abline(h=Chi_estim,col="red")
-  abline(h=0,col="black")
-  POT::chimeas(data = Result_MV$df,ask = FALSE,which = 2)
-  par(mfrow=c(1,1))
-  dev.off()
-  
-  if(List_Params_RF[["name_RF"]]!="max"){
-    Excedents_lprime<-Vect_l_function[re$Indices_exts,]
-    Evol_cost<-function(theta_candidate){
-      Objective_function(theta = theta_candidate,
-                         weightFun = List_Params_RF[["weightFunction"]],
-                         dWeightFun = List_Params_RF[["dWeightFunction"]],
-                         Extreme_inds =as.list(as.data.frame(t(Excedents_lprime))) ,
-                         u = re$threshold,
-                         model_used = List_Params_RF[["name_model"]])
-      
-    }
-    vect_candidates<-seq.int(from = 0.6,to = 0.99,length.out = 20 )
-    Cost_evol<-sapply(vect_candidates,
-                      Evol_cost)
-    # Export evolution alpha --------------------------------------------------
-    png(file = paste0(ROOT_export,"evol_alpha_param.png"),
-        bg = "transparent")
-    plot(vect_candidates,Cost_evol,xlab="Param",ylab="Cost")
-    dev.off()
-  }
-}
 
 
 
 ```
+
 
 ```{r}
 # Summary of the results --------------------------------------------------
@@ -1705,6 +1937,10 @@ M_stat_simul<-apply(X =Bootstrap_all_results_simul,MARGIN = 2,
               FUN = unlist)
 Bounds_simul<-apply(X = M_stat_simul,FUN=F_bounds_per_column,
                    MARGIN = 2,Alpha_q=Alpha_param)
+
+```
+
+```{r}
 df_comb<-rbind.data.frame(as.matrix(M_stat),
                       as.matrix(M_stat_simul))
 head(df_comb)
@@ -1749,410 +1985,8 @@ z<-1
 marg_z<-Result_MV$df[inds_exts,z]
 
 
-
 ```
 
-```{r}
-# Shapes and coordinates --------------------------------------------------
-par(mfrow=c(1,2))
-#ind_var1
-
-if(ONE_PCA_BASIS==FALSE){
-  MAX_Eigen<-max(re$EIGEN_functions[[ind_var1]])
-  MIN_Eigen<-min(re$EIGEN_functions[[ind_var1]])
-  plot(c(1:37),re$EIGEN_functions[[ind_var1]][,1],ylim=c(MIN_Eigen,MAX_Eigen),
-       ylab=expression(nu[j]),xlab="Time")
-  lines(c(1:37),re$EIGEN_functions[[ind_var1]][,2],col="green")
-  lines(c(1:37),re$EIGEN_functions[[ind_var1]][,3],col="red")
-  
-  MAX_Eigen<-max(re$EIGEN_functions[[ind_var2]])
-  MIN_Eigen<-min(re$EIGEN_functions[[ind_var2]])
-  plot(c(1:37),re$EIGEN_functions[[ind_var2]][,1],ylim=c(MIN_Eigen,MAX_Eigen),
-       ylab=expression(nu[j]),xlab="Time")
-  lines(c(1:37),re$EIGEN_functions[[ind_var2]][,2],col="green")
-  mtext("PCA eigen functions for the variables",outer=TRUE,
-        line=-2)
-  
-}else{
-  MAX_Eigen<-max(re$EIGEN_functions)
-  MIN_Eigen<-min(re$EIGEN_functions)
-  plot(c(1:37),re$EIGEN_functions[c(1:37),1],ylim=c(MIN_Eigen,MAX_Eigen),
-       ylab=expression(nu[j]),xlab="Time")
-  lines(c(1:37),re$EIGEN_functions[c(1:37),2],col="green")
-  lines(c(1:37),re$EIGEN_functions[c(1:37),3],col="red")
-  
-  plot(c(1:37),re$EIGEN_functions[c(38:74),1],ylim=c(MIN_Eigen,MAX_Eigen),
-       ylab=expression(nu[j]),xlab="Time")
-  lines(c(1:37),re$EIGEN_functions[c(38:74),2],col="green")
-  lines(c(1:37),re$EIGEN_functions[c(1:37),3],col="red")
-}
-png(filename = paste0(Theta_path,"/corrs_BW_coords_sim_data.png"),
-    height=800,width=1000)
-par(mfrow=c(1,2))
-corrplot::corrplot(cor(re$coords_data))
-corrplot::corrplot(cor(re$coords_simul))
-par(mfrow=c(1,1))
-dev.off()
-j<-5
-plot(density(re$coords_data[,j]))
-plot(density(re$coords_simul[,j]))
-par(mfrow=c(1,1))
-
-# Coords ------------------------------------------------------------------
-NDIM<-ncol(re$coords_simul)
-KS_results_coords<-rep(NA,NDIM)
-for(j in c(1:NDIM)){
-  KS_results_coords[j]<-ks.test(re$coords_simul[,j],
-                                re$coords_data[,j])$p.value
-}
-write.csv(file = paste0(ROOT_export,CPLMT_graph_theta,"_",METHOD_ANGLE,"_coord_data.csv"),
-          x = re$coords_data)
-write.csv(file = paste0(ROOT_export,CPLMT_graph_theta,"_",METHOD_ANGLE,"_coord_simul.csv"),
-          x = re$coords_simul)
-KS_results_coords
-# Illustration ------------------------------------------------------------
-Simul<-re$simul
-
-N_shown<-10
-Int_conf<-function(df,Q,df_simul){
-  int_1<-apply(X = df,MARGIN=2,FUN = function(x){
-    return(quantile(x,Q))
-  })
-  int_2<-apply(X = df_simul,MARGIN=2,FUN = function(x){
-    return(quantile(x,Q))
-  })
-  return(list("obs"=int_1,
-              "simul"=int_2))
-}
-Int_surge<-Int_conf(df = Simul[[ind_var1]],
-                    Q = 0.025,df_simul = re$obs_exts[[ind_var1]])
-Int_surge2<-Int_conf(df = Simul[[ind_var1]],
-                     Q = 0.975,df_simul = re$obs_exts[[ind_var1]])
-Int_Hs<-Int_conf(df = Simul[[ind_var2]],
-                 Q = 0.025,df_simul = re$obs_exts[[ind_var2]])
-Int_Hs2<-Int_conf(df = Simul[[ind_var2]],
-                  Q = 0.975,df_simul = re$obs_exts[[ind_var2]])
-DF_first<-rbind.data.frame(Simul[[ind_var1]],
-                           re$obs_exts[[ind_var1]])
-
-Indexes_data<-sample(c(1:nrow(Simul[[ind_var1]])),size = N_shown,
-                     replace=FALSE)
-Indexes_sim<-sample(c(1:nrow(re$obs_exts[[ind_var1]])),size = N_shown,
-                    replace=FALSE)
-
-Source<-c(rep("simul",nrow(Simul[[ind_var1]])),
-          rep("data",length(re$Indices_exts)))
-DF_first$source<-Source
-DF_second<-rbind.data.frame(Simul[[ind_var2]],re$obs_exts[[ind_var2]])
-DF_second$source<-Source
-
-Melteur_first<-melt(DF_first)
-L<-table(Melteur_first$variable)[1]
-Melteur_first$index<-as.character(rep(c(1:L),nrow(Melteur_first)/L))
-Melteur_first$variable<-as.numeric(Melteur_first$variable)
-colnames(Melteur_first)<-c("origin","Time",
-                           "value","index")
-Melteur_first$ymin<-ifelse(Melteur_first$origin=="simul",
-                           Int_surge$simul[Melteur_first$Time],
-                           Int_surge$obs[Melteur_first$Time])
-Melteur_first$ymax<-ifelse(Melteur_first$origin=="simul",
-                           Int_surge2$simul[Melteur_first$Time],
-                           Int_surge2$obs[Melteur_first$Time])
-Melteur_second<-melt(DF_second)
-
-L<-table(Melteur_second$variable)[1]
-Melteur_second$index<-as.character(rep(c(1:L),nrow(Melteur_second)/L))
-Melteur_second$variable<-as.numeric(Melteur_second$variable)
-colnames(Melteur_second)<-c("origin","Time",
-                            "value","index")
-Melteur_second$ymin<-ifelse(Melteur_second$origin=="simul",
-                            Int_Hs$simul[Melteur_first$Time],
-                            Int_Hs$obs[Melteur_first$Time])
-Melteur_second$ymax<-ifelse(Melteur_second$origin=="simul",
-                            Int_Hs2$simul[Melteur_first$Time],
-                            Int_Hs2$obs[Melteur_first$Time])
-
-Melteur_all<-rbind.data.frame(Melteur_first,Melteur_second)
-Melteur_all$functional<-c(rep(l_name[1],nrow(Melteur_first)),
-                          rep(l_name[2],nrow(Melteur_second)))
-
-
-D_<-which(Melteur_all$origin=="data")
-Ind_used_data<-sample(Melteur_all[D_,]$index,size = N_shown,
-                      replace = FALSE)
-Ind_used_sim<-sample(Melteur_all[-D_,]$index,size = N_shown,
-                     replace = FALSE)
-
-cond_data<-Melteur_all$index%in%union(Ind_used_sim,
-                                      Ind_used_data)
-Melteur_all$Time<-(Melteur_all$Time-19)/6
-Melteur_all$index<-as.numeric(Melteur_all$index)
-EXPLES_simul<-ggplot(Melteur_all[cond_data,],aes(x=Time,y=value,col=index,
-                                                 group=interaction(index)))+
-  guides(col="none")+
-  facet_wrap(~functional+origin)+
-  geom_line()+
-  scale_color_continuous(type="viridis")
-EXPLES_simul
-ggsave(filename=paste0(TEND_path,"/exples_simul_MV.png"),
-       plot = EXPLES_simul,width = 6,height = 6)
-
-Mlt_copy<-Melteur_all
-Mlt_copy$Time<-as.character(Mlt_copy$Time)
-
-```
-
-```{r}
-# Violin plot -------------------------------------------------------------
-############
-Mlt_copy$Time<-as.character(Mlt_copy$Time)
-DISTRIB_marginals_plot<-ggplot(Mlt_copy,aes(y=value,x=Time,fill=functional))+
-  geom_boxplot(alpha=0.2,width=0.1)+
-  geom_violin()+
-  xlab(" ")+
-  facet_wrap(~functional+origin,scales="free_y")+
-  labs(fill="Legend")+
-  theme(axis.text.x = element_blank())
-
-ggsave(filename=paste0(ROOT_export_graph,"Tend/",CPLMT_graph_theta,"_",METHOD_ANGLE,"_violin_plot.png"),
-       plot = DISTRIB_marginals_plot,width = 6,
-       height = 6)
-
-par(mfrow=c(1,1))
-Pareto_S<-Result_MV$resume[[ind_var1]]$transf
-Pareto_Hs<-Result_MV$resume[[ind_var2]]$transf
-L2_P_S<-apply(Pareto_S[re$Indices_exts,],MARGIN = 1,FUN = calcul_norm_L2)
-L2_P_HS<-apply(Pareto_Hs[re$Indices_exts,],MARGIN = 1,FUN = calcul_norm_L2)
-ks.test(L2_P_HS,L2_P_S)
-wilcox.test(L2_P_HS,L2_P_S)
-
-L2_pto_sur<-apply(re$Frechet_normal$simul[[ind_var1]],MARGIN = 1,
-                  FUN = calcul_norm_L2)
-L2_pto_Hs<-apply(re$Frechet_normal$simul[[ind_var2]],MARGIN = 1,
-                 FUN = calcul_norm_L2)
-DF_data_vectL<-matrix(NA,ncol=length(names(re$Frechet_normal$simul)),
-                      nrow =length(re$Indices_exts))
-for(j in c(1:length(l_name))){
-  name_j<-names(Result_MV$resume)[j]
-  PTO_j<-Result_MV$resume[[name_j]]$transf
-  Output_j<-apply( PTO_j[re$Indices_exts,],MARGIN = 1,
-                   FUN = calcul_norm_L2)
-  DF_data_vectL[,j]<-Output_j
-}
-
-Min_x<-min(min(L2_pto_sur),min(L2_P_S))
-Max_x<-max(max(L2_pto_sur),max(L2_P_S))
-
-Min_y<-min(min(L2_pto_Hs),min(L2_P_HS))
-Max_y<-max(max(L2_pto_Hs),max(L2_P_HS))
-X_name<-ifelse(l_name[1]=="Surcote",yes = "Surge",no=l_name[1])
-Y_name<-ifelse(l_name[2]=="Surcote",yes = "Surge",no=l_name[2])
-par(mfrow=c(1,1))
-png(filename = paste0(Lg_path,"/pair_Lg.png"))
-
-plot(L2_P_S,L2_P_HS,log = 'xy',
-     xlab=paste0("Z(",X_name,") "),
-     ylab=paste0("Z(",Y_name,") "),
-     ylim = c(Min_y,Max_y),
-     xlim=c(Min_x,Max_x))
-points(L2_pto_sur,
-       L2_pto_Hs,col="red",cex=0.5)
-if(!Name_riskF%in%c("Weighted_NQ","max","min")){
-  ## Change the threshold used.
-  J_plot<-2
-  X_private<-DF_data_vectL[,-J_plot]
-  x_bound<-seq.int(from = 0.001,to =20,length.out =100)
-  y_bound<-sapply(x_bound,FUN=Shape_boundary,
-                  j = J_plot,ul = re$threshold,RiskF = Risk_f)
-  lines(x_bound,y_bound,col="blue")
-}else{
-  abline(h=re$threshold,v=re$threshold,col="blue")
-}
-dev.off()
-```
-
-
-```{r}
-
-
-## originally
-Min_x2<-min(min(Vect_l_function[,1]),min(L2_pto_sur))
-Max_x2<-max(max(Vect_l_function[,1]),max(L2_pto_sur))
-
-Min_y2<-min(min(Vect_l_function[,2]),min(L2_pto_Hs))
-Max_y2<-max(max(Vect_l_function[,2]),max(L2_pto_Hs))
-plot(Vect_l_function,xlim=c(Min_x2,Max_x2),
-     ylim=c(Min_y2,Max_y2),log="xy")
-
-# DATES<-read.csv(file = "../ss_tend/HIVER/dates_prises.csv")[,2]
-# 
-# Inds_2008<-which(DATES=="10/03/2008")
-# Dates_storm<-c("10/03/2008","28/02/2010","10/02/2009",
-#                "27/10/2004","07/02/2001","10/01/2001")
-# Cplmt_dates_1<-c("26/02/2010","08/03/2008","08/02/2009",
-#                  "25/10/2004","05/02/2001","08/01/2001")
-# 
-# Cplmt_dates_2<-c("09/03/2008","27/02/2010","09/02/2009",
-#                  "26/10/2004","06/02/2001","09/01/2001")
-# Inds_storm<-union(which(substr(DATES,1,10)%in%Dates_storm),
-#                   which(substr(DATES,1,10)%in%Cplmt_dates_1)
-# ) 
-# Inds_storm<-union(Inds_storm,
-#                   which(substr(DATES,1,10)%in%Cplmt_dates_2)
-# )
-# DATES[Inds_storm]
-# ind_Joh<-which(substr(DATES,1,10)=="10/03/2008")
-# DATA_pos_neg<-read.csv(file = paste0(l_root,l_name[1],"_residuals.csv"))[,c(2:38)]
-# DATA_pos_neg[ind_Joh,]
-# ind_storm_found<-intersect(Inds_storm,
-#                            Result_MV$SUB_set)
-# Storms_seen<-DATES[ind_storm_found]
-# F_return_index<-function(x){
-#   return(Result_MV$SUB_set[x])
-# }
-# Index_storm<-which( Result_MV$SUB_set%in%ind_storm_found)
-# Correspondg_vectors<-Vect_l_function[Index_storm,]
-# df_sim<-cbind.data.frame(L2_pto_sur,L2_pto_Hs)
-# colnames(df_sim)<-sapply(c(1:length(l_name)),
-#                          FUN=function(x){
-#                            return(paste0("V",x))
-#                          })
-# VECT2<-Vect_l_function
-# colnames(VECT2)<-colnames(df_sim)
-# Correspondg_vectors
-# X_storms<-Correspondg_vectors[,1]
-# Y_storms<-Correspondg_vectors[,2]
-# ANOTATE_data<-data.frame(x=X_storms,y=Y_storms,
-#                          label=rep("storm",length(Index_storm)))
-# 
-# GG_data_and_exceed<-ggplot(data=VECT2,aes(x=V1,y=V2))+
-#   geom_point()+
-#   geom_point(data = ANOTATE_data, 
-#              aes(x, y,col="storm"), size = 4,
-#              shape=0) +
-#   annotate("text", x = (X_storms)*(8/10), y = Y_storms*(9/10), 
-#            label=Storms_seen,colour = "red", 
-#            size = 5)+
-#   scale_y_continuous(transform="log",
-#                      labels = label_number(accuracy = 0.1))+
-#   scale_x_continuous(transform="log",
-#                      labels = label_number(accuracy = 0.1))+
-#   theme(axis.title=element_text(size=15),
-#         legend.text=element_text(size=14),
-#         legend.title = element_text(size=15),
-#         axis.text = element_text(size=14))+
-#   geom_hline(aes(yintercept = re$threshold,col="exceedances"),
-#              linetype="dashed")+
-#   geom_vline(aes(xintercept=re$threshold,col="exceedances"),
-#              linetype="dashed")+
-#   scale_color_manual(values=c("exceedances"="red",
-#                               "storm"="black"))+
-#   labs(col="Legend")+
-#   xlab(paste0("Norm of T(",l_name[1],") (.)"))+
-#   ylab(paste0("Norm of T(",l_name[2],") (.)"))
-# 
-# ggsave(plot = GG_data_and_exceed,
-#        filename = paste0(Lg_path,"/norm_ext",opt_used,".png"),
-#        width = 8,height = 8)
-# DF_sim_vs_obs<-rbind.data.frame(VECT2,df_sim)
-# DF_sim_vs_obs$origin<-c(rep("data",nrow(VECT2)),
-#                         rep("simulations",nrow(df_sim)))
-# 
-# GG_repre_exts_norms<-ggplot(data=DF_sim_vs_obs,aes(x=V1,y=V2))+
-#   geom_point(aes(col=origin,size=origin))+
-#   geom_point(data = ANOTATE_data, 
-#              aes(x, y,col=label),size=4,shape=0) +
-#   annotate("text", x = (X_storms)*(8/10), y = Y_storms*(9/10), 
-#            label=Storms_seen,colour = "red", 
-#            size = 5)+
-#   scale_y_continuous(transform="log",
-#                      labels = label_number(accuracy = 0.1))+
-#   scale_x_continuous(transform="log",
-#                      labels = label_number(accuracy = 0.1))+
-#   theme(axis.title=element_text(size=15),
-#         legend.text=element_text(size=14),
-#         legend.title = element_text(size=15),
-#         axis.text = element_text(size=14))+
-#   geom_hline(aes(yintercept = re$threshold,col="exceedances"),
-#              linetype="dashed",)+
-#   geom_vline(aes(xintercept=re$threshold,col="exceedances"),
-#              linetype="dashed")+
-#   scale_color_manual(values=c("data"="blue",
-#                               "simulations"="orange",
-#                               "storm"="black",
-#                               "exceedances"="red"))+
-#   scale_size_manual(values=c("data"=2,
-#                              "simulations"=1))+
-#   labs(col="Legend")+
-#   guides(size="none")+
-#   xlab(paste0("Norm of T(",l_name[1],") (.)"))+
-#   ylab(paste0("Norm T(",l_name[2],") (.)"))
-# 
-# ggsave(plot = GG_repre_exts_norms,
-#        filename = paste0(Lg_path,"/ext_simuls_RM",opt_used
-#                          ,".png"),
-#        width = 8,height = 8)
-cor(L2_P_S,L2_P_HS,method = "kendall")
-cor(L2_pto_sur,L2_pto_Hs
-    ,method = "kendall")
-POT::chimeas(cbind(L2_pto_Hs,L2_pto_sur),ask=FALSE)
-
-Maximum<-apply(cbind(L2_pto_Hs,L2_pto_sur),MARGIN = 1,FUN = max)
-summary(Maximum)
-
-Maximum_obs<-apply(cbind(L2_P_S,L2_P_HS),MARGIN = 1,FUN = max)
-summary(Maximum_obs)
-
-fUl<-min(apply(cbind(L2_P_HS,L2_P_S),MARGIN = 1,FUN = max))
-cor(L2_P_HS,L2_P_S,method = "kendall")
-cor(L2_pto_Hs,L2_pto_sur,method = "kendall")
-
-```
-
-```{r}
-
-# PCA for the angle -------------------------------------------------------
-val_chosen<-c(3,2)
-NPCA<-as.list(val_chosen)
-
-
-#Calculate correlations --------------------------------------------------
-#Shape correlation var1 var2 ---------------------------------------------
-Mat_obs<-Fct_correlations(method_corr = "kendall",
-                          df1 =Obj_data[,c(1:37)],
-                          df2=Obj_data[,c(38:74)])
-apply(Obj_data[,c(1:37)],MARGIN = 2,FUN = sd)
-apply(Obj_sim[,c(1:37)],MARGIN = 2,FUN = sd)
-Conf_interval_angle<-Conf_interval_correlations_2V(df1 = Obj_data[,c(1:37)],
-                                                   df2 = Obj_data[,c(38:74)],
-                                                   niv_conf = 0.05,
-                                                   method_corr = "kendall",
-                                                   NB_boot = 500)
-Mat_simul<-Fct_correlations(method_corr = "kendall",
-                            df1 =Obj_sim[,c(1:37)],
-                            df2=Obj_sim[,c(38:74)])
-Data_corr<-as.data.frame(Conf_interval_angle)
-colnames(Data_corr)<-c("bound_inf","data","bound_sup")
-Data_corr$simulations<-Mat_simul
-Data_corr$Time<-(c(1:nrow(Data_corr))-19)/6
-GG_corr_shape<-ggplot(data=Data_corr,aes(x=Time,y=data,col="data"))+
-  geom_ribbon(aes(ymin=bound_inf,col="confidence_band",
-                  ymax=bound_sup),alpha=0.05,fill="grey",
-              linetype="dashed")+
-  geom_line(aes(y=simulations,col="simulations"))+
-  geom_line()+
-  geom_point()+
-  xlab("Time (hour) with respect to tidal peak")+
-  scale_color_manual(values = cols_)+
-  ylab("correlation coefficient")+
-  labs(col="Legend")+theme(axis.title=element_text(size=15),
-                           legend.text=element_text(size=10))
-ggsave(filename = paste0(ROOT_export_graph,CPLMT_graph_theta,"_",METHOD_ANGLE,"_corr_shape",opt_used
-                         ,".png"),
-       plot = GG_corr_shape,width=6,height = 6)
-
-
-```
 
 ```{r}
 #End of the code ----------------------------------------------------------------

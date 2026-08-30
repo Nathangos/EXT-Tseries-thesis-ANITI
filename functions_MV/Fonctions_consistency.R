@@ -1539,7 +1539,6 @@ Analysis_diag_HTawn_evol_DQU<-function(vect_dqu,
       FUN =function(x){
         Fct_correct_name(x = x,target = "Surcote",
                          replacement = "Surge")})
-  print(LNAME_corrected)
   d<-ncol(Vect_obs)
   GG_theta<-ggplot2::ggplot()
   Rult_simplified<-c()
