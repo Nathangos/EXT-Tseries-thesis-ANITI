@@ -1206,22 +1206,21 @@ if(Launch_graph_conv){
 ```
 
 ```{r}
-#### DEPENDS on the choice previously done
 OPT_FRECH<-FALSE
 par(mfrow=c(1,1))
-require(patchwork)
 
 # 3) Simulation of extreme multivariate time series ##########
 ###############
 
 re<-Simul_MV_residuals(result_transformation = Result_MV,
-         l_variables = l_name, Q_thresh = Qfound,
-         list_nb_scores = LIST_NB_SCORES,
-         M = M,rotations_available=Bool_rotations,
+         l_variables = l_name, Q_thresh = Qfound, M = M,
+         list_nb_scores = LIST_NB_SCORES,opt_Frech = OPT_FRECH,
+        rotations_available=Bool_rotations,
          Params_risk_Function=List_Params_RF
-         ,root_for_export=ROOT_export_graph
-        ,One_PCA_base = ONE_PCA_BASIS,NbScores_Omega = NB_SCORES_OMEGA,
-        f_transf=FTF,f_transf_inv=FTF_inv,opt_Frech = OPT_FRECH,
+        ,root_for_export=ROOT_export_graph
+        ,One_PCA_base = ONE_PCA_BASIS,
+        NbScores_Omega = NB_SCORES_OMEGA,
+        f_transf=FTF,f_transf_inv=FTF_inv,
         cols_ggplot=cols_)
 ```
 

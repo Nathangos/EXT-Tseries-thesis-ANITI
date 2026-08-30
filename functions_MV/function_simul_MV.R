@@ -842,11 +842,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   ### ----------------------------------------------------------------------
   for(ztilde in c(1:ncol(Vect_l_function))){
     Graphics_estimators_gamma(series = Vect_l_function[,ztilde],
-                    vect_k = vect_k,
-                    NB_years = 37,
-                    Title_graphic = paste0("Shape parameter of l(T("
-                                           ,l_name[ztilde]
-                                           ,")"))
+          vect_k = vect_k,
+          NB_years = 37,
+          Title_graphic = paste0("Shape parameter of l(T("
+                                 ,l_name[ztilde]
+                                 ,")"))
   }
   # Choice of the individuals -----------------------------------------------
   RiskF_data<-apply(Vect_l_function,MARGIN = 1,
@@ -876,9 +876,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                  init=Initialisation,
                      method="pwm",R=20)
     Theta<-PWM_EXTGP$fit$pwm
+    print(c(nameV,Theta))
     Name_file_plot<-paste0(root_for_export,"RisKfunctions/",
                 nameV,"_EGPD_fitting_RiskF.png")
-    print(Theta)
     MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
                   init=Theta,
                    method="mle",R=20)$fit$mle
