@@ -3,7 +3,7 @@ rm(list=ls())
 set.seed(133)
 par(mfrow=c(1,1))
 
-#### Import des packages. #####
+#### Import of the packages. #####
 require(cowplot)
 require(ggguides)
 require(copula)
@@ -31,11 +31,14 @@ COMMON_theme<-theme(axis.title = element_text(size=20),
                     legend.title = element_text(size=20),
                     legend.text=element_text(size=17),
                     axis.text=element_text(size=17))
-### Source des fonctions. ####
+
+```
+
+```{r}
+### Function source. ####
 #Functions from univariate case. 
-source("../fonctions/fonctions_Pareto.R")
-source("../fonctions/fonctions.r")
-source("../fonctions/fonctions_r_pareto_EVOLTAU.r")
+source("fonctions/fonctions_Pareto.R")
+source("fonctions/fonctions.r")
 
 #Specific multivariate functions. 
 source("functions_MV/function_simul_MV.r")
@@ -58,6 +61,7 @@ F_names<-ls()
 nb_coeurs<-detectCores()-4
 ```
 
+
 ```{r}
 # Ouverture des clusters --------------------------------------------------
 coeurs<-makeCluster(nb_coeurs)
@@ -72,20 +76,18 @@ Shapes_<-c("candidates"=0,
 
 l_root<-"residuals_MV/"
 path <- paste0(getwd(),"/residuals_MV")
-l_name<-c("Surcote","Hs","U")
+l_name<-c("Surge","Hs","U")
 newfolder <- "Conversion"
-#METHOD_MGtransf<-"_EGPD_transf_"
 METHOD_MGtransf<-"_Mixt_transf_"
 METHOD_ANGLE<-"GaussMixture"
 
-#Prefix<-paste0(CPLMT_graph_theta,"_",METHOD_ANGLE)
 Prefix<-""
 Name_model<-"hr"
 try({
   dir.create(file.path(path, newfolder))
 })
 path_conversion<-paste0(path,"/",newfolder,"/")
-path_graph<-paste0(getwd(),"/graphiques_MV/resid/")
+path_graph<-paste0(getwd(),"/Graphics_MV/resid/")
 
 ### Import conversion and original data
 Result_MV<-list()
@@ -102,6 +104,9 @@ CGPD<-Shape_chosen/(1-Shape_chosen)
 comment_go<-latex2exp::TeX("$\\gamma_{0}$")
 d<-length(l_name)
 
+
+```
+```{r}
 ##########
 XLAB<-'Time(hour) with respect to tidal peak'
 TITLE<-ggdraw() +
@@ -110,14 +115,13 @@ Z_seen<-1
 YLIM<-c(0,5)
 YTheta_Lim<-c(0,2)
 NV_DKG<-"Hs"
-###[,c(2:38)]
 DF_transf<-read.csv(file = paste0(path_conversion,NV_DKG,
                                   METHOD_MGtransf,d,".csv"))
 Variable_ref<-DF_transf[,19]
 ind_DKG<-order(Variable_ref,decreasing = TRUE)[1:4]
 
 DROP_DKG<-FALSE
-DATES<-read.csv(file = "../ss_tend/HIVER/dates_prises.csv")[,2]
+DATES<-read.csv(file = "data_detrend_Winter/dates.csv")[,2]
 DATES[ind_DKG]
 
 ```
@@ -321,7 +325,6 @@ ggsave(filename = paste0(path_graph,"exs_RV_",
                          CHOSEN_var,".png"),
        plot = GG_RV_test,width = 6,height=6)
 Inds_dates_pos<-read.csv(file=paste0(path_conversion,"inds_egpd.csv"))
-Inds_dates_pos
 
 ```
 
@@ -421,7 +424,7 @@ t1<-1
 t2<-37
 couple<-cbind(Result_MV$orig[[namei]][,t1],
               Result_MV$orig[[namej]][,t2])
-Filename<-paste0("graphiques_MV/asymp_dependencies/ext_dep_",namei,"_t=",t1,
+Filename<-paste0("Graphics_MV/asymp_dependencies/ext_dep_",namei,"_t=",t1,
                  "_",namej,"_tprime=",t2,".png")
 png(filename = Filename,
     width=800,height=600)
@@ -518,7 +521,7 @@ if(Name_riskF=="Weighted_NQ"){
 ### Create subfolders
 
 path <- paste0(getwd(),"/residuals_MV")
-path_graph<-paste0(getwd(),"/graphiques_MV/resid")
+path_graph<-paste0(getwd(),"/Graphics_MV/resid")
 newfolder <- Name_riskF2
 try({
   dir.create(file.path(path, newfolder))
@@ -1902,7 +1905,7 @@ L_extremes<-Vect_l_function[re$Indices_exts,]
 ```{r}
 
 # Kokozka -----------------------------------------------------------------
-# #######
+########
 
 ### Consistency results
 source("functions_MV/Fonctions_consistency.R")

@@ -1028,10 +1028,13 @@ Analyse_extreme_proj<-function(base_RV,nb_scores,stand_,nom_variable,L,NB_year,M
 #' @export
 #'
 #' @examples
-Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,NB_years=NULL,
+Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,
+                                    NB_years=NULL,
                                     dims_elt_text=c(20,14,
                                                     13,12),
-                                    y_lims=NULL){
+                                    y_lims=NULL,SELECT_estim=NA,
+                                    COLS_chosen=NA,
+                                    LINETYPE_chosen=NA){
   
   NPY<-length(series)/NB_years
   TUNITS<-paste0(NPY,"/year")
@@ -1052,14 +1055,23 @@ Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,NB_years=NULL,
   Gam$Var2<-vect_k[Gam$Var2]
   colnames(Gam)<-c("source","number_excesses","gamma_estimed",
                    "bound_inf","bound_sup")
-  COLS_chosen<-c("Moments_gamma"="red",
-                 "Hill_gamma"="green",
-                 "ML_gamma"="blue",
-                 "confidence_band"="darkblue")
-  LINETYPE_chosen<-c("Moments_gamma"=1,
-                     "Hill_gamma"=2,
-                     "ML_gamma"=4,
-                     "confidence_band"=5)
+  if(!is.na(SELECT_estim)){
+    Inds_sub<-which(Gam$source%in%SELECT_estim)
+    Gam<-Gam[Inds_sub,]
+  }
+  if(sum(!is.na(COLS_chosen))!=length(COLS_chosen)){
+    COLS_chosen<-c("Moments_gamma"="red",
+                   "Hill_gamma"="green",
+                   "ML_gamma"="blue",
+                   "confidence_band"="darkblue"
+    )
+  }
+  if(sum(!is.na(LINETYPE_chosen))!=length(LINETYPE_chosen)){
+    LINETYPE_chosen<-c("Moments_gamma"=1,
+                       "Hill_gamma"=2,
+                       "ML_gamma"=4,
+                       "confidence_band"=5)
+  }
   GGothers<-ggplot(data=Gam,aes(x=number_excesses,y =gamma_estimed,color=source,
                                 group=interaction(source),
                                 linetype=source))+
@@ -1078,7 +1090,8 @@ Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,NB_years=NULL,
     ggtitle(Title_graphic)+
     scale_color_manual(values=COLS_chosen)+
     scale_linetype_manual(values = LINETYPE_chosen)+
-    theme_bw()
+    theme_bw()+
+    theme(legend.direction = "horizontal")
   if(!is.null(y_lims)){
     GGothers<-GGothers+
       ylim(y_lims[1],y_lims[2])
