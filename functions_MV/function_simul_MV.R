@@ -820,6 +820,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                              list_nb_scores,One_PCA_base,f_transf,
                              f_transf_inv,opt_Frech,
                              cols_ggplot,Common_theme){
+  
   Shape_evd<-Params_risk_Function[["Shape_parameter"]]
   # CF Kokozka ---------------------------------------------------------------
   L<-300
@@ -875,16 +876,19 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                  init=Initialisation,
                      method="pwm",R=20)
     Theta<-PWM_EXTGP$fit$pwm
-    Name_file_plot<-paste0(root_for_export,"RisKfunctions/",nameV,"_EGPD_fitting_RiskF.png")
-    
+    Name_file_plot<-paste0(root_for_export,"RisKfunctions/",
+                nameV,"_EGPD_fitting_RiskF.png")
+    print(Theta)
     MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
                   init=Theta,
                    method="mle",R=20)$fit$mle
     u_vec_gom <- quantile(VECT_lj,
                           probs = seq(0.2, 0.9, by = 0.05))
-    Choice_threshr_j<-threshr::ithresh(data = VECT_lj, u_vec = u_vec_gom,
-                                       n_v = 2, prior = "mdi",
-                                       h_prior = list(a = 0.6))
+    Choice_threshr_j<-threshr::ithresh(data = VECT_lj, 
+                     u_vec = u_vec_gom,
+                     n_v = 2, prior = "mdi",
+                     h_prior = list(a = 0.6))
+    
     Sthresh_j<-summary(Choice_threshr_j)
     plot(Choice_threshr_j)
     Q_foundj<-median(Sthresh_j[,4])
