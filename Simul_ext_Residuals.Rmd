@@ -1196,7 +1196,8 @@ if(Launch_graph_conv){
     theme(legend.position = "bottom")
     
   GGCorr_Radevol
-  ggsave(filename = paste0(ROOT_export_graph,"Corr/evol_criterion_corr_Rad_Thetad=",
+  ggsave(filename =paste0(ROOT_export_graph,
+            "Corr/evol_criterion_corr_Rad_Thetad=",
                            length(l_name),".png"),
          plot=GGCorr_Radevol,width = 10,height = 5)
   
@@ -1221,7 +1222,8 @@ re<-Simul_MV_residuals(result_transformation = Result_MV,
         ,One_PCA_base = ONE_PCA_BASIS,
         NbScores_Omega = NB_SCORES_OMEGA,
         f_transf=FTF,f_transf_inv=FTF_inv,
-        cols_ggplot=cols_)
+        cols_ggplot=cols_,
+        Common_theme = COMMON_theme)
 ```
 
 ```{r}

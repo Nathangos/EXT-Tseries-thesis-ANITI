@@ -137,7 +137,7 @@ test_Uniforme<-function(collection_dimension){
 calcul_norm_L2<-function(series){
   L<-length(series)
   pas<-(1/(L-1))
-  
+
   # Positivity indicator -----------------------------------------------
   Sigma<-sum(subset(series,series>0)**2)
   norme_carree<-Sigma*pas
@@ -166,7 +166,7 @@ fdiff<-function(series){
 fonction_calcul_norme<-function(df,nom_colonne){
   
   series<-df[,nom_colonne]
-  resultat_calcul_norme<-calcul_norm_L2(series)
+  resultat_calcul_norme<-calcul_norme_L2(series)
   return(resultat_calcul_norme)
 }
 
@@ -194,7 +194,7 @@ f_nom_variable<-function(file,nom_var){
 #' @examples
 fonction_renvoi_angle<-function(donnees){
   
-  norme<-calcul_norm_L2(donnees)
+  norme<-calcul_norme_L2(donnees)
   if (norme>0){
     angle<-donnees/norme
     return(angle)
@@ -306,11 +306,11 @@ function_ML_extRemes<-function(k,data_d,typeML="GP",NB_years=NULL){
     q_plus<-r[2,3]
     liste_r<-list("q_minus"=q_minus,"q_plus"=q_plus,"estimator"=estimator)
     return(liste_r)
-  },
-  error=function(e){
-    estimator<-theta_k$results$par[[2]]
-    liste_r<-list("q_minus"=NA,"q_plus"=NA,"estimator"=estimator)
-    return(liste_r)}
+    },
+    error=function(e){
+      estimator<-theta_k$results$par[[2]]
+      liste_r<-list("q_minus"=NA,"q_plus"=NA,"estimator"=estimator)
+      return(liste_r)}
   )
 }
 #' fonction_MLplot_resume
@@ -338,7 +338,7 @@ fonction_MLplot_resume<-function(resultatML,vecteur_k,nom_variable,lims_Y=c(-2,2
   if (all(!is.na(bilan))==TRUE){
     GA_plot<-GA_plot+
       geom_ribbon(mapping = aes(ymin=q_minus,ymax=q_plus,col="confidence_band"),alpha=0.15,
-                  fill="grey", linetype = "dashed")+
+                fill="grey", linetype = "dashed")+
       ylim(lims_Y)
   }
   GA_plot<-GA_plot+
@@ -473,7 +473,7 @@ f_marginales_uniforme<-function(variable,p_u,n.dens){
 #' @examples
 fonc_norm_inv<-function(variable){
   vecteur_variable_transformee<-as.numeric(-(variable)^(-1))
-  valeur_norme<-calcul_norm_L2(vecteur_variable_transformee)
+  valeur_norme<-calcul_norme_L2(vecteur_variable_transformee)
   valeur_norme_geo<-(-1/valeur_norme)
   return(valeur_norme_geo)
 }
@@ -635,7 +635,7 @@ fonction_simul_BR_accept_reject<-function(NB_BR,modele_BR,seuil_Frech){
     Simul<-SpatialExtremes::rmaxstab(NB_BR-J,Locations,cov.mod="brown",
                                      range=modele_BR$param[1], 
                                      smooth=modele_BR$param[2])
-    L2<-apply(X = Simul,MARGIN = 1,FUN = calcul_norm_L2)
+    L2<-apply(X = Simul,MARGIN = 1,FUN = calcul_norme_L2)
     inds_taken<-which(L2<seuil_Frech)
     end<-length(inds_taken)+deb-1
     indices_base<-c(deb:end)
@@ -665,7 +665,7 @@ Procedure_MHastings<-function(echantillons_log_norm,Longueur_echantillon){
   L<-nrow(echantillons_log_norm)
   liste_sigma_l<-list()
   premiere_traject<-echantillons_log_norm[1,]
-  premiere_norme<-calcul_norm_L2(premiere_traject)
+  premiere_norme<-calcul_norme_L2(premiere_traject)
   liste_realisation_MH<-list()
   liste_realisation_MH[[1]]<-premiere_traject
   liste_lforme<-list()
@@ -676,7 +676,7 @@ Procedure_MHastings<-function(echantillons_log_norm,Longueur_echantillon){
   for(i in (2:L)){
     passe<-(i-1)
     #MH a verifier. L'expression est différente de ce qu'on voit d'habitude. 
-    rapport<-(calcul_norm_L2(echantillons_log_norm[i,])/calcul_norm_L2(series = liste_realisation_MH[[passe]]))
+    rapport<-(calcul_norme_L2(echantillons_log_norm[i,])/calcul_norme_L2(series = liste_realisation_MH[[passe]]))
     p_n<-min(rapport,1)
     if(p_n==1){
       U1<-1
@@ -693,7 +693,7 @@ Procedure_MHastings<-function(echantillons_log_norm,Longueur_echantillon){
       Q<-c(Q,1)
       trajectoire_conservee<-echantillons_log_norm[i,]
     }
-    Norme<-calcul_norm_L2(trajectoire_conservee)
+    Norme<-calcul_norme_L2(trajectoire_conservee)
     liste_realisation_MH[[i]]<-trajectoire_conservee
     candidat_theta<-(trajectoire_conservee/Norme)
     Moy<-mean(candidat_theta)
@@ -1083,8 +1083,8 @@ Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,
           legend.text=element_text(size=dims_elt_text[3]),
           axis.text=element_text(size=dims_elt_text[4]))+
     geom_ribbon(mapping = aes(ymin=bound_inf,ymax=bound_sup,
-                              col="confidence_band",
-                              linetype = "confidence_band"),alpha=0.15,
+                col="confidence_band",
+                linetype = "confidence_band"),alpha=0.15,
                 fill="grey")+
     labs(col="Legend", linetype = "Legend")+
     ggtitle(Title_graphic)+
@@ -1119,7 +1119,7 @@ empirical_extremogram<-function(Matrix_couples,inds_select,Tau){
 #' @examples
 fonction_analyse_convergence<-function(Obs,K){
   
-  NORMES<-apply(Obs,FUN = calcul_norm_L2,MARGIN = 1)
+  NORMES<-apply(Obs,FUN = calcul_norme_L2,MARGIN = 1)
   pas_x<-1/ncol(Obs)
   indice_k<-order(NORMES,decreasing = TRUE)[K]
   Seuil_L2<-NORMES[indice_k]
@@ -1139,7 +1139,7 @@ fonction_analyse_convergence<-function(Obs,K){
   LISTE_convergence<-c()
   for(l in c(1:8)){
     fonction_obtenue<-fonction_propre_j(vecteur_temps =vecteur_temps,j=l )
-    
+
     # approx de Rieman --------------------------------------------------------
     coordonnees<-(FORME_d%*%fonction_obtenue)*(pas_x)
     LISTE_convergence<-c(LISTE_convergence,mean(abs(coordonnees)))
@@ -1176,7 +1176,7 @@ Outils_POT_graphique<-function(seuil,Q1,Q2,series,dates,titre_variable){
   colnames(df_time_variable)<-c("time","obs")
   
   df_time_variable$time<-dates
-  
+
   # Attention au saut comme on passe d'hiver en hiver -----------------------
   df_time_variable$time<-as.POSIXct(df_time_variable$time, format="%d/%m/%Y")
   
@@ -1222,8 +1222,8 @@ Fnct_bootstrap_param<-function(B,nb_sample,GPD_liste,p,alpha){
     scale_ech<-as.numeric(modele$results$par[[1]])
     shape_ech<-as.numeric(modele$results$par[[2]])
     quantiles_ech<-sapply(p,FUN=function(x){
-      return(qgp_craft(x,sigma = scale_ech,xi = shape_ech)+mu)}
-    )
+                  return(qgp_craft(x,sigma = scale_ech,xi = shape_ech)+mu)}
+                  )
     return(quantiles_ech)
   }
   fct_estim_params<-function(echantillon,indice_param){
@@ -1238,7 +1238,7 @@ Fnct_bootstrap_param<-function(B,nb_sample,GPD_liste,p,alpha){
                        ncol = 1)
   }
   Qinf<-apply(X =Niv_retour,MARGIN = 1,FUN=function(x)
-  {return(quantile(x,alpha/2))})
+    {return(quantile(x,alpha/2))})
   Qsup<-apply(X =Niv_retour,MARGIN = 1,FUN=function(x)
   {return(quantile(x,1-alpha/2))})
   estimateur<-qgp_craft(x = p,xi = shape_estim,sigma = sigma_estim)+mu
@@ -1249,7 +1249,7 @@ Fnct_bootstrap_param<-function(B,nb_sample,GPD_liste,p,alpha){
   
   # shape -------------------------------------------------------------------
   Estim_scale<-apply(X = Simulations_GP,MARGIN =2,
-                     FUN=fct_estim_params,indice_param=1)
+                    FUN=fct_estim_params,indice_param=1)
   Estim_shape<-apply(X = Simulations_GP,MARGIN =2,
                      FUN=fct_estim_params,indice_param=2)
   return(list("niv_retour"=df,"shape"=Estim_shape,"scale"=Estim_scale))
@@ -1382,25 +1382,27 @@ Analyse_seuil_GPD<-function(dates_prises,donnees,fonction_seuil,n.dens,nom,
                             type_entree,j_show){
   P_valeur_AD_excedent_GPD<-c()
   P_valeur_KS_excedent_GPD<-c()
-  
+  d<-length(colnames(donnees))
   # Conserver pour plus tard en mémoire. ------------------------------------
   Vect_Theta<-c()
   Vect_gamma<-c()
   Vect_scale<-c()
   Vect_seuil<-c()
   vect_gamma_Moment<-c()
-  plot(c(1:37),fonction_seuil,ylim = c(0,0.30),
+  plot(c(1:d),fonction_seuil,ylim = c(0,0.30),
        main = paste0("Poids mis sur la queue de distribution pour ",nom))
   
   par(mfrow=c(3,3))
-  for(t in c(1:37)){
+  
+  for(t in c(1:d)){
     p_ut<-fonction_seuil[t]
+    name_time<-colnames(donnees)[t]
     # ML_loi excedents --------------------------------------------------------
-    variable_ech_original<-donnees[,t]
+    variable_ech_original<-donnees[,name_time]
     seuil_t<-quantile(variable_ech_original,1-p_ut)
     nom_graph<-ifelse(nom=="Surcote","S",nom)
     #paste0(nom_graph," at t=",t," (",type_entree,")")
-    if(t%in%j_show){
+    if(as.numeric(name_time)%in%j_show){
       Outils_POT_graphique(series=variable_ech_original,seuil=seuil_t,Q1=0.50,Q2=0.98,
                            dates=dates_prises,
                            titre_variable="")
@@ -1456,10 +1458,11 @@ Analyse_seuil_GPD<-function(dates_prises,donnees,fonction_seuil,n.dens,nom,
     P_valeur_KS_excedent_GPD<-c(P_valeur_KS_excedent_GPD,TEST_KS_pareto_excedents$p.value)
   }
   par(mfrow=c(1,1))
-  plot(c(1:37),vect_gamma_Moment,type="l",main="Estimateur de gamma (moment) par temps")
+  plot(c(1:d),
+    vect_gamma_Moment,type="l",main="Estimateur de gamma (moment) par temps")
   df_test_excedent_GPD<-cbind.data.frame(P_valeur_KS_excedent_GPD,P_valeur_AD_excedent_GPD)
   colnames(df_test_excedent_GPD)<-c("KS","AD")
-  GG_TEST_GPD<-ggplot2::ggplot(data = df_test_excedent_GPD,aes(x=1:37,y=KS,col="KS"))+
+  GG_TEST_GPD<-ggplot2::ggplot(data = df_test_excedent_GPD,aes(x=1:d,y=KS,col="KS"))+
     geom_point()+
     geom_line(aes(y=KS,col="KS"))+
     geom_point(aes(y=AD,col="AD"))+
@@ -1476,12 +1479,15 @@ Analyse_seuil_GPD<-function(dates_prises,donnees,fonction_seuil,n.dens,nom,
   
   # Garder en memoire EV par temps ------------------------------------------
   df_EV_evol<-cbind.data.frame(Vect_seuil,Vect_scale,Vect_gamma,
-                               Vect_Theta,fonction_seuil,P_valeur_AD_excedent_GPD)
+                               Vect_Theta,fonction_seuil,
+                            P_valeur_AD_excedent_GPD)
   colnames(df_EV_evol)<-c("seuil_t","échelle_t","forme_t",
                           "Theta_t","p_u_t","p_val_ADarling")
   
   # Export de la table ------------------------------------------------------
-  write.csv(x=df_EV_evol,file=paste0("EVA_",nom,"_",type_entree,".csv"))
+  write.csv(x=df_EV_evol,
+      file=paste0("EVA_",nom,"_",
+                  type_entree,".csv"))
   return(P_valeur_AD_excedent_GPD)
 }
 
@@ -1529,16 +1535,18 @@ Analyse_Pareto_par_temps<-function(donnees_Pareto,nom,n.dens){
 #' @export
 #'
 #' @examples
-Sample_window<-function(x_simul,x_window,y,size_window){
+Sample_window<-function(x_simul,x_window,y,size_window,
+                        use_weight=FALSE){
   
   series_sort<-sort(x_window)
-  index_minimum<-which.min(abs(series_sort-x_simul))
+  Distances<-abs(series_sort-x_simul)
+  index_minimum<-which.min(Distances)
   gap<-(series_sort-x_simul)[index_minimum]
   L<-length(series_sort)-index_minimum
   if(L<(size_window/2)){
     beg<-length(series_sort)-size_window+1
     defs_window<-c(beg:
-                     length(series_sort))
+                      length(series_sort))
   }
   else if(index_minimum<size_window/2){
     end<-size_window
@@ -1559,12 +1567,15 @@ Sample_window<-function(x_simul,x_window,y,size_window){
   }
   #order gives the initial index used
   L_window<-length(defs_window)
-  #ponderate by distance, relative gap ?
-  # Wk<-abs(series_sort[defs_window]-x_simul)^(-1)/(x_simul)
-  # Wk<-Wk/sum(Wk)
-  # summary(Wk)
-  #,prob = Wk
-  Chosen<-sample(c(1:L_window),size=1)
+  if(isTRUE(use_weight)){
+    #distance weighted 
+    Wk<-abs(series_sort[defs_window]-x_simul)^(-1)
+    Wk<-Wk/sum(Wk)
+    Chosen<-sample(c(1:L_window),size=1,
+                   prob = Wk)
+  }else{
+    Chosen<-sample(c(1:L_window),size=1)
+  }
   index_sample_f<-defs_window[Chosen]
   index_sample<-order(x_window)[index_sample_f]
   return(index_sample)
@@ -1604,10 +1615,10 @@ custom_labels <- function(x) {
 
 
 RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
-                             nom_variable,plus_simul=FALSE,series_simul=NULL,
-                             cols_ggplot=NULL,alpha=0.05, 
-                             methode_ci="normal",ylim_opt=NULL,Individus_exts,
-                             unit_used){
+                    nom_variable,plus_simul=FALSE,series_simul=NULL,
+                    cols_ggplot=NULL,alpha=0.05, 
+                    methode_ci="normal",ylim_opt=NULL,Individus_exts,
+                    unit_used){
   rate_exceedance<-round(mean(as.numeric(series>seuil)),2)
   series_extreme<-subset(series,series>seuil)
   modele_ev<-fevd( x =series,threshold = seuil,type="GP",
@@ -1642,10 +1653,10 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
     
     # analyse extremes simul --------------------------------------------------
     Estimation_probs<-sapply(X = as.numeric(Base$estimateur),
-                             cdf_cond_value,
-                             simul_ext=series_simul,
-                             series=series,seuil=seuil,
-                             inds_exts=Individus_exts)
+                               cdf_cond_value,
+                               simul_ext=series_simul,
+                               series=series,seuil=seuil,
+                               inds_exts=Individus_exts)
     # Return_obtained_simul ---------------------------------------------------
     C<-NPY*rate_exceedance
     R_simul<-(C*(1-Estimation_probs))^(-1)
@@ -1654,8 +1665,8 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
     
   }
   Xbottom<-"Period P (years)"
-  yleft <- paste0("return level (",unit_used,")")
-  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+  yleft <- paste0("return level ",unit_used)
+  GG_RL<-ggplot(data = Base,aes(x=period_years,y=estimateur))+
     geom_line()+
     geom_line(linetype=0)+
     annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
@@ -1675,7 +1686,8 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
   # is not applied otherwise.
   if(plus_simul==TRUE){
     GG_RL<-GG_RL+
-      geom_point(data=New_return,aes(x=p_years,y=simul_niveau,col="simulations"),pch=17)
+      geom_point(data=New_return,aes(x=p_years,y=simul_niveau,col="simulations"),
+              pch=17)
     
   }
   if(is.null(ylim_opt)==FALSE){
@@ -1694,7 +1706,8 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
     theme(axis.title=element_text(size=20),
           legend.text=element_text(size=14),
           legend.title = element_text(size=15),
-          axis.text = element_text(size=14))
+          axis.text = element_text(size=14),
+          legend.direction = "horizontal")
   
   if(is.null(cols_ggplot)==FALSE){
     GG_RL<-GG_RL+
@@ -1705,10 +1718,10 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
               "GG_plot"=GG_RL))
 }
 RL_ggplot_uniroot_ext<-function(series,seuil,period_years,NPY,
-                                nom_variable,plus_simul=FALSE,series_simul=NULL,
-                                cols_ggplot=NULL,alpha=0.05, 
-                                methode_ci="normal",ylim_opt=NULL,Individus_exts,
-                                unit_used){
+                             nom_variable,plus_simul=FALSE,series_simul=NULL,
+                             cols_ggplot=NULL,alpha=0.05, 
+                             methode_ci="normal",ylim_opt=NULL,Individus_exts,
+                             unit_used){
   rate_exceedance<-round(mean(as.numeric(series>seuil)),2)
   series_extreme<-subset(series,series>seuil)
   modele_ev<-fevd( x =series,threshold = seuil,type="GP",
@@ -1745,10 +1758,10 @@ RL_ggplot_uniroot_ext<-function(series,seuil,period_years,NPY,
     # analyse extremes simul --------------------------------------------------
     # with simul
     Estimated_quantiles<-sapply(entree,
-                                Uniroot_cond_proba,
-                                simul_ext=series_simul,
-                                series=series,seuil=seuil,
-                                inds_exts=Individus_exts)
+                              Uniroot_cond_proba,
+                             simul_ext=series_simul,
+                             series=series,seuil=seuil,
+                             inds_exts=Individus_exts)
     # Return_obtained_simul ---------------------------------------------------
     New_return<-cbind.data.frame(period_years,Estimated_quantiles)
     colnames(New_return)<-c("p_years","simul_niveau")
@@ -1855,7 +1868,7 @@ diff_prob_quantile<-function(quantile_emp,simul_ext,series,seuil,inds_exts,u_giv
 
 Uniroot_cond_proba<-function(u_given,simul_ext,series,
                              seuil,inds_exts){
-  
+
   # Find a coherent level of quantile level ---------------------------------
   # knowing what we give as entry (u_given) -------------------------------------------
   m<-min(simul_ext)
@@ -1864,8 +1877,8 @@ Uniroot_cond_proba<-function(u_given,simul_ext,series,
                                                      M),
                  simul_ext=simul_ext,
                  u_given=u_given,inds_exts=inds_exts,
-                 seuil=seuil,series=series
-  )$root)
+                seuil=seuil,series=series
+                 )$root)
 }
 
 
@@ -1887,7 +1900,7 @@ Resamples_trends<-function(extremes_indus,B,list_Q){
   for(l in c(1:length(list_Q))){
     Q<-list_Q[l]
     result_q<-apply(ech,function(x){return(quantile(x,Q))},
-                    MARGIN=2)
+                               MARGIN=2)
     LIST_results[l,]<-result_q
   }
   return(LIST_results)
@@ -2182,7 +2195,7 @@ Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
                                               10,10)){
   require(patchwork)
   Rad_comp<-apply(X = Df_time_series,MARGIN = 1,
-                  FUN =fct_rad)
+             FUN =fct_rad)
   Theta<-t(t(Df_time_series)%*%diag(Rad_comp^(-1)))
   Series_Z<-melt(t(Df_time_series))
   Series_Omega<-melt(t(Theta))
@@ -2204,9 +2217,9 @@ Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
                       "time")
   DF_rad$individual<-as.character(DF_rad$individual)
   GG_TS<-ggplot(data=Series_Z,
-                aes(x=Time,y=value,col=individual,
-                    group=interaction(individual), 
-                ))+geom_line()+
+                   aes(x=Time,y=value,col=individual,
+                       group=interaction(individual), 
+                   ))+geom_line()+
     ylab(paste0("Series of ",y_label))+
     theme(axis.title.x = element_blank())+
     theme(axis.title=element_text(size=dims_elt_text[1]),
@@ -2214,11 +2227,11 @@ Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
           legend.text=element_text(size=dims_elt_text[3]),
           axis.text=element_text(size=dims_elt_text[4]))+
     guides(col="none")
-  # annotate(geom = "point",x=rep(0,length(Rad_comp)),y=Rad_comp)
+    # annotate(geom = "point",x=rep(0,length(Rad_comp)),y=Rad_comp)
   GG_Theta<-ggplot(data=Series_Omega,
-                   aes(x=Time,y=value,col=individual,
-                       group=interaction(individual), 
-                   ))+
+                aes(x=Time,y=value,col=individual,
+                    group=interaction(individual), 
+                ))+
     geom_line()+ylab(paste0("Angle series of ",y_label))+
     theme(axis.title.x = element_blank())+
     theme(axis.title=element_text(size=dims_elt_text[1]),
@@ -2231,7 +2244,16 @@ Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
     plot_layout(heights = c(1, 0.05))
   print(All_orig_ext)
 }
-
+#' FIT_cop
+#'
+#' @param u1: vector[float]. First coordinate (uniform margins)
+#' @param u2: vector[float]. Second coordinate (uniform margins)
+#' @param fam: vector[int]. Several copula family numbers. 
+#'
+#' @return Modelling results of each copula family. 
+#' @export
+#'
+#' @examples
 FIT_cop<-function(u1,u2,fam){
   fit <- tryCatch({
     VineCopula::BiCopEst(u1, u2, family = fam)

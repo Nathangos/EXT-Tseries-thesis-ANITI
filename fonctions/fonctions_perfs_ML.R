@@ -54,7 +54,7 @@ fnct_logistigue_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts
     print(fnct_link_name)
     tryCatch(try(
       {resultat<-fnct_logistic_glm(fnct_lien = fnct_link_name,
-                                   ech_test=ech_test,ech_train=ech_train)
+                                     ech_test=ech_test,ech_train=ech_train)
       LISTE_resultat[[fnct_link_name]]<-resultat
       Mat_confTest<-resultat$resultat_conf_test
       df<-matrix(0,nrow=2,ncol=2)
@@ -145,7 +145,7 @@ fnct_ML_realite_simulations<-function(ech_train,ech_test,type_noyau){
   predictions<-modele_svm$fitted
   DF_test<-rbind(real_test,simul_test)
   DF_test<-as.data.frame(scale(DF_test,center=mean_realisations, 
-                               scale=sd_realisations))
+                 scale=sd_realisations))
   rownames(DF_test)<-c(1:nrow(DF_test))
   y<-c(rep(0,nrow(real_test)),rep(1,nrow(simul_test)))
   # predictions--SVM ---------------------------------------------------------
@@ -228,7 +228,7 @@ fnct_RF<-function(ech_train,ech_test,NB_trees){
   DF_test<-rbind(real_test,simul_test)
   if(ncol(DF_test)==1){
     DF_test<-scale(DF_test,center=mean_realisations, 
-                   scale=sd_realisations)
+          scale=sd_realisations)
   }
   else{
     DF_test<-as.data.frame(scale(DF_test,center=mean_realisations, 
@@ -237,7 +237,7 @@ fnct_RF<-function(ech_train,ech_test,NB_trees){
   y<-c(rep(0,nrow(real_test)),rep(1,nrow(simul_test)))
   # predictions--RF ---------------------------------------------------------
   probs_fonction_chosen<-predict(modele_rf,DF_test,
-                                 type = "prob")[,2]
+                              type = "prob")[,2]
   y_pred<-round(probs_fonction_chosen)
   return(list("Modèle"=modele_rf,"resultat_conf_train"=table(realisations$y,predictions),
               "resultat_conf_test"=table(y,y_pred),
@@ -300,11 +300,11 @@ fnct_logistic_glm<-function(ech_train,ech_test,fnct_lien){
   vect<-c(real_test,simul_test)
   DF_test<-rbind(real_test,simul_test)
   DF_test<-as.data.frame(scale(DF_test,center=mean_realisations, 
-                               scale=sd_realisations))
+                                 scale=sd_realisations))
   rownames(DF_test)<-c(1:nrow(DF_test))
   # predictions--logit ---------------------------------------------------------
   probs_model<-as.numeric(predict(modele_logit,DF_test,
-                                  type="response"))
+                                    type="response"))
   predictions_modele<-round(probs_model)
   return(list("Modèle"=modele_logit,"resultat_conf_train"=table(realisations$y,predictions),
               "resultat_conf_test"=table(y,predictions_modele),
@@ -325,8 +325,8 @@ Function_extract_elt<-function(modele_stat){
   reality_<-modele_stat$y_test
   probs_algorithm_<-modele_stat$probs_y
   curve_roc_<-pROC::roc(reality_,
-                        probs_algorithm_,plot=FALSE, 
-                        quiet=TRUE)
+                         probs_algorithm_,plot=FALSE, 
+                         quiet=TRUE)
   index_mid_<-which.min(abs(curve_roc_$thresholds-0.5))
   Liste_ROC_<-list("curve"=curve_roc_, 
                    "index_mid"=index_mid_)
@@ -344,14 +344,14 @@ Function_extract_elt<-function(modele_stat){
   
   Sum_cols<-prod(apply(df_,MARGIN = 2,FUN = function(x){return(sum(x))}))
   Denom<-Sum_lignes+Sum_cols
-  
+
   # HSS near 0= no skill ----------------------------------------------------
   
   HSS_score<-Num/Denom
   Prop_<-t(apply(df_,MARGIN = 1,
                  function(x){return(x/sum(x))}))
   R_<-sum(diag(df_))/sum(df_)
-  
+ 
   
   return(list("1"=Prop_,"2"=R_,"3"=Liste_ROC_,"4"=HSS_score))
 }
@@ -370,7 +370,7 @@ Function_extract_elt<-function(modele_stat){
 #'
 #' @examples
 fnct_calcul_correct_proportion<-function(Base_simul, Base_data,hyp_param,
-                                         type_sampling,K){
+                                          type_sampling,K){
   if(!is.null(nrow(Base_data))){
     Nb_ech<-nrow(Base_data)
     Nb_simul<-nrow(Base_simul)
@@ -421,13 +421,13 @@ fnct_calcul_correct_proportion<-function(Base_simul, Base_data,hyp_param,
     HSS_SVM<-SVM_results[[4]]
     
     modele_GLM<-fnct_logistic_glm(fnct_lien = hyp_param[2],
-                                  ech_test=ech_test,ech_train=ech_train)
+                                    ech_test=ech_test,ech_train=ech_train)
     GLM_results<-Function_extract_elt(modele_stat = modele_GLM)
     Prop_GLM<-GLM_results[[1]]
     R_GLM<-GLM_results[[2]]
     Liste_ROC_GLM<-GLM_results[[3]]
     HSS_<-GLM_results[[4]]
-    
+
     
     # RF ----------------------------------------------------------------------
     modele_RF<-fnct_RF(ech_train = ech_train,ech_test=ech_test,
@@ -472,16 +472,16 @@ fnct_calcul_correct_proportion<-function(Base_simul, Base_data,hyp_param,
 #'
 #' @examples
 Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K,
-                           type_sampling, title_ROC,NB_shown_ROC){
+                          type_sampling, title_ROC,NB_shown_ROC){
   
   
   Resultat<-replicate(n = NB_times,fnct_calcul_correct_proportion(Base_simul=Base_simul,
-                                                                  Base_data = Base_data,
-                                                                  hyp_param =hyp_param,type_sampling=type_sampling,
-                                                                  K=K))
+                                                                   Base_data = Base_data,
+                                                                   hyp_param =hyp_param,type_sampling=type_sampling,
+                                                                   K=K))
   Echs<-sample(c(1:NB_times),size = NB_shown_ROC)
   Whole_curve<-apply(Resultat,MARGIN = 2,
-                     function(x){return(x$SVM$ROC$curve)})                                                                
+                             function(x){return(x$SVM$ROC$curve)})                                                                
   
   GGROC_several<-pROC::ggroc(Whole_curve[Echs],alpha=0.4)+
     guides(col="none")+
@@ -489,7 +489,7 @@ Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K
     ggtitle(paste0("SVM (", hyp_param[1],") ROC curves for ",title_ROC," (shown=",NB_shown_ROC,", calculated=",NB_times,")"))
   print(GGROC_several)
   Whole_curve_GLM<-apply(Resultat,MARGIN = 2,
-                         function(x){return(x$GLM$ROC$curve)})
+                                 function(x){return(x$GLM$ROC$curve)})
   GGROC_several_2<-pROC::ggroc(Whole_curve_GLM[Echs],alpha=0.4)+
     geom_abline(slope = 1, intercept = 1, linetype = "dashed", color = "black")+
     guides(col="none")+
@@ -502,9 +502,9 @@ Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K
     guides(col="none")+
     ggtitle(paste0("Random Forest ROC curves for ",title_ROC," (shown=",NB_shown_ROC,", calculated=",NB_times,")"))
   print(GGROC_several_RF)
-  
+
   # Accuracy ----------------------------------------------------------------
-  
+
   GLM_ACCURACY<-apply(Resultat,MARGIN = 2,function(x){
     return(x$GLM$accuracy)})
   SVM_ACCURACY<-apply(Resultat,MARGIN = 2,function(x){
@@ -523,7 +523,7 @@ Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K
     return(round(quantile(x,1-(alpha_prop/2)),2)*100)})
   df<-cbind.data.frame(Q1,Q2)
   resultat<-cbind.data.frame(Names_model,
-                             paste0(df$Q1,"-",df$Q2))
+                        paste0(df$Q1,"-",df$Q2))
   colnames(resultat)<-c("Modele","qu_accuracy")
   
   # HSS ----------------------------------------------------------------
@@ -554,8 +554,8 @@ Plot_ROC_curves_mult_links<-function(obj_link_GLM,titre_graphique,liste_cles,rac
     probs_algorithm<-obj_link_GLM[[link]]$probs_y
     print(mean(probs_algorithm))
     curve_roc<-pROC::roc(reality,
-                         probs_algorithm,plot=FALSE, 
-                         quiet=TRUE)
+                          probs_algorithm,plot=FALSE, 
+                          quiet=TRUE)
     liste_ROC[[link]]<-curve_roc
     liste_th_mid[[link]]<-which.min(abs(curve_roc$thresholds-0.5))
     auc<-round(as.numeric(pROC::auc(curve_roc)),2)

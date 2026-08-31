@@ -1,3 +1,5 @@
+#source("../fonctions/fonctions.R")
+
 #' f_marginales_Pareto
 #'
 #' @param variable : vector. Realisations of the law at time t
@@ -44,7 +46,23 @@ f_marginales_Pareto<-function(variable,p_u,n.dens){
               "scale"=scale_fonc,"threshold"=threshold,"p_u"=p_u))
   
 }
-
+Fast_reconv<-function(variable_unif,p_Ui,scale_fonc,gamma,kernel_DENS,
+                      u_f){
+  return(variable_unif)
+  indice_S<-which.max(u_f-kernel_DENS$x<0)-1
+  step<-diff(kernel_DENS$x)[1]
+  integrale<-cumsum(kernel_DENS$y)*step
+  if(-p_Ui>=variable_unif){
+    indice_d_min<-which.max(variable_unif-integrale<0)-1
+    valeur<-as.numeric(kernel_DENS$x[indice_d_min])
+    return(valeur)
+  }
+  else{
+    value_p<-(variable_unif-1+p_Ui)/p_Ui
+    evalue<-qgp_craft(x = value_p,sigma = scale_fonc,xi = gamma)+u_f
+    return(as.numeric(evalue))
+  }
+}
 #' f_marginales_all_Pareto
 #'
 #' @param indice : int. Time index. 
@@ -83,6 +101,58 @@ function_reconversion_Pareto<-function(K,variable_uplift,list_evt){
                        list_evt=list_evt)
   return(individu_ext)
 }
+function_reconversion_Pareto_fromDframes<-function(Df_K,variable_uplift,Df_evt,
+                                                   index_dimension){
+  individu_ext<-function_reconv_each_dim_Pareto_fromDframes(Df_K=Df_K,
+                        vect_diff=variable_uplift,
+                        index_dimension=index_dimension,
+                       Df_evt=Df_evt)
+  return(individu_ext)
+}
+function_reconv_each_dim_Pareto_fromDframes<-function(index_dimension,
+                                                      Df_K,vect_diff,Df_evt){
+  ### Find the index of the time to consider. 
+  Ind_sub_theta<-which(Df_evt$time_analysed==as.numeric(index_dimension))
+  Ind_sub_K<-which(Df_K$time_analysed==as.numeric(index_dimension))
+  ### Select the corresponding estimator in the collection
+  ### of estimators (one per time)
+  Sub_theta<-Df_evt[Ind_sub_theta,]
+  kernel_DENS<-Df_K[Ind_sub_K,]
+  variable_unif<-vect_diff[,index_dimension]-1
+  p_Ui<-Sub_theta[["p_u"]]
+  scale_fonc<-Sub_theta[["scale"]]
+  gamma<-Sub_theta[["gamma"]]
+  u_f<-Sub_theta[["threshold"]]
+  indice_S<-which.max(u_f-kernel_DENS$x<0)-1
+  step<-diff(kernel_DENS$x)[1]
+  integrale<-cumsum(kernel_DENS$y)*step
+  var_reference<-variable_unif+1
+  ### Gp inds
+  Inds_gp<-which(-p_Ui<variable_unif)
+  values_returned<-rep(NA,length(variable_unif))
+  if(length(Inds_gp)>0){
+    Outputs<-var_reference[-Inds_gp]
+    indice_d_min<-sapply(Outputs,function(output_i){
+      Ind_found<-which.max(output_i-integrale<0)-1
+      return(Ind_found)
+    })
+    values_returned[-Inds_gp]<-as.numeric(
+          kernel_DENS$x[indice_d_min])
+    
+    value_p<-(variable_unif[Inds_gp]+p_Ui)/p_Ui
+    values_returned[Inds_gp]<-as.numeric(qgp_craft(x = value_p,
+                          sigma = scale_fonc,xi = gamma)+u_f)
+  }else{
+    Outputs<-var_reference
+    indice_d_min<-sapply(Outputs,function(output_i){
+      Ind_found<-which.max(output_i-integrale<0)-1
+      return(Ind_found)
+    })
+    values_returned<-as.numeric(kernel_DENS$x[indice_d_min])
+  }
+  return(values_returned)
+}
+
 #' fonction_reconv_each_dim_Pareto
 #'
 #' @param index_dimension : int. Time index. 
@@ -122,6 +192,23 @@ function_reconv_each_dim_Pareto<-function(index_dimension,K,v_diff,list_evt){
   }
 }
 
+
+pi_s_t<-function(individus_fonctionnel,vecteur_u,couples_indices){
+  t<-couples_indices[1]
+  s<-couples_indices[2]
+  numerateur<-sum(as.numeric((individus_fonctionnel[,s]>vecteur_u[s])&(individus_fonctionnel[,t]>vecteur_u[t])))
+  denominateur<-sum(as.numeric(individus_fonctionnel[,s]>vecteur_u[s]))
+  return(numerateur/denominateur)
+}
+variogramme_BESSEL<-function(t,s,kappa,tau){
+  h<-t-s
+  h_norme<-abs(h/tau)
+  return(kappa*(1-h_norme))
+}
+sigma_BESSEL<-function(s,kappa,tau){
+  h_norme<-abs(s/tau)
+  return(kappa*(1-h_norme))
+}
 Export_copula_model<-function(NB_dim_PCA,name_variable,Summary_cop){
   if(NB_dim_PCA==2){
     Short_famille_name<-BiCopName(family = Summary_cop[["family"]],short=TRUE)

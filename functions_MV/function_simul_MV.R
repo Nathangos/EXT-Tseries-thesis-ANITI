@@ -862,53 +862,55 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   dir_AIC<-"RisKFunctions/evol_AIC_param"
   list_mixt<-list()
   list_Qfound<-list()
-  for(nameV in l_variables){
-    #log
-    VECT_lj<-log(Vect_l_function[,nameV]+1)
-    # EGPD way
-    Values_gp<-mev::gp.fit(VECT_lj,threshold = 0)$est
-    Th_beg<-quantile(x = VECT_lj,0.10)
-    Lower_tail<-VECT_lj[which(VECT_lj<Th_beg)]
-    Moment_1<-mean(Lower_tail)
-    Pstart<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
-    Initialisation<-c(Pstart,Shape_chosen,0)
-    PWM_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
-                 init=Initialisation,
-                     method="pwm",R=20)
-    Theta<-PWM_EXTGP$fit$pwm
-    print(c(nameV,Theta))
-    Name_file_plot<-paste0(root_for_export,"RisKfunctions/",
-                nameV,"_EGPD_fitting_RiskF.png")
-    MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
-                  init=Theta,
-                   method="mle",R=20)$fit$mle
-    u_vec_gom <- quantile(VECT_lj,
-                          probs = seq(0.2, 0.9, by = 0.05))
-    Choice_threshr_j<-threshr::ithresh(data = VECT_lj, 
-                     u_vec = u_vec_gom,
-                     n_v = 2, prior = "mdi",
-                     h_prior = list(a = 0.6))
+  Approach<-Params_risk_Function[["RF_Approach"]]
+  if(Approach!="HTawn"){
     
-    Sthresh_j<-summary(Choice_threshr_j)
-    plot(Choice_threshr_j)
-    Q_foundj<-median(Sthresh_j[,4])
-    list_Qfound[[nameV]]<-Q_foundj/100
-
-    UNIF_extgp<-sapply(VECT_lj,mev::pextgp,kappa=MLE_EXTGP[["kappa"]],
-                            sigma = MLE_EXTGP[["sigma"]],
-                            xi=MLE_EXTGP[["xi"]])
-    
-    Quantile_LEVELS<-c(1:length(VECT_lj))/(length(VECT_lj)+1)
-
-    # MLE_EXTGP
-    L_Transf_vect_l[[nameV]]<-MLE_EXTGP
-    Frechet_j<-(-log(UNIF_extgp))**(-1)
-    print(paste0("Frechet test for conversion of l(",nameV,")"))
-    print(goftest::ad.test(Frechet_j,null = extRemes::"pevd",
-                     shape=1,scale=1,loc=1,type="GEV")$p.value)
-    L_Convert[[nameV]]<-Frechet_j
-  }
-
+    for(nameV in l_variables){
+      #log
+      VECT_lj<-log(Vect_l_function[,nameV]+1)
+      # EGPD way
+      Values_gp<-mev::gp.fit(VECT_lj,threshold = 0)$est
+      Th_beg<-quantile(x = VECT_lj,0.10)
+      Lower_tail<-VECT_lj[which(VECT_lj<Th_beg)]
+      Moment_1<-mean(Lower_tail)
+      Pstart<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
+      Initialisation<-c(Pstart,Shape_chosen,0)
+      PWM_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
+                   init=Initialisation,
+                       method="pwm",R=20)
+      Theta<-PWM_EXTGP$fit$pwm
+      print(c(nameV,Theta))
+      Name_file_plot<-paste0(root_for_export,"RisKfunctions/",
+                  nameV,"_EGPD_fitting_RiskF.png")
+      MLE_EXTGP<-mev::fit.extgp(data = VECT_lj,model = 1,
+                    init=Theta,method="mle",
+                    R=20)$fit$mle
+      u_vec_gom <- quantile(VECT_lj,
+                            probs = seq(0.2, 0.9, by = 0.05))
+      Choice_threshr_j<-threshr::ithresh(data = VECT_lj, 
+                       u_vec = u_vec_gom,
+                       n_v = 2, prior = "mdi",
+                       h_prior = list(a = 0.6))
+      
+      Sthresh_j<-summary(Choice_threshr_j)
+      plot(Choice_threshr_j)
+      Q_foundj<-median(Sthresh_j[,4])
+      list_Qfound[[nameV]]<-Q_foundj/100
+  
+      UNIF_extgp<-sapply(VECT_lj,mev::pextgp,kappa=MLE_EXTGP[["kappa"]],
+                              sigma = MLE_EXTGP[["sigma"]],
+                              xi=MLE_EXTGP[["xi"]])
+      
+      Quantile_LEVELS<-c(1:length(VECT_lj))/(length(VECT_lj)+1)
+  
+      # MLE_EXTGP
+      L_Transf_vect_l[[nameV]]<-MLE_EXTGP
+      Frechet_j<-(-log(UNIF_extgp))**(-1)
+      print(paste0("Frechet test for conversion of l(",nameV,")"))
+      print(goftest::ad.test(Frechet_j,null = extRemes::"pevd",
+                       shape=1,scale=1,loc=1,type="GEV")$p.value)
+      L_Convert[[nameV]]<-Frechet_j
+    }
   Vect_l_transf<-as.data.frame(L_Convert)
   
   ### Regular variations hypothesis
@@ -992,7 +994,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
          plot = GG_dens_Ang,width=6,height=8)
   Theta_opt<-NA
 
-  Approach<-Params_risk_Function[["RF_Approach"]]
+  }
   if(Approach=="AD"){
     if(Params_risk_Function[["parametric"]]==TRUE){
       Theta_opt<-Estim_param_RF_homogeneous(Params_risk_Function= Params_risk_Function,
@@ -1080,7 +1082,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     DQU_modeling_Htawn<-Params_risk_Function[["HTAWN_params"]]
   
     #Vect_pareto_margins
-    Graphics_diags<-Analysis_diag_HTawn_evol_DQU(vect_dqu = Qtile_candidates,
+    Graphics_diags<-Analysis_diag_HTawn_evol_DQU(
+             vect_dqu = Qtile_candidates,
              chosen_dqu=DQU_modeling_Htawn,
              MQU =MQU,Vect_obs = Vect_l_function)
     
@@ -1664,22 +1667,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       DF_simul_lprime<-c(DF_simul_lprime,
             apply(X = Z_varj,MARGIN = 1,
                     FUN = calcul_norm_L2))
-      ### 0 as the threshold if Frechet
-      ### 1 as the threshold if Pareto
-      ### If Frechet margins originally
-      #Unif<-exp(-Z_varj[indicatrice_pos,]^(-1))
-      ### If Pareto margins originally
-      # if(opt_Frech){
-      #   indicatrice_pos<-which(apply(X=Z_varj,
-      #                                FUN=fonction_trajectoire_positive,
-      #                                MARGIN = 1)==TRUE)
-      #   Unif<-exp(-(Z_varj[indicatrice_pos,])^(-1))
-      # }else{
-      #   indicatrice_pos<-which(apply(X=Z_varj-1,
-      #                                FUN=fonction_trajectoire_positive,
-      #                                MARGIN = 1)==TRUE)
-      #   Unif<-1-Z_varj[indicatrice_pos,]^(-1)
-      # }
+
       indicatrice_pos<-which(apply(X=Z_varj,
                                FUN=fonction_trajectoire_positive,
                                MARGIN = 1)==TRUE)
@@ -1714,23 +1702,12 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     Gap<-M-(Nb_filled+Nb_final_chosen)
     End_filled<-min(Nb_filled+Nb_final_chosen,M)
     Lag<-End_filled-Beg_filled+1
-    # return(list("inds"=Inds_final_chosen,
-    #             "sims"=LISTE_candidats,
-    #             "array_sim"=ref,
-    #             "array_simul"=Array_simul,
-    #             "list_inds_gd"=list_ind_pos,
-    #             "found_filter"=Inds_final_chosen))
     for(k in c(1:length(l_variables))){
       name_variable<-l_variables[k]
       Z_vark<-LISTE_candidats[[name_variable]][Inds_final_chosen,]
       Sub_coords<-Coords_ech_orig[Inds_final_chosen,]
       Sub_coords<-Sub_coords[c(1:Lag),]
-      # UNIF_k<-exp(-Z_vark^(-1))
-      # if(opt_Frech){
-      #   
-      # }else{
-      #   UNIF_k<-1-Z_vark^(-1)
-      # }
+
       UNIF_k<-apply(Z_vark,MARGIN=2,
                   FUN = evd::pgpd,loc=0,
                   scale=Shape_evd, shape=Shape_evd)
@@ -1781,21 +1758,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       colnames(DF)<-Times_used
       LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-DF
       INDICES_ACP<-1:nrow(Z_varj)
-      ### Unif--> Pareto for conversion
-      # NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
-      #                df=(1-Simul_whole_kunif^(-1)))
-      
       # Reconversion in the good scale--------------------------------------
       Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
       K<-Theta_EXTGPD_k$K
       LEVT<-Theta_EXTGPD_k$LEVT
-      # if(name_variable_for_conv=="U"){
-      #   return(list("sim"=Simul_whole_kunif,
-      #               "k"=K,
-      #               "evt"=LEVT,"Times"=Times_used)
-      #   )
-      # }
-      #_fromImport
+
       DFF<-as.data.frame(Simul_whole_kunif)
       colnames(DFF)<-Times_used
       Variables_reconversion_ACP<-lapply(Times_used,
