@@ -863,6 +863,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   list_mixt<-list()
   list_Qfound<-list()
   Approach<-Params_risk_Function[["RF_Approach"]]
+  Vect_l_transf<-NA
+  Vect_Pareto_margins<-NA
   if(Approach!="HTawn"){
     
     for(nameV in l_variables){

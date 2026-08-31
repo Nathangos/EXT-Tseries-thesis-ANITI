@@ -628,6 +628,8 @@ if(Approach=="HTawn"){
 ```
 
 ```{r}
+### Run the convex hull diagnostics
+RUN_CONVEX_HULL<-FALSE
 List_Params_RF<-list("parametric"=TRUE,"name_RF"=Name_riskF,
                      "function"=Risk_f,"name_model"=Name_model,
                      "weightFunction"=wFun,"dWeightFunction"=dwFun,
@@ -635,7 +637,7 @@ List_Params_RF<-list("parametric"=TRUE,"name_RF"=Name_riskF,
                      "RF_Approach"=Approach,
                      "HTAWN_params"=optional_params,
                      "Shape_parameter"=Shape_chosen,
-                     "RUN_Convex_Hull"=TRUE)
+                     "RUN_Convex_Hull"=RUN_CONVEX_HULL)
 ### Parameters of the marginal transformation 
 ### of the radial vector
 List_Params_RF[["HTAWN_params_MARG"]]<-c(0.8,0.6,0.70)
@@ -1372,41 +1374,8 @@ png(filename = Filename_Graph_criterion_config,
 if(METHOD_ANGLE=="GaussMixture"){
   mclust::plot.densityMclust(re$Model_Coords,what="BIC")
 }
-mclust::surfacePlot()
+
 dev.off()
-```
-
-```{r}
-d<-ncol(Vect_RiskF)
-# if(d==2){
-#   gofEVCopula(galambosCopula(), Vect_RiskF, N=N, method="itau")
-#   gofEVCopula(galambosCopula(), Vect_RiskF, N=N, method="irho")
-#   
-#   #gofEVCopula(huslerReissCopula(), Vect_RiskF, N=N)
-#   gofEVCopula(huslerReissCopula(), Vect_RiskF, N=N, method="itau")
-#   gofEVCopula(huslerReissCopula(), Vect_RiskF, N=N, method="irho")
-#   
-#   #gofEVCopula(tevCopula(), Vect_RiskF, N=N)
-#   gofEVCopula(tevCopula(), Vect_RiskF, N=N, method="itau")
-#   gofEVCopula(tevCopula(), Vect_RiskF, N=N, method="irho")
-#   
-#   #gofEVCopula(tevCopula(), Vect_RiskF, N=N)
-#   gofEVCopula(tawnCopula(), Vect_RiskF, N=N, method="itau")
-#   gofEVCopula(tawnCopula(), Vect_RiskF, N=N, method="irho")
-# }
-
-
-### Analyse Dependence function 
-Mod_biv<-list("model"=Name_model)
-Estimator<-list()
-if(Name_model%in%c("log","hr")){
-  Estimator[["dep"]]<-Theta_fit
-}
-if(Name_model%in%c("ct","bilog")){
-  Estimator[["alpha"]]<-Theta_fit[1]
-  Estimator[["beta"]]<-Theta_fit[2]
-}
-Mod_biv[["estimate"]]<-Estimator
 ```
 
 ```{r}
@@ -1636,34 +1605,6 @@ for(nameV in l_name){
 }
 ```
 
-
-
-```{r}
-# Marginal law ------------------------------------------------------------
-NB_times<-ncol(re$simul[[ind_var1]])
-KS_test_S<-rep(NA,NB_times)
-KS_test_HS<-KS_test_S
-for(t in c(1:NB_times)){
-  KS_test_S[t]<-ks.test(x =re$simul[[ind_var1]][,t],
-                        y=liste_ext[[ind_var1]][,t])$p.value
-  KS_test_HS[t]<-ks.test(x = re$simul[[ind_var2]][,t],
-                         y=liste_ext[[ind_var2]][,t])$p.value
-}
-plot(KS_test_S)
-plot(KS_test_HS)
-# Export ------------------------------------------------------------------
-##################
-for(nameV in l_name){
-  write.csv(x =re$simul[[nameV]],
-        file=paste0(ROOT_export,nameV,"_",
-        CPLMT_graph_theta,"_",METHOD_ANGLE, 
-        "_simul",opt_used,".csv"))
-  write.csv(x =liste_ext[[nameV]],
-          file=paste0(ROOT_export,nameV,"_obs_ext.csv"))
-}
-```
-
-
 ```{r}
 
 U_sim_frech<-re$Frechet_normal$simul[[l_name[[1]]]]
@@ -1686,7 +1627,6 @@ for(name in l_name){
   L2_sim<-apply(Df_sim,MARGIN = 1,FUN = calcul_norm_L2)
   List_RiskF[[name]]<-L2_sim
   Theta_sim<-t(t(Df_sim)%*%diag(L2_sim^(-1)))
-  print(summary(Theta_sim))
   Obj_sim[,c(Deb:END)]<-Theta_sim
   rood<-Root_data[[Z+1]]
   colnames(rood)<-c(1:length(names(rood)))
