@@ -15,11 +15,10 @@ require(VineCopula)
 require(grid)
 require(gridExtra)
 require(mvPot)
-### Source des fonctions. ####
 #Functions from univariate case. 
-source("../fonctions/fonctions_Pareto.R")
-source("../fonctions/fonctions.r")
-source("../fonctions/fonctions_r_pareto_EVOLTAU.r")
+source("fonctions/fonctions_Pareto.R")
+source("fonctions/fonctions.r")
+#source("fonctions/fonctions_r_pareto_EVOLTAU.r")
 
 ### Generation functions
 source("functions_MV/function_generation_MV.R")
@@ -52,7 +51,7 @@ if(G_used=="Weighted_NQ"){
   G_used2<-paste0(G_used2,"_q=",q)
 }
 Link_resid<-paste0("residuals_MV/")
-path_graph<-paste0(getwd(),"/graphiques_MV/data")
+path_graph<-paste0(getwd(),"/Graphics_MV/data")
 ROOT_export_graph<-paste0(path_graph,"/",
                           G_used,"/")
 ### Options fo the simulation
@@ -77,7 +76,7 @@ d<-length(lNAME)
 
 Subfix_sim<-paste0(METHOD_MGtransf,"_",opt_used,"_d=",d)
 Subfix_data<-paste0(METHOD_MGtransf,"_d=",d)
-lNAME<-c("U","Surcote","Hs")
+lNAME<-c("U","Surge","Hs")
 
 link_export_<-paste0("Generated_extremes/",G_used2,"/")
 try({
@@ -91,13 +90,13 @@ try({
 #### Option for the choice of previous time series
 OPT_USED<-"KNN"
 
-
-cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue",
+cols_<-c("data"="blue","simulations"="orange",
+         "confidence_band"="darkblue",
          "model"="red","Storm"="black", "exceedances"="red",
          "real_data"="black")
 require(cowplot)
 require(patchwork)
-DF<-read.csv(file =paste0("../ss_tend/HIVER/dates_prises.csv"))
+DF<-read.csv(file =paste0("data_detrend_Winter/dates.csv"))
 Dates_Joh<-c("08/03/2008","09/03/2008",
              "10/03/2008")
 Dates<-substr(DF$x,start = 1,stop = 10)
@@ -106,7 +105,10 @@ Previous<-sub_Ind_j[1]
 
 #### KNN-based approach
 KCHOSEN<-15
+```
 
+
+```{r}
 ### (1) K-fold cross validation--> compare performances with different number of
 ### neighbors
 ###########
@@ -118,52 +120,52 @@ VECTOR_K<-seq.int(from = 5,to = 40,
 ### two options
 ### a) sample with probability the previous time series
 ### b) take for each forcing condition a theoretical "mean" previous time series
-CV_results_perK<-K_fold_k_param( hearts = hearts,
-                list_variable = lNAME,
-                link_import_residuals = Link_resid,
-                f_distance = distance_sq,Name_riskF=G_used2,
-                number_Kfold = NUMBER_FOLD_CrossValid,
-                type_donnees = "HIVER",
-                vector_K = VECTOR_K)
-melting_CV_list<-as.data.frame(melt(CV_results_perK))
-
-colnames(melting_CV_list)<-c("value","hyper_param")
-melting_CV_list$hyper_param<-VECTOR_K[melting_CV_list$hyper_param]
-melting_CV_list$hyper_param<-as.character(melting_CV_list$hyper_param)
-melting_CV_list
-
-results_per_K<-melting_CV_list %>%
-  group_by(hyper_param) %>%
-  summarise(meanV=mean(value))
-results_per_K
-melting_CV<-as.data.frame(results_per_K)
-melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
-colnames(melting_CV)<-c("hyper_param",
-                        "value")
-EXPR_Kchosen<-expression(n[KNN])
-melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
-GG_CV_metrics<-ggplot(melting_CV)+
-  #facet_wrap(~stat,scales = "free_y")+
-  geom_line(aes(x=hyper_param,y=value))+
-  guides(col="none")+
-  xlab("Number of neighbors")+
-  ylab("Mean Accuracy (CV)")+
-  geom_vline(aes(xintercept=KCHOSEN,
-                 linetype="nkNN"))+
-  scale_linetype_manual(
-    values = 3,
-    labels=EXPR_Kchosen)+labs(linetype="Legend")+
-  theme(legend.direction = "horizontal",
-        axis.title=element_text(size=FSIZE),
-        strip.text=element_text(size=13),
-        legend.title = element_text(size=14),
-        legend.text=element_text(size=13),
-        legend.position = "bottom")+
-  COMMON_theme
-GG_CV_metrics
-ggsave(filename = paste0("graphiques_MV/data/",G_used2,
-                         "/CV_metrics_KNN.png"),
-       plot = GG_CV_metrics,width=10,height=6)
+# CV_results_perK<-K_fold_k_param( hearts = hearts,
+#                 list_variable = lNAME,
+#                 link_import_residuals = Link_resid,
+#                 f_distance = distance_sq,Name_riskF=G_used2,
+#                 number_Kfold = NUMBER_FOLD_CrossValid,
+#                 type_donnees = "HIVER",
+#                 vector_K = VECTOR_K)
+# melting_CV_list<-as.data.frame(melt(CV_results_perK))
+# 
+# colnames(melting_CV_list)<-c("value","hyper_param")
+# melting_CV_list$hyper_param<-VECTOR_K[melting_CV_list$hyper_param]
+# melting_CV_list$hyper_param<-as.character(melting_CV_list$hyper_param)
+# melting_CV_list
+# 
+# results_per_K<-melting_CV_list %>%
+#   group_by(hyper_param) %>%
+#   summarise(meanV=mean(value))
+# results_per_K
+# melting_CV<-as.data.frame(results_per_K)
+# melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
+# colnames(melting_CV)<-c("hyper_param",
+#                         "value")
+# EXPR_Kchosen<-expression(n[KNN])
+# melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
+# GG_CV_metrics<-ggplot(melting_CV)+
+#   #facet_wrap(~stat,scales = "free_y")+
+#   geom_line(aes(x=hyper_param,y=value))+
+#   guides(col="none")+
+#   xlab("Number of neighbors")+
+#   ylab("Mean Accuracy (CV)")+
+#   geom_vline(aes(xintercept=KCHOSEN,
+#                  linetype="nkNN"))+
+#   scale_linetype_manual(
+#     values = 3,
+#     labels=EXPR_Kchosen)+labs(linetype="Legend")+
+#   theme(legend.direction = "horizontal",
+#         axis.title=element_text(size=FSIZE),
+#         strip.text=element_text(size=13),
+#         legend.title = element_text(size=14),
+#         legend.text=element_text(size=13),
+#         legend.position = "bottom")+
+#   COMMON_theme
+# GG_CV_metrics
+# ggsave(filename = paste0("graphiques_MV/data/",G_used2,
+#                          "/CV_metrics_KNN.png"),
+#        plot = GG_CV_metrics,width=10,height=6)
 ```
 
 ```{r}
@@ -351,8 +353,7 @@ Graph_Max_sampled_EXT<-ggdraw()+
   draw_plot(Graph_Max_sampled_EXT)+
   theme(plot.background = element_rect(fill = "white", 
                                        color = NA))
-ggsave(filename=paste0("graphiques_MV/data/",G_used2,
-                       "/max_previous_EXTS.png"),
+ggsave(filename=paste0(ROOT_export_graph,"/max_previous_EXTS.png"),
        plot = Graph_Max_sampled_EXT,width=10,height = 6)
 
 Graph_relEpsi_previous_EXT<-plot_grid(Cums_compar3,LEGEND_3,
@@ -361,7 +362,7 @@ Graph_relEpsi_previous_EXT<-ggdraw()+
   draw_plot(Graph_relEpsi_previous_EXT)+
   theme(plot.background = element_rect(fill = "white", 
                                        color = NA))
-ggsave(filename=paste0("graphiques_MV/data/",G_used2,
+ggsave(filename=paste0(ROOT_export_graph,
                        "/rel_Epsi_previous_observation_EXTS.png"),
        plot = Graph_relEpsi_previous_EXT,width=10,height = 6)
 ```

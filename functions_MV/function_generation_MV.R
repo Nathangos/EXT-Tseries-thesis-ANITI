@@ -170,10 +170,10 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
 
   # (1) Import X(M-1) -----------------------------------------------------------
   ######
-  repertory<-"../ss_tend/"
-  if(type_donnees=="HIVER"){
-    repertory<-paste0(repertory,"HIVER/")
-  }
+  repertory<-"data_detrend_Winter/"
+  # if(type_donnees=="HIVER"){
+  #   repertory<-paste0(repertory,"HIVER/")
+  # }
   l_RiskF<-list()
   l_Orig<-lapply(Vect_VARtimes,
                     function(x){
@@ -211,11 +211,11 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
   for(name_variable in list_variable){
     if(name_variable=="U"){
       lien_donnees<-paste0(repertory,name_variable,
-                           "trunc_ss_tend.csv")
+                           "_trunc_detrend.csv")
       Donnes<-read.csv(file=lien_donnees)
       
     }else{
-      lien_donnees<-paste0(repertory,name_variable,"_ss_tend.csv")
+      lien_donnees<-paste0(repertory,name_variable,"_detrend.csv")
       Donnes<-read.csv(file=lien_donnees)
     }
     D<-ncol(Donnes)
@@ -408,7 +408,7 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
       draw_plot(rel_MV_epsi_previous)+
       theme(plot.background = element_rect(fill = "white",
                                            color = NA))
-    ggsave(filename=paste0("graphiques_MV/data/",Name_riskF,
+    ggsave(filename=paste0("Graphics_MV/data/",Name_riskF,
                            "/rel_Epsi_previous_observation.png"),
            plot = f_previous,width=10,height = 6)
 
@@ -661,10 +661,7 @@ K_fold_k_param<-function(hearts,f_distance,
     
     # (1) Import X(M-1) -----------------------------------------------------------
     ######
-    repertory<-"../ss_tend/"
-    if(type_donnees=="HIVER"){
-      repertory<-paste0(repertory,"HIVER/")
-    }
+    repertory<-"data_detrend_Winter/"
     l_Input<-list()
     l_output<-list()
     l_outputF_Epsi_Data<-list()
@@ -679,11 +676,11 @@ K_fold_k_param<-function(hearts,f_distance,
     for(name_variable in list_variable){
       if(name_variable=="U"){
         lien_donnees<-paste0(repertory,name_variable,
-                             "trunc_ss_tend.csv")
+                             "_trunc_detrend.csv")
         Donnes<-read.csv(file=lien_donnees)
         
       }else{
-        lien_donnees<-paste0(repertory,name_variable,"_ss_tend.csv")
+        lien_donnees<-paste0(repertory,name_variable,"_detrend.csv")
         Donnes<-read.csv(file=lien_donnees)
       }
       D<-ncol(Donnes)
