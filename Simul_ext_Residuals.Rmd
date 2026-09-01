@@ -58,14 +58,14 @@ source("Choice_auto_thresh/src/helper_functions.R")
 source("functions_MV/Fonctions_consistency.R")
 
 F_names<-ls()
-nb_coeurs<-detectCores()-4
+nb_heartsCPU<-detectCores()-4
 ```
 
 
 ```{r}
 # Ouverture des clusters --------------------------------------------------
-coeurs<-makeCluster(nb_coeurs)
-clusterExport(coeurs,varlist=F_names)
+heartsCPU<-makeCluster(nb_heartsCPU)
+clusterExport(heartsCPU,varlist=F_names)
 cols_<-c("data"="blue","simulations"="orange",
          "confidence_band"="darkblue",
          "model"="red","threshold"="red",
@@ -890,9 +890,9 @@ if(Launch_graph_conv){
                                     Melting_whole$eigen_index, 
                                     "]")
   Melting_whole$forcg_cond<-sapply(Melting_whole$forcg_cond,
-                                   FUN = function(x){
-                                     return(Fct_correct_name(x,target = "Surcote",
-                                                             replacement = "Surge"))
+             FUN = function(x){
+               return(Fct_correct_name(x,target = "Surcote",
+                     replacement = "Surge"))
                                    })
   COLORS_for_conv<-scale_fill_hue()$palette(length(l_name)+1)
   GG_conv_MV_Angle<-ggplot(Melting_whole)+
@@ -943,7 +943,7 @@ if(Launch_graph_conv){
     liste_MV_Orig = ALL_transf,l_name = l_name,
     vector_k =Vector_K2,
     Ref_RiskF = Riskf_data,
-    CPU_hearts = coeurs,center=CGPD)
+    CPU_hearts = heartsCPU,center=CGPD)
 }
 if(Launch_graph_conv){
 
@@ -1095,7 +1095,7 @@ if(Launch_graph_conv){
   Conf_band<-Extreme_cov_confevol(liste_MV_Orig = ALL_transf,
                       l_name = l_name,
                       vector_k =Vector_K2,Ref_RiskF = Riskf_data,
-                                  CPU_hearts = coeurs,center=CGPD,
+                                  CPU_hearts = heartsCPU,center=CGPD,
                                   Nboot = 500,alpha_param = 0.05)
   
   Conf_band$pair_vars<-sapply(Conf_band$pair_vars,
@@ -1172,7 +1172,7 @@ if(Launch_graph_conv){
     Df_Rad_Orig = Vect_l_function,
     l_name = l_name,
     vector_k = Vector_K2,
-    CPU_hearts = coeurs,
+    CPU_hearts = heartsCPU,
     Ref_RiskF = Riskf_data)
   
   Evol_Theta_ofRad_criterion$pair<-sapply(Evol_Theta_ofRad_criterion$pair,FUN = function(x){
@@ -1228,10 +1228,15 @@ re<-Simul_MV_residuals(result_transformation = Result_MV,
         Common_theme = COMMON_theme)
 ```
 
-```{r}
-FSIZE<-20
 
-for(Z in c(1:nrow(Combs))){
+
+```{r}
+listgg<-list()
+data_TH<-data.frame("Th_used"=qnorm(Qfound))
+FSIZE<-20
+Combs<-t(utils::combn(x = length(l_name),m = 2))
+if(!is.na(re$Vect_RiskF_transf)){
+  for(Z in c(1:nrow(Combs))){
   pair_Z<-Combs[Z,]
   Sub_vect<-re$Vect_RiskF_transf[,pair_Z]
   
@@ -1280,8 +1285,62 @@ for(Z in c(1:nrow(Combs))){
                       "Ad_NMargins_RiskF_",Z,".png"),
          plot = GG_AD_AI_Qtion,width = 8,
          height = 6)
+  }
+}
+
+```
+
+```{r}
+# Theta_found vs cost evolution ---------------------------------
+######
+model_used<-List_Params_RF[["name_model"]]
+theta<-re$Param_found
+if(Approach=="AD"){
+  if(model_used%in%c("log","hr")){
+    V_11<-2*evd::abvevd(x = (1/2),dep =theta,
+                        model =model_used)
+  }
+  if(model_used%in%c("ct","bilog")){
+    V_11<-2*evd::abvevd(x = (1/2),alpha = theta[1],
+                        beta = theta[2],
+                        model =model_used)
+  }
+  
+  Chi_estim<-2-V_11
+  print(paste0("The Chi would be around ", round(Chi_estim,2)))
+  png(paste0(Lg_path,"/",model_used,"_model_param_vs_data.png"),
+      height=800,width = 1000)
+  par(mfrow=c(1,2))
+  POT::chimeas(data = Result_MV$df,ask = FALSE,which = 1)
+  abline(h=Chi_estim,col="red")
+  abline(h=0,col="black")
+  POT::chimeas(data = Result_MV$df,ask = FALSE,which = 2)
+  par(mfrow=c(1,1))
+  dev.off()
+  
+  if(List_Params_RF[["name_RF"]]!="max"){
+    Excedents_lprime<-Vect_l_function[re$Indices_exts,]
+    Evol_cost<-function(theta_candidate){
+      Objective_function(theta = theta_candidate,
+                         weightFun = List_Params_RF[["weightFunction"]],
+                         dWeightFun = List_Params_RF[["dWeightFunction"]],
+                         Extreme_inds =as.list(as.data.frame(t(Excedents_lprime))) ,
+                         u = re$threshold,
+                         model_used = List_Params_RF[["name_model"]])
+      
+    }
+    vect_candidates<-seq.int(from = 0.6,to = 0.99,length.out = 20 )
+    Cost_evol<-sapply(vect_candidates,
+                      Evol_cost)
+    # Export evolution alpha --------------------------------------------------
+    png(file = paste0(ROOT_export,"evol_alpha_param.png"),
+        bg = "transparent")
+    plot(vect_candidates,Cost_evol,xlab="Param",ylab="Cost")
+    dev.off()
+  }
 }
 ```
+
 
 ```{r}
 # T--RiskF sim vs data ------------------
@@ -1305,7 +1364,7 @@ MMD_RFModel_vs_Obs<-eummd::meammd(X=Matrix_RiskF_sim,
                                      pval = TRUE)$pval
 MMD_RFModel_vs_Obs
 CRAMER_RiskF<-cramer::cramer.test(x = Matrix_RiskF_sim,
-                     y = Matrix_RiskF_ext)
+                     y = Matrix_RiskF_ext)$pval
 CRAMER_RiskF
 ### FRECHET scale
 list_RiskF_ext_FCHET<-lapply(re$Frechet_normal$obs,
@@ -1328,6 +1387,27 @@ CRAMER_RiskF_FCHET<-cramer::cramer.test(x = Matrix_RiskF_sim_FCHET,
                                   y = Matrix_RiskF_ext_FCHET)
 CRAMER_RiskF_FCHET$p.value
 ```
+
+```{r}
+# Summary of the results --------------------------------------------------
+Inds_exts<-re$Indices_exts
+
+### if you use EXTGPD, you must only take pos values-->
+if(METHOD_MGtransf!="_Mixt_transf_"){
+  Inds_exts<-Inds_dates_pos[Inds_exts]
+}
+### Max stat
+RF_data<-apply(X = Matrix_RiskF_ext,MARGIN = 1,FUN = Risk_f)
+
+DF_inds_risk<-cbind.data.frame(RF_data,
+                               Inds_exts)
+colnames(DF_inds_risk)<-c("RiskF","indexes")
+#Export dates of extreme events ------------------------------------------
+write.csv(file=paste0(ROOT_export,
+      "ext_series_chosen_risks_",length(l_name),".csv"),
+          x = DF_inds_risk)
+```
+
 
 ```{r}
 # Model PCA coords -------------
@@ -1412,6 +1492,10 @@ for(jn in c(1:DFC)){
 
   }
 }
+
+
+```
+```{r}
 lU<-list()
 Nshown<-50
 Time_label<-"Time (hour) with respect to tidal peak"
@@ -1426,7 +1510,6 @@ for(Z in c(1:DFC)){
   Df_sim<-Root_sim[[Z]]
   #colnames(Df_sim)<-c(1:length(names(Df_sim)))
   INIT<-list_CumSum_Time[[Z]]
-  print(INIT)
   BEG<-INIT+1
   NCOL_FC<-ncol(Df_sim)
   END<-INIT+NCOL_FC
@@ -1570,8 +1653,8 @@ for(Z in c(1:DFC)){
   Theta_sim_whole<-cbind(Theta_sim_whole,
                          Theta_sim[1:M_shown,])
 }
-
 ```
+
 
 ```{r}
 LGD_exs<-plot_grid(LEGEND_exs)
@@ -1588,6 +1671,25 @@ ggsave(filename = paste0(Theta_path,"/exsOmega_simuls_",Approach,
        plot = f_OmegaEXS_export,width=10,height = 6)
 ```
 
+```{r}
+# Concatenating the angles ------------------------------------------------
+##########
+Omega_whole<-melt(t(Theta_data_whole))
+colnames(Omega_whole)<-c("time","index","value")
+Omega_whole$index<-as.character(Omega_whole$index)
+Omega_whole$index_num<-rep(1,nrow(Omega_whole))
+Rult<-Omega_whole %>% group_by(index) %>% 
+  summarise(new_time=cumsum(index_num))
+
+GG_Omega_WHOLE<-Fct_cplmt_ggplot(Times_available=Times_available,
+            vect_name_variable  =l_name ,Melting_df = Omega_whole,
+            option_facet_wrap = FALSE)
+GG_Omega_WHOLE
+ggsave(filename = paste0(Theta_path,"/Target_Angle_MV_d=",length(l_name),
+                         ".png"),
+       plot = GG_Omega_WHOLE,
+       width=8,height=6)
+```
 
 ```{r}
 # Export ------------------------------------------------------------------
@@ -1605,345 +1707,139 @@ for(nameV in l_name){
 }
 ```
 
-```{r}
-
-U_sim_frech<-re$Frechet_normal$simul[[l_name[[1]]]]
-U_obs_frech<-re$Frechet_normal$obs[[l_name[[1]]]]
-
-Obj_sim<-matrix(NA,nrow = nrow(U_sim_frech),
-                ncol = ncol(U_sim_frech)*length(l_name))
-Obj_data<-matrix(NA,nrow = nrow(U_obs_frech),
-                 ncol = ncol(U_obs_frech)*length(l_name))
-
-Root_sim<-re$Frechet_normal$simul
-Root_data<-re$Frechet_normal$obs
-List_RiskF<-list()
-List_RiskF_data<-list()
-Z<-0
-for(name in l_name){
-  Deb<-Z*ncol(U_sim_frech)+1
-  END<-(Z+1)*ncol(U_sim_frech)
-  Df_sim<-Root_sim[[Z+1]]
-  L2_sim<-apply(Df_sim,MARGIN = 1,FUN = calcul_norm_L2)
-  List_RiskF[[name]]<-L2_sim
-  Theta_sim<-t(t(Df_sim)%*%diag(L2_sim^(-1)))
-  Obj_sim[,c(Deb:END)]<-Theta_sim
-  rood<-Root_data[[Z+1]]
-  colnames(rood)<-c(1:length(names(rood)))
-  Df_data<-as.matrix(rood)
-  L2_data<-apply(Df_data,MARGIN = 1,FUN = calcul_norm_L2)
-  List_RiskF_data[[name]]<-L2_data
-  Theta_data<-t(t(Df_data)%*%diag(L2_data^(-1)))
-  Obj_data[,c(Deb:END)]<-Theta_data
-  Z<-Z+1
-  M_shown<-50
-  Filename_omega<-paste0(ROOT_export_graph,"Theta/",name,"/",
-                         paste0("Omega_sim_vs_obs_",name,".png"))
-  Min_y<-min(c(apply(Theta_data,MARGIN = 2,FUN = min),
-               apply(Theta_sim,MARGIN = 2,FUN = min)))
-  Max_y<-max(c(apply(Theta_data,MARGIN = 2,FUN = max),
-               apply(Theta_sim,MARGIN = 2,FUN = max)))
-  png(filename =  Filename_omega,width=1400,
-      height=500)
-  par(mfrow=c(1,2))
-  matplot(t(Theta_data[1:M_shown,]),type="l",
-          xlab="Index",ylim=c(Min_y,Max_y),
-          ylab="value (-)",cex.lab=1.5)
-  matplot(t(Theta_sim[1:M_shown,]),type="l",
-          ylim=c(Min_y,Max_y),xlab="Index",
-          ylab=NA,cex.lab=1.5)
-  par(mfrow=c(1,1))
-  dev.off()
-}
-
-
-```
-
 
 ```{r}
-# ### Riskf
-summary(List_RiskF_data[[1]])
-summary(List_RiskF[[1]])
-
-z<-1
-summary(List_RiskF_data[[z]])
-summary(List_RiskF[[z]])
-Model<-re$model_EGPD[[l_name[z]]]
-Inds_max<-which.max(List_RiskF[[z]])
-
-Vect_max<-c(List_RiskF[[1]][Inds_max],
-            List_RiskF[[2]][Inds_max])
-Ind_max_data<-which.max(List_RiskF_data[[z]])
-plot(List_RiskF_data[[1]],
-     List_RiskF_data[[2]],log="xy")
-vectcb<-c(List_RiskF_data[[1]][Ind_max_data],
-          List_RiskF_data[[2]][Ind_max_data])
-points(vectcb[1],vectcb[2],col="red")
-points(Vect_max[1],Vect_max[2],col="blue")
-
-plot(List_RiskF[[1]],
-     List_RiskF[[2]],log="xy")
-points(List_RiskF_data[[1]],
-     List_RiskF_data[[2]],log="xy",
-     col="red")
-### Export Theta for future analysis 
-#######
-write.csv(file=paste0(ROOT_export,"log=",USE_log,"_Theta_data.csv"),
+# Export of Theta objects ------------------------
+###########################
+write.csv(file=paste0(ROOT_export,"log=",USE_log,
+                    "_Theta_data_",length(l_name),".csv"),
           x = Obj_data)
-write.csv(file=paste0(ROOT_export,"log=",USE_log,"_Theta_sim.csv"),
+write.csv(file=paste0(ROOT_export,"log=",USE_log,
+            "_Theta_sim_",length(l_name),".csv"),
           x = Obj_sim)
 
 ```
 
 ```{r}
-### RiskF analysis
-var_used<-"Surcote"
-data_rj<-List_RiskF_data[[var_used]]
-sim_rj<-List_RiskF[[var_used]]
-print(summary(data_rj))
-print(summary(sim_rj))
+# Kokozka correlation criterion -----------------------------------------------------------------
+#########
+Run_Kzka_test<-FALSE
 
-var_used<-"Hs"
-data_rj<-List_RiskF_data[[var_used]]
-sim_rj<-List_RiskF[[var_used]]
-print(summary(data_rj))
-print(summary(sim_rj))
-
-# Evaluate the new expression
-list_pairs<-list("1"=c(1,37),
-                 "2"=c(1,19),
-                 "3"=c(19,56),
-                 "4"=c(38,56),
-                 "5"=c(56,74))
-Summary_pairs_Omega<-sapply(list_pairs,F_automatic_ggplot_marg_Omega,
-       Obj_sim=Obj_sim,Obj_data=Obj_data,
-       l_name=l_name,cols_ggplot=cols_)
-```
-
-
-```{r}
-mu_Theta<-apply(X = Obj_data,MARGIN = 2,FUN = mean)
-N_rep<-500
-B<-nrow(Obj_data)
-N_rep<-500
-lq<-c(0.05,0.50,0.95,0.975)
-Tend_Theta<-replicate(n =N_rep,expr = Resamples_trends(B = B,
-                                                        extremes_indus=Obj_data,list_Q =lq))
-
-Results_data<-sapply(X = lq,FUN = function(x,q){
-  return(apply(x,MARGIN = 2,FUN =function(x){return(quantile(x,q))}))},
-                     x=Obj_data)
-Results_sim<-sapply(X = lq,FUN = function(x,q){
-  return(apply(x,MARGIN = 2,FUN =function(x){return(quantile(x,q))}))},
-                    x=Obj_sim)
-
-bound_minus05<-apply(Tend_Theta[1,,],MARGIN = 1,
-                     FUN = function(x){return(quantile(x,0.025))})
-bound_plus05<-apply(Tend_Theta[1,,],MARGIN = 1,
-                    FUN = function(x){return(quantile(x,0.975))})
-
-##########
-bound_minus50<-apply(Tend_Theta[2,,],MARGIN = 1,
-                     FUN = function(x){return(quantile(x,0.025))})
-bound_plus50<-apply(Tend_Theta[2,,],MARGIN = 1,
-                    FUN = function(x){return(quantile(x,0.975))})
-
-########
-bound_minus95<-apply(Tend_Theta[3,,],MARGIN = 1,
-                     FUN = function(x){return(quantile(x,0.025))})
-bound_plus95<-apply(Tend_Theta[3,,],MARGIN = 1,
-                    FUN = function(x){return(quantile(x,0.975))})
-
-######
-bound_minus975<-apply(Tend_Theta[4,,],MARGIN = 1,
-                      FUN = function(x){return(quantile(x,0.025))})
-bound_plus975<-apply(Tend_Theta[4,,],MARGIN = 1,
-                     FUN = function(x){return(quantile(x,0.975))})
-matplot(t(re$simul[[l_name[1]]]),type="l")
-L2_s<-apply(X = re$simul[[l_name[1]]],MARGIN = 1,FUN = calcul_norm_L2)
-L2_U<-apply(X = re$simul[[l_name[2]]],MARGIN = 1,FUN = calcul_norm_L2)
-
-```
-
-
-```{r}
-# Graphics ----------------------------------------------------------------
-
-df<-cbind.data.frame(c(Results_data),
-                     c(bound_minus05,bound_minus50,
-                       bound_minus95,bound_minus975),
-                     c(bound_plus05,bound_plus50,
-                       bound_plus95,bound_plus975))
-colnames(df)<-c("estimator","bound_minus","bound_plus")
-
-df$estimator_simul<-c(Results_sim)
-df$Time<-rep(c(1:ncol(Obj_data)),4)
-df$percent<-c(rep("Q05",ncol(Obj_data)),
-              rep("Q50",ncol(Obj_data)),
-              rep("Q95",ncol(Obj_data)), 
-              rep("Q975",ncol(Obj_data)))
-df$Time
-First<-which(df$Time<=37)
-df_first<-df[First,]
-GG_percent<-ggplot(data=df_first,aes(x=Time,y=estimator,group=interaction(percent),col="data"))+
-  facet_wrap(~percent,scales="free_y")+
-  geom_line()+
-  geom_point()+
-  geom_ribbon(mapping = aes(ymin=bound_minus,ymax=bound_plus,col="confidence_band"),alpha=0.15,
-              fill="grey", linetype = "dashed")+
-  geom_line(aes(x=Time,y=estimator_simul,col="simulations"),linetype=2)+
-  theme(axis.title=element_text(size=25),
-        legend.text=element_text(size=14),
-        legend.title = element_text(size=15),
-        axis.text = element_text(size=12),
-        strip.text = element_text(size = 12))+
-  scale_color_manual(values=cols_)+
-  xlab("Time")+
-  labs(col="Legend")
-ggsave(plot = GG_percent,
-       filename = paste0(Theta_path,"/",l_name[1],"/",
-                    CPLMT_graph_theta,"_",METHOD_ANGLE,
-                         "_Percent_theta_",l_name[1],
-                         ".png"),
-       width=8,height = 6)
-
-Second<-which(df$Time>37)
-df_second<-df[Second,]
-GG_percent<-ggplot(data=df_second,aes(x=Time,y=estimator,group=interaction(percent),col="data"))+
-  facet_wrap(~percent,scales="free_y")+
-  geom_line()+
-  geom_point()+
-  geom_ribbon(mapping = aes(ymin=bound_minus,ymax=bound_plus,col="confidence_band"),alpha=0.15,
-              fill="grey", linetype = "dashed")+
-  geom_line(aes(x=Time,y=estimator_simul,col="simulations"),linetype=2)+
-  theme(axis.title=element_text(size=25),
-        legend.text=element_text(size=14),
-        legend.title = element_text(size=15),
-        axis.text = element_text(size=12),
-        strip.text = element_text(size = 12))+
-  scale_color_manual(values=cols_)+
-  xlab("Time")+
-  labs(col="Legend")
-ggsave(plot = GG_percent,
-       filename =paste0(Theta_path,"/",l_name[2],"/",CPLMT_graph_theta,"_",
-                        METHOD_ANGLE,"_Percent_theta_",l_name[2],
-                        ".png"),width=8,height = 6)
-
-
-
-```
-
-
-```{r}
-# Summary of the results --------------------------------------------------
-Riskmv<-re$Risk_MV
-Inds_exts<-re$Indices_exts
-### if you use EXTGPD, you must only take pos values-->
-Inds_exts<-Inds_dates_pos[Inds_exts]
-DF_inds_risk<-cbind.data.frame(Riskmv,
-                               Inds_exts)
-colnames(DF_inds_risk)<-c("RiskF","indexes")
-#Export dates of extreme events ------------------------------------------
-write.csv(file=paste0(ROOT_export,"ext_series_chosen_risks.csv"),
-          x = DF_inds_risk)
-
-L_extremes<-Vect_l_function[re$Indices_exts,]
-
-```
-
-
-```{r}
-
-# Kokozka -----------------------------------------------------------------
-########
-
-### Consistency results
 source("functions_MV/Fonctions_consistency.R")
 K<-length(re$Indices_exts)
-Extreme_cov_data<-Launch_extreme_cov_per_K(
-  liste_MV_Orig = ALL_transf,
-  l_name =l_name,
-  k = K,
-  vect_lg = Riskf_data)
-Nboot<-500
-Bootstrap_all_results<-t(replicate(n = Nboot,
-    Estimator_1boostrap_sample(list_obs_exts = re$Frechet_normal$obs,
-                            l_name = l_name,Thresh_lg = re$threshold)))
-Alpha_param<-0.05
-
-###Mean stat
-M_stat<-apply(X =Bootstrap_all_results,MARGIN = 2,
-              FUN = unlist)
-
-Bounds_data<-apply(X = M_stat,FUN=F_bounds_per_column,
-            MARGIN = 2,Alpha_q=Alpha_param)
-Extreme_cov_simul<-Estimator_rho_sig_knowing_K(indexes_used = c(1:N),
-                            l_name = l_name,L = 37,
-                            list_obs_exts = re$Frechet_normal$simul,
-                            d = 2,Thresh_lg = re$threshold)
-Bootstrap_all_results_simul<-t(replicate(n = Nboot,
-           Estimator_1boostrap_sample(
-                   list_obs_exts = re$Frechet_normal$simul,
-                   l_name = l_name,
-                   Thresh_lg = re$threshold) ))
-M_stat_simul<-apply(X =Bootstrap_all_results_simul,MARGIN = 2,
-              FUN = unlist)
-Bounds_simul<-apply(X = M_stat_simul,FUN=F_bounds_per_column,
-                   MARGIN = 2,Alpha_q=Alpha_param)
-
+if(Run_Kzka_test){
+  Extreme_cov_data<-Launch_extreme_cov_per_K(
+    liste_MV_Orig = ALL_transf,
+    l_name =l_name,k = K,
+    vect_lg = Riskf_data,center = CGPD)
+  Nboot<-500
+  
+  Obs_for_criterion<-re$Frechet_normal$obs
+  Simul_for_criterion<-re$Frechet_normal$simul
+  Bootstrap_all_results<-lapply(X=c(1:Nboot),
+                                function(x){
+            Estimator_1boostrap_sample(
+              list_obs_exts = Obs_for_criterion,
+              l_name = l_name,
+              Thresh_lg = Threshold_gamma_0,
+              CPU_hearts = heartsCPU,
+              center=CGPD)})
+  
+  Bootstrap_all_results_DF<-do.call(rbind.data.frame,
+                            Bootstrap_all_results)
+  colnames(Bootstrap_all_results_DF)<-c("k","sigXY","rhoXY","pair_vars")
+  Toconvert<-c("sigXY","k","rhoXY")
+  
+  Extreme_cov_data$pair_vars<-sapply(Extreme_cov_data$pair_vars,
+         FUN = function(x){
+           return(Fct_correct_name(x,target = "Surcote",
+                                   replacement = "Surge"))})
+  
+  Alpha_param<-0.05
+  Bootstrap_all_results_DF$pair_vars<-sapply(
+    Bootstrap_all_results_DF$pair_vars,
+                FUN = function(x){
+   return(Fct_correct_name(x = x,
+                           target = "Surcote",
+                           replacement = "Surge"))})
+  
+  ###### Mean stat
+  #################
+  Summarised<-melt(Bootstrap_all_results_DF[,c(2:4)])
+  
+  Bound_stats_obs<-Summarised %>% 
+    group_by(interaction(pair_vars,variable)) %>% 
+    summarise(bound_inf=quantile(value,Alpha_param/2),
+              bound_sup=quantile(value,1-(Alpha_param/2)),
+              statistic=variable,
+              pair_vars=pair_vars)
+  sub_extreme<-Extreme_cov_data[,c(2:4)]
+  summary_obs_exts<-melt(sub_extreme)
+  
+  ### Choice of the statistic
+  ################
+  Extreme_cov_simul<-Estimator_rho_sig_knowing_K(
+    list_inputs = re$Frechet_normal$simul,
+          Thresh_lg = Threshold_gamma_0,CPU_hearts = heartsCPU,
+          center=CGPD)
+  
+  Extreme_cov_simul$pair_vars<-sapply(Extreme_cov_simul$pair_vars,
+            FUN = function(x){
+              return(Fct_correct_name(x,target = "Surcote",
+                                      replacement = "Surge"))})
+  summary_coeff_simul<-melt(Extreme_cov_simul[,c(2:4)])
+  Key<-"sigXY"
+  sub_Bound_stats_obs<-Bound_stats_obs[which(Bound_stats_obs$statistic==Key),]
+  Summarised_sig<-Summarised[which(Summarised$variable==Key),]
+  GG_summary<-ggplot(Summarised_sig)+
+    facet_wrap(~pair_vars,scales="free")+
+    geom_density(aes(x = value),
+                 alpha=0.6,fill="blue")+
+    geom_vline(data = sub_Bound_stats_obs,
+               aes(xintercept = bound_inf,col="confidence_band")
+               ,linetype="dashed")+
+    geom_vline(data = sub_Bound_stats_obs,
+               aes(xintercept = bound_sup,col="confidence_band")
+               ,linetype="dashed")
+  
+  ### Add value from the simulated extreme time series
+  ####
+  summary_coeff_simul_sub<-summary_coeff_simul[which(summary_coeff_simul$variable==Key),]
+  summary_coeff_simul_sub
+  GG_corr_shape<-GG_summary+
+    geom_vline(data=summary_coeff_simul_sub,
+               aes(xintercept=value,col="simulations"))+
+    scale_color_manual(values=cols_)+
+    xlab("Statistic")+
+    COMMON_theme+
+    theme(legend.position="bottom")+
+    labs(col="Legend")
+  if(Key=="sigXY"){
+    EPPR_base<-expression(sigma[descrip]~"density")
+    EVAL_expr<-do.call("substitute", 
+            list(EPPR_base[[1]], 
+                 list(descrip ="kk'")))
+    GG_corr_shape<-GG_corr_shape+
+      ylab(EVAL_expr) 
+  }else{
+    EPPR_base<-expression(rho[descrip]~"density")
+    EVAL_expr<-do.call("substitute", 
+                       list(EPPR_base[[1]], 
+                            list(descrip ="kk'")))
+    GG_corr_shape<-GG_corr_shape+
+      ylab(EVAL_expr)
+  }
+  
+  ggsave(filename = paste0(Corr_path,"/",l_name[1],"_",
+                           l_name[2],"_d=",length(l_name),"_",
+                           Key,"_distribs.png"),
+         width=10,height=5,plot =GG_corr_shape)
+}
 ```
-
-```{r}
-df_comb<-rbind.data.frame(as.matrix(M_stat),
-                      as.matrix(M_stat_simul))
-head(df_comb)
-colnames(df_comb)<-c("V1","V2")
-df_comb$origin<-c(rep("data",nrow(M_stat)),
-              rep("simulations",nrow(M_stat_simul)))
-
-GG_sig<-ggplot(data = df_comb)+
-  geom_density(aes(x=V1,fill=origin),
-               alpha=0.6)+
-  xlab("Statistic")+
-  ylab(expression(sigma[XY]~"density"))+
-  scale_fill_manual(values=cols_)+
-  theme(axis.title = element_text(size=20),
-        axis.text = element_text(size=15),
-        legend.text = element_text(size=14),
-        legend.title = element_text(size=13))+
-  labs(fill="Legend")
-ggsave(filename = paste0(ROOT_export_graph,
-                         l_name[1],"_",
-                         l_name[2],"_sig_distribs.png"),
-       width=8,height=6,plot =GG_sig)
-GG_rho<-ggplot(data = df_comb)+
-  geom_density(aes(x=V2,fill=origin),
-               alpha=0.6)+
-  xlab("Statistic")+
-  ylab(expression(rho[XY]~"density"))+
-  scale_fill_manual(values=cols_)+
-  theme(axis.title = element_text(size=20),
-        axis.text = element_text(size=15),
-        legend.text = element_text(size=14),
-        legend.title = element_text(size=13))+
-  labs(fill="Legend")
-ggsave(filename = paste0(ROOT_export_graph,
-         l_name[1],"_",
-         l_name[2],"_rho_distribs.png"),
-       width=8,height=6,plot =GG_rho)
-
-Maxi<-apply(X = Result_MV$df,MARGIN = 1,FUN = max)
-inds_exts<-which(Maxi>re$threshold)
-z<-1
-marg_z<-Result_MV$df[inds_exts,z]
-
-
-```
-
 
 ```{r}
 #End of the code ----------------------------------------------------------------
 ###################
-stopCluster(coeurs)
+stopCluster(heartsCPU)
 ```
 
