@@ -2605,3 +2605,75 @@ CRAFt_plot_density_D<-function (x, data = NULL, nlevels = 11, levels = NULL, pro
   }
   invisible()
 }
+CRAFt_plot_BIC<-function (x, G = NULL, modelNames = NULL, symbols = NULL, colors = NULL, 
+                          xlab = NULL, ylab = "BIC", legendArgs = list(x = "bottomright", 
+                                                                       ncol = 2, cex = 1, inset = 0.01), 
+                          cex.lab.plot,cex.axis.plot,...) 
+{
+  args <- list(...)
+  if (is.null(xlab)) 
+    xlab <- "Number of components"
+  subset <- !is.null(attr(x, "initialization")$subset)
+  noise <- !is.null(attr(x, "initialization")$noise)
+  ret <- attr(x, "returnCodes") == -3
+  legendArgsDefault <- eval(formals(plot.mclustBIC)$legendArgs)
+  legendArgs <- append(as.list(legendArgs), legendArgsDefault)
+  legendArgs <- legendArgs[!duplicated(names(legendArgs))]
+  n <- ncol(x)
+  dnx <- dimnames(x)
+  x <- matrix(as.vector(x), ncol = n)
+  dimnames(x) <- dnx
+  if (is.null(modelNames)) 
+    modelNames <- dimnames(x)[[2]]
+  if (is.null(G)) 
+    G <- as.numeric(dimnames(x)[[1]])
+  if (is.null(symbols)) {
+    colNames <- dimnames(x)[[2]]
+    m <- length(modelNames)
+    if (is.null(colNames)) {
+      symbols <- if (m > 9) 
+        LETTERS[1:m]
+      else as.character(1:m)
+      names(symbols) <- modelNames
+    }
+    else {
+      symbols <- mclust.options("bicPlotSymbols")[modelNames]
+    }
+  }
+  if (is.null(colors)) {
+    colNames <- dimnames(x)[[2]]
+    if (is.null(colNames)) {
+      colors <- 1:m
+      names(colors) <- modelNames
+    }
+    else {
+      colors <- mclust.options("bicPlotColors")
+      if (!is.null(names(colors)) & !any(names(colors) == 
+                                         "")) 
+        colors <- colors[modelNames]
+    }
+  }
+  x <- x[, modelNames, drop = FALSE]
+  ylim <- if (is.null(args$ylim)) 
+    range(as.vector(x[!is.na(x)]))
+  else args$ylim
+  matplot(as.numeric(dnx[[1]]), x, type = "b", xaxt = "n", 
+          xlim = range(G), ylim = ylim, pch = symbols, col = colors, 
+          lty = 1, xlab = xlab, ylab = ylab, main = "",
+          cex.lab=cex.lab.plot,cex.axis=cex.axis.plot)
+  axis(side = 1, at = as.numeric(dnx[[1]]),
+       cex.axis=cex.axis.plot)
+  if (!is.null(legendArgs)) {
+    do.call("legend", c(list(legend = modelNames, col = colors, 
+                             pch = symbols), legendArgs))
+  }
+  invisible(symbols)
+}
+Launch_test<-function(BIC,cex.lab.plot,legendArgs,cex.axis.plot,...){
+  Sub_f<-function(CEX,LGD,CEX.AXIS,...){
+    CRAFt_plot_BIC(x = BIC,cex.lab.plot = CEX,
+                   legendArgs = LGD,cex.axis.plot = CEX.AXIS,...)
+  }
+  return(Sub_f(CEX=cex.lab.plot,LGD=legendArgs,
+               CEX.AXIS=cex.axis.plot))
+}

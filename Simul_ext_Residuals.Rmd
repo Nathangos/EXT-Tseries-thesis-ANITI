@@ -1323,8 +1323,8 @@ if(Approach=="AD"){
     Evol_cost<-function(theta_candidate){
       Objective_function(theta = theta_candidate,
                          weightFun = List_Params_RF[["weightFunction"]],
-                         dWeightFun = List_Params_RF[["dWeightFunction"]],
-                         Extreme_inds =as.list(as.data.frame(t(Excedents_lprime))) ,
+                  dWeightFun = List_Params_RF[["dWeightFunction"]],
+            Extreme_inds =as.list(as.data.frame(t(Excedents_lprime))) ,
                          u = re$threshold,
                          model_used = List_Params_RF[["name_model"]])
       
@@ -1402,6 +1402,7 @@ RF_data<-apply(X = Matrix_RiskF_ext,MARGIN = 1,FUN = Risk_f)
 DF_inds_risk<-cbind.data.frame(RF_data,
                                Inds_exts)
 colnames(DF_inds_risk)<-c("RiskF","indexes")
+
 #Export dates of extreme events ------------------------------------------
 write.csv(file=paste0(ROOT_export,
       "ext_series_chosen_risks_",length(l_name),".csv"),
@@ -1434,7 +1435,7 @@ if(METHOD_ANGLE=="GaussMixture"){
   objdens$parameters$mean <- objdens$parameters$mean[ D, 
                                                      , drop = FALSE]
   objdens$parameters$variance$d <-  D
-  objdens$parameters$variance$sigma <- objdens$parameters$variance$sigma[ D, 
+  objdens$parameters$variance$sigma <-objdens$parameters$variance$sigma[ D, 
                                                                           D, , drop = FALSE]
   
   objdens$data <- objdens$data[,  D, drop = FALSE]
@@ -1444,19 +1445,28 @@ if(METHOD_ANGLE=="GaussMixture"){
 }
 dev.off()
 
-# For thplot.Mclust()# For the PCA model, criterion to choose config ---------------------------
+```
+```{r}
 ###########
 Filename_Graph_criterion_config<-paste0(Theta_path,"/PCAconfig_",
                              METHOD_ANGLE,"_d=",
                              length(l_name),".png")
 png(filename = Filename_Graph_criterion_config,
-    width = 600,height = 600)
-if(METHOD_ANGLE=="GaussMixture"){
-  mclust::plot.densityMclust(re$Model_Coords,what="BIC")
-}
+    width = 700,height = 600)
+par(mar = c(9,6,2,1)+.1,xpd=TRUE)
+lGD_ARGS<-list(x="bottom",ncol=7,cex=1.5,
+               inset=-0.3,box.col = "white")
 
+if(METHOD_ANGLE=="GaussMixture"){
+  Launch_test(BIC = re$Model_Coords$BIC,
+              cex.lab.plot = 2.5,legendArgs = lGD_ARGS,
+              cex.axis.plot=1.5)
+  
+}
 dev.off()
+par(mar = c(5, 4, 4, 2) + 0.1)
 ```
+
 
 ```{r}
 # Gplots for the angular time series --------
