@@ -463,55 +463,6 @@ f_marginales_uniforme<-function(variable,p_u,n.dens){
   return(as.vector(vecteur_unif_decalage))
 }
 
-#' fonc_norm_inv
-#'
-#' @param variable : vector(float).
-#'
-#' @return Float. 
-#' @export
-#'
-#' @examples
-fonc_norm_inv<-function(variable){
-  vecteur_variable_transformee<-as.numeric(-(variable)^(-1))
-  valeur_norme<-calcul_norme_L2(vecteur_variable_transformee)
-  valeur_norme_geo<-(-1/valeur_norme)
-  return(valeur_norme_geo)
-}
-#' f_NWatson
-#'
-#' @param vecteur_x : vector(float). Time coordinates ("training" sample).
-#' @param x : float. The new input. 
-#' @param vecteur_y : vector(float). Output values ("training" sample)
-#' @param h : float. Bandwidth. 
-#'
-#' @return Float. Value of the Nadaraya-Watson estimator. 
-#' @export
-#'
-#' @examples
-f_NWatson<-function(vecteur_x,x,vecteur_y,h){
-  
-  numerateur<-sum(vecteur_y*dnorm((vecteur_x-x/h)))
-  denominateur<-sum(dnorm((vecteur_x-x)/h))
-  return(numerateur/denominateur)
-}
-#' f_lissage
-#'
-#' @param donnees 
-#' @param M : int. Number of replicas. 
-#' @param h : float. The value of the bandwidth. 
-#'
-#' @return Vector(float). Results from N-Watson estimator. 
-#' @export
-#'
-#' @examples
-f_lissage<-function(donnees,M,h){
-  
-  L<-length(donnees)
-  vecteur_x<-seq.int(from = 0,to=1,length.out = L)
-  echantillon_plus_fin<-seq.int(from=0,to=1,length.out = M)
-  nouvelles_donnees<-sapply(echantillon_plus_fin,FUN = f_NWatson,vecteur_x=vecteur_x,vecteur_y=donnees,h=h)
-  return(nouvelles_donnees)
-}
 fonc_Median_inv<-function(x){
   inverse<--1/x
   R<--1/median(inverse)
@@ -582,145 +533,6 @@ fonction_KSAD_GP<-function(echantillon,seuil){
 Generation_Pareto_std<-function(u_pareto){
   
   return(1/(1-u_pareto))
-}
-fnct_cov_par_temps<-function(t,s,f_variogram,f_sigma){
-  cov_ts<-(f_sigma(h=t)+f_sigma(h=s))-f_variogram(t=t,s=s)
-  return(cov_ts)
-}
-
-
-Generation_Sigma<-function(f_variogram,f_sigma,Vecteur_temps){
-  L<-length(Vecteur_temps)
-  vecteur_zero<-rep(0,L*L)
-  Matrice_cov_moitie<-matrix(vecteur_zero,byrow = TRUE,nrow=L)
-  for(j in 1:L){
-    vecteur_autres_temps<-Vecteur_temps[c(1:j)]
-    Ligne<-sapply(vecteur_autres_temps,FUN=fnct_cov_par_temps,f_variogram=f_variogram,f_sigma=f_sigma,s=Vecteur_temps[j])
-    Matrice_cov_moitie[j,c(1:j)]<-Ligne    
-  }
-  Matrice_cov_reste<-t(Matrice_cov_moitie)
-  Matrice_cov<-Matrice_cov_moitie+Matrice_cov_reste
-  diag(Matrice_cov)<-diag(Matrice_cov)/2
-  return(Matrice_cov)
-}
-Trajectoire_gp<-function(f_variogram,f_sigma,Vecteur_temps,nb,Parametres){
-  coord <- Vecteur_temps
-  Sigma<-Generation_Sigma(f_variogram = f_variogram,f_sigma=f_sigma,Vecteur_temps = Vecteur_temps)
-  Sigma_racine_caree<-chol(Sigma)
-  Realisations_GP<-mvtnorm::rmvnorm(n=nb,sigma = Sigma,method="chol")
-  return(Realisations_GP)
-}
-Log_norm_transf<-function(une_traject_GP,f_sigma,param_alpha,Vecteur_temps){
-  liste_sigma<-sapply(Vecteur_temps,f_sigma)
-  log_norm_process<-exp((1/param_alpha)*(une_traject_GP-(liste_sigma)))
-  return(log_norm_process)
-}
-
-# Produce conditional simul of BR--simul of standard residuals -----------------------------------------
-#' fonction_simul_BR_accept_reject
-#'
-#' @param NB_BR : desired number of simulations
-#' @param modele_BR : output of fitmaxstab for the BR model
-#' @param seuil_Frech : threshold used to identify extreme residuals 
-#'
-#' @return Df of standard residuals.
-#' @export
-#'
-#' @examples
-fonction_simul_BR_accept_reject<-function(NB_BR,modele_BR,seuil_Frech){
-  J<-0
-  Sorties<-matrix(NA,nrow = NB_BR,ncol = 37)
-  deb<-1
-  while(J<NB_BR){
-    Simul<-SpatialExtremes::rmaxstab(NB_BR-J,Locations,cov.mod="brown",
-                                     range=modele_BR$param[1], 
-                                     smooth=modele_BR$param[2])
-    L2<-apply(X = Simul,MARGIN = 1,FUN = calcul_norme_L2)
-    inds_taken<-which(L2<seuil_Frech)
-    end<-length(inds_taken)+deb-1
-    indices_base<-c(deb:end)
-    Sorties[indices_base,]<-Simul[inds_taken,]
-    deb<-end+1
-    J<-end
-  }
-  return(Sorties)
-}
-
-Trajectoire_log_norm<-function(f_variogram,f_sigma,Vecteur_temps,nb,alpha){
-  GP<-Trajectoire_gp(f_variogram=f_variogram,Vecteur_temps=Vecteur_temps,nb=nb,f_sigma=f_sigma)
-  LOG_Norm_Ensemble<-apply(GP,MARGIN=1,FUN =Log_norm_transf,f_sigma=f_sigma,param_alpha=alpha,Vecteur_temps=Vecteur_temps)
-  return(LOG_Norm_Ensemble)
-}
-#' Procedure_MHastings
-#'
-#' @param echantillons_log_norm : Dataframe. Trajectoires d'un processus log-normal.
-#' @param Longueur_echantillon 
-#'
-#' @return list. M Processus de forme W/l(W). 
-#' @export
-#'
-#' @examples
-Procedure_MHastings<-function(echantillons_log_norm,Longueur_echantillon){
-  
-  L<-nrow(echantillons_log_norm)
-  liste_sigma_l<-list()
-  premiere_traject<-echantillons_log_norm[1,]
-  premiere_norme<-calcul_norme_L2(premiere_traject)
-  liste_realisation_MH<-list()
-  liste_realisation_MH[[1]]<-premiere_traject
-  liste_lforme<-list()
-  liste_lforme[[1]]<-(premiere_traject/premiere_norme)
-  Q<-c()
-  Moy_Moy<-c()
-  Moy_Max<-c()
-  for(i in (2:L)){
-    passe<-(i-1)
-    #MH a verifier. L'expression est différente de ce qu'on voit d'habitude. 
-    rapport<-(calcul_norme_L2(echantillons_log_norm[i,])/calcul_norme_L2(series = liste_realisation_MH[[passe]]))
-    p_n<-min(rapport,1)
-    if(p_n==1){
-      U1<-1
-    }
-    else{
-      u<-runif(n = 1)
-      U1<-as.numeric(u<=p_n)
-    }
-    if(U1==0){
-      Q<-c(Q,0)
-      trajectoire_conservee<-liste_realisation_MH[[passe]]
-    }
-    else{
-      Q<-c(Q,1)
-      trajectoire_conservee<-echantillons_log_norm[i,]
-    }
-    Norme<-calcul_norme_L2(trajectoire_conservee)
-    liste_realisation_MH[[i]]<-trajectoire_conservee
-    candidat_theta<-(trajectoire_conservee/Norme)
-    Moy<-mean(candidat_theta)
-    Max_conv<-max(candidat_theta)
-    Moy_Max<-c(Moy_Max,Max_conv)
-    Moy_Moy<-c(Moy_Moy,Moy)
-    liste_lforme[[i]]<-candidat_theta
-  }
-  # graphique convergence ---------------------------------------------------
-  plot(cummean(Q),type="l",xlab="Iteration",ylab="Moyenne cumulee",main=paste0("Evolution de la probabilité d'acceptation pour ",L," simulations"))
-  plot(cummean(Moy_Moy),type="l",xlab="Iteration",ylab="Moyenne cumulee",main=paste0("Evolution du niveau moyen pour ",L," simulations" ))
-  plot(cummean(Moy_Max),type="l",xlab="Iteration",ylab="Moyenne cumulee",main=paste0("Evolution du maximum pour ",L," simulations"))
-  indices_pris<-(L-Longueur_echantillon)+1
-  indice_fin<-L
-  return(liste_lforme[c(indices_pris:indice_fin)])
-}
-
-variogram_alpha_lambda<-function(ALPHA,lambda,t,s){
-  h<-(t-s)
-  rapport<-(abs(h)/lambda)
-  semi_vario<-rapport^(ALPHA)
-  return(semi_vario)
-}
-sigma_alpha_lambda<-function(ALPHA,lambda,t){
-  rapport<-(t/lambda)
-  semi_vario<-rapport^(ALPHA)
-  return(semi_vario)
 }
 
 estim_Pearson_tidal_cycle<-function(Matrice_couples,individus_select,type_corr){
@@ -915,11 +727,7 @@ graphique_qlog<-function(series_base,series_simulations,nom_variable,debut_prop,
   upper<-obj_qqplot$qdata$upper
   lower<-obj_qqplot$qdata$lower
   indices<-which((is.na(lower)==FALSE)&(is.na(upper)==FALSE))
-  # probabilites autre base. 
-  
-  # f_emp<-ecdf(x =series_simulations)
-  # P<-sort(f_emp(series_simulations))
-  # ind_tronc<-which(P>=debut_prop)
+
   estimateur<-as.numeric(quantile(debut,probabilites))
   up_quantile<-as.numeric(quantile(upper[indices],probabilites))
   low_quantile<-as.numeric(quantile(lower[indices],probabilites))
@@ -1292,26 +1100,6 @@ Fonction_ext_bivariee<-function(s,t,quantiles_seuil,observations,
   return(modele_bv)
 }
 
-#' Title
-#'
-#' @param Number_realisations : number of jumps to do.
-#' @param lambda : parameter of the exponential law.
-#' @param number_years : integer. Number of years in the original dataframe
-#'
-#' @return
-#' @export
-#'
-#' @examples
-Generator_PP_wake_up<-function(Number_realisations,lambda){
-  Times_jump<-rep(NA,Number_realisations)
-  for(j in c(1:Number_realisations)){
-    # A(x,y)=0 when y>x+1 so only one possibility -----------------------------
-    time_jump_j<-rexp(n =1,rate=lambda)
-    # Moment of the jth jump --------------------------------------------------
-    Times_jump[j]<-time_jump_j
-  }
-  return(cumsum(Times_jump))
-}
 fnct_jump_adapt_value<-function(estims_modele,series_values,NYear){
   Temps<-c()
   Longueur<-length(series_values)
@@ -1325,58 +1113,6 @@ fnct_jump_adapt_value<-function(estims_modele,series_values,NYear){
   return(Temps)
 }
 
-#' fonction_simul_HTawn
-#'
-#' @param x : premiere coordonnee.
-#' @param y : seconde coordonnee. 
-#' @param seuil_x : seuil pour x.  
-#' @param seuil_y : seuil pour y. 
-#' @param vecteur_x_reg : nouvelles valeurs pour regression (HTawn)
-#'
-#' @return
-#' @export
-#'
-#' @examples
-fonction_simul_HTawn<-function(x,y,seuil_x,seuil_y,vecteur_x_reg){
-  
-  P_u<-mean(as.numeric(x<seuil_x))
-  P_seuil_Y<-mean(as.numeric(y<seuil_y))
-  modele_texmex<-texmex::mex(cbind(x,y),which = 1,mth = c(seuil_x,seuil_y))
-  noms_liste<-names(modele_texmex$margins$models)
-  params_Y0<-modele_texmex$margins$models$y$par
-  sigma_Y0<-exp(params_Y0[1])
-  gamma_Y0<-params_Y0[2]
-  
-  params_epsi<-modele_texmex$margins$models$x$par
-  sigma_epsi<-exp(params_epsi[1])
-  gamma_epsi<-params_epsi[2]
-  simul_epsi_realisations<-1-(1-P_u)*texmex::pgpd(q =vecteur_x_reg,sigma = sigma_epsi, 
-                                                  xi = gamma_epsi, u = seuil_x, 
-                                                  lower.tail = FALSE)
-  Laplace_epsi<-modele_texmex$dependence$margins$p2q(simul_epsi_realisations)
-  Errors<-modele_texmex$dependence$Z
-  Sample_inds<-sample(1:length(Errors),size = length(vecteur_x_reg), 
-                      replace = TRUE)
-  Errors_sampled<-Errors[Sample_inds,]
-  a_estim<-modele_texmex$dependence$coefficients[1]
-  b_estim<-modele_texmex$dependence$coefficients[2]
-  Pred_Laplace_Y<-a_estim*(Laplace_epsi)+(Laplace_epsi^b_estim)*Errors_sampled
-  Pred_Unif_Y<-modele_texmex$dependence$margins$q2p(Pred_Laplace_Y)
-  # Deux cas : au-dessus ou en dessous du seuil -----------------------------
-  indices_non_ext_YO<-which(Pred_Unif_Y<P_seuil_Y)
-  indices_ext_Y0<-which(Pred_Unif_Y>=P_seuil_Y)
-  Tirage_non_ext<-quantile(y,
-                           Pred_Unif_Y[indices_non_ext_YO])
-  poids_queue<-(1-P_seuil_Y)
-  Q<-(Pred_Unif_Y[indices_ext_Y0]-P_seuil_Y)/poids_queue
-  Tirage_ext<-qgp_craft(x =Q, 
-                        sigma = sigma_Y0, 
-                        xi = gamma_Y0)+seuil_y
-  value_predicted<-rep(NA,length(vecteur_x_reg))
-  value_predicted[indices_non_ext_YO]<-Tirage_non_ext
-  value_predicted[indices_ext_Y0]<-Tirage_ext
-  return(value_predicted)
-}
 
 Analyse_seuil_GPD<-function(dates_prises,donnees,fonction_seuil,n.dens,nom,
                             type_entree,j_show){
@@ -2080,9 +1816,7 @@ RL_ggplot<-function(series,seuil,period_years,NPY,titre,
   GG_RL<-GG_RL+
     scale_x_continuous(transform="log")+
     labs(colour="Legend")
-  #ggtitle(paste0(titre, " (log-log plot)"))
-  #,caption=phrase_caption
-  
+
   if(is.null(cols_ggplot)==FALSE){
     GG_RL<-GG_RL+
       scale_color_manual(values=cols_ggplot)
@@ -2153,15 +1887,6 @@ RL_ggplot_boot_opitz<-function(series,seuil,period_years,NPY,titre,
       scale_color_manual(values=cols_ggplot)
   }
   print(GG_RL)
-}
-Simul_from_MixtureGauss<-function(Object_dens_clust){
-  Params<-Object_dens_clust$parameters
-  Tau_k<-Params$pro
-  ind_cl<-sample(c(1:length(Tau_k)),prob = Tau_k,size = 1)
-  Mu_k<-Params$mean[,ind_cl]
-  Sigma_k<-as.matrix(Params$variance$sigma[,,ind_cl])
-  MV_gauss<-mvtnorm::rmvnorm(n = 1,mean=Mu_k,sigma = Sigma_k )
-  return(MV_gauss)
 }
 estim_corr_tidal_cycle<-function(Matrix_couples,functional_inds,
                                  type_corr){

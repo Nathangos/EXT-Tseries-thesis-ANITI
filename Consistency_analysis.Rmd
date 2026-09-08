@@ -1296,21 +1296,27 @@ L_info_export<-list("model"=opt_used,
                     "prefix"=Prefix,
                     "complement"=CPLMT)
 Summary_pairs<-parallel::parLapply(cl = heartsCPU,
-  list_summary,F_automatic_ggplot_marg,Path_EXT = Extremo_path,
-  Path_TREND = TEND_path ,l_unit=Unit_variable,risk_function=Risk_f,
+      
+                                          list_summary,F_automatic_ggplot_marg,
+      
+      Path_EXT = Extremo_path,Path_TREND = TEND_path,
+      
+      l_unit=Unit_variable,risk_function=Risk_f,
+      
       ind_var_cond=2,levels_used=Levels_for_RL,
+      
       L_obs=list_obs,L_simul=list_simul,
+      
       L_whole_obs=L_whole,cols=cols_,
+      
       hearts=heartsCPU,basis_functionGAM="tp",
+      
       n_sim=1000,list_info_export=L_info_export,
-  theme_common=COMMON_theme)
+      
+      theme_common=COMMON_theme)
 
 ```
 
-
-```{r}
-
-```
 
 ```{r}
 # DF_L2_simul<-as.data.frame(L_L2_simul)
@@ -1421,12 +1427,13 @@ for(nameV in names(list_simul)){
   Reals<-list_obs[[nameV]]
   Simuls<-list_simul[[nameV]]
   Time_found[[nameV]]<-rep(nameV,ncol(Simuls))
-  Lperfs_Y<-Running_perfs_ML(Base_simul = Simuls,Base_data = Reals, 
-                             hyp_param = H_Params, NB_times =NB_times,
-                        alpha_prop=ALPHA_PROP,K = K, 
-                             type_sampling = typeS,
-                      title_ROC =nameV,
-                             NB_shown_ROC = 20)
+  Lperfs_Y<-Running_perfs_ML(
+          Base_simul = Simuls,Base_data = Reals, 
+          hyp_param = H_Params, NB_times =NB_times,
+          alpha_prop=ALPHA_PROP,K = K, 
+          type_sampling = typeS,title_ROC =nameV,
+          NB_shown_ROC = 20)
+  
   New_df<-Lperfs_Y$df_for_graphics
   Cplmt<-rep(nameV,
              nrow(New_df))
