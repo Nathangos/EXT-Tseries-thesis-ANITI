@@ -297,10 +297,7 @@ function_ML_extRemes<-function(k,data_d,typeML="GP",NB_years=NULL){
   
   tryCatch(expr={
     r<-distillery::ci(theta_k,type = "parameter")
-    # formula is
-    # std_<-sqrt(inverse_hessian)[2,2]
-    # ga-qnorm(0.975)*std_
-    # ga+qnorm(0.975)*std_
+
     q_minus<-r[2,1]
     estimator<-r[2,2]
     q_plus<-r[2,3]
@@ -734,11 +731,7 @@ graphique_qlog<-function(series_base,series_simulations,nom_variable,debut_prop,
   Min_logy<-min(c(min(low_quantile),min(up_quantile),min(estimateur),min(series_simulations)))
   Max_logy<-max(c(max(low_quantile),max(up_quantile),max(estimateur),max(series_simulations)))
   series_simul2<-as.numeric(quantile(series_simulations,probabilites))
-  # plot(probabilites,estimateur,log="xy",type="o",ylab=paste0(nom_variable," (échelle log)"),ylim=c(Min_logy,Max_logy),main=paste0("QQplot de la ",nom_variable," (log-log)"),xlab="probabilité de non-dépassement",col=1)
-  # points(probs_trouvees,series_simul2,col=2,type="l")
-  # lines(probabilites,up_quantile,lty=2,col=3)
-  # lines(probabilites,low_quantile,lty=2,col=3)
-  # legend("topleft",legend = c("Observations","Bandes de confiance (KS)",paste0("Simulations (",origine_simul,")")),col = c(1,2,3),lty=c(1,1,2),title = "Variable",cex=0.8)
+
   resume<-list(probs=probabilites,"Percentile_95_KS"=up_quantile,"Percentile_5_KS"=low_quantile,"Simulations"=series_simul2,"estimateur_données"=estimateur,"origine"=origine_simul)
   return(resume)
 }
@@ -1100,18 +1093,6 @@ Fonction_ext_bivariee<-function(s,t,quantiles_seuil,observations,
   return(modele_bv)
 }
 
-fnct_jump_adapt_value<-function(estims_modele,series_values,NYear){
-  Temps<-c()
-  Longueur<-length(series_values)
-  while(length(Temps)!=Longueur){
-    liste_lambda<-sapply(series_values,function(x){(1+(estims_modele[[3]])*(x-estims_modele[[1]])/estims_modele[[2]])**(-1/estims_modele[[3]])})
-    temps_simul<-sapply(liste_lambda,function(x){return(rexp(1,rate=x))})
-    Temps<-c(Temps,min(temps_simul))
-    indice<-which(temps_simul==min(temps_simul))
-    series_values<-series_values[-indice]
-  }
-  return(Temps)
-}
 
 
 Analyse_seuil_GPD<-function(dates_prises,donnees,fonction_seuil,n.dens,nom,
