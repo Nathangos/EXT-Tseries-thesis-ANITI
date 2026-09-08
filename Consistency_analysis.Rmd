@@ -309,8 +309,6 @@ if(ANALYSIS_for_resid){
     colnames(df_combo)<-c("V1","V2")
     df_combo$Legend<-c(rep("data",nrow(Fich_1)),
                        rep("simulations",nrow(Fich_2)))
-    # cols_<-c("data"="blue","simulations"="orange",
-    #          "confidence_band"="darkblue")
     Lab_i<-expression("C"[index_i])
     Lab_i_eval<-do.call("substitute", list( Lab_i[[1]], 
             list(index_i =index_i)))
@@ -774,14 +772,16 @@ for(NV in L_nameV){
     P<-1-(npy*periods_years)^(-1)
     Y_graph_lim<-c(0.80*threshold,max(max(series_simul),
                                       max(series_t))*1.20)
-    GG_rel<-RL_ggplot_cond_ext(series = series_t,seuil = threshold,
-                               period_years = periods_years,
-                               NPY = npy,plus_simul = TRUE,
-                               series_simul = series_simul, 
-                               unit_used = Unit_variable[[NV]] , 
-                               nom_variable =NV,cols_ggplot = cols_, 
-                               ylim_opt = Y_graph_lim,alpha=0.05,
-                               Individus_exts=Indexes_exceed)$GG_plot
+    GG_rel<-RL_ggplot_cond_ext(series = series_t,
+         seuil = threshold,
+         period_years = periods_years,
+         NPY = npy,plus_simul = TRUE,
+         series_simul = series_simul, 
+         unit_used = Unit_variable[[NV]] , 
+         nom_variable =NV,cols_ggplot = cols_, 
+         ylim_opt = Y_graph_lim,alpha=0.05,
+         Individus_exts=Indexes_exceed)$GG_plot
+    
     LIST_GG_RL[[ind_t]]<-GG_rel
   }
   NB_divisions<-length(Times_avai)%/%2
@@ -1147,12 +1147,16 @@ cor.test(Data_RiskfF[,1],Data_RiskfF[,2]
 cor.test(Sim_RiskfF[,1],Sim_RiskfF[,2]
          ,method="kendall")
 
-MV_MMD_Laplace_RF<-eummd::mmd(X=Data_RiskfF,Y=Sim_RiskfF,
-                           kernel = "Laplacian",pval = TRUE)$pval
-MV_MMD_Gauss_RF<-eummd::mmd(X =Data_RiskfF,Y=Sim_RiskfF,
-                         kernel = "Gaussian",pval = TRUE)$pval
-MV_mmd_median_RF<-eummd::meammd(X =Data_RiskfF,Y=Sim_RiskfF,
-                             pval = TRUE)$pval
+MV_MMD_Laplace_RF<-eummd::mmd(
+  X=Data_RiskfF,Y=Sim_RiskfF,
+   kernel = "Laplacian",pval = TRUE)$pval
+
+MV_MMD_Gauss_RF<-eummd::mmd(
+  X =Data_RiskfF,Y=Sim_RiskfF,
+     kernel = "Gaussian",pval = TRUE)$pval
+MV_mmd_median_RF<-eummd::meammd(
+  X =Data_RiskfF,Y=Sim_RiskfF,
+      pval = TRUE)$pval
 MV_Cramer_RF<-cramer::cramer.test(Data_RiskfF,Sim_RiskfF)$p.value
 print("MV MMD test on RiskF")
 print(c(MV_MMD_Laplace_RF,MV_MMD_Gauss_RF,MV_mmd_median_RF))
@@ -1174,6 +1178,10 @@ if(D>2){
   Combn_rf<-matrix(c(1,2),nrow = 1,ncol = 2,byrow = TRUE)
 }
 INTERSECTION_cols<-intersect(names(DF_L2_simul),names(DF_L2_obs))
+
+
+```
+```{r}
 
 for(Z in c(1:nrow(Combn_rf))){
   Sub_comb<-Combn_rf[Z,]
@@ -1219,8 +1227,8 @@ for(Z in c(1:nrow(Combn_rf))){
       theme(legend.position = 'none')
   }
 }
-
 ```
+
 
 ```{r}
 ### Export distribution of Risk function --------------

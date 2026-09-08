@@ -138,9 +138,29 @@ Sample_level_correlation<-function(df1,df2,method_corr){
                    Intersect_times = Intersection_times)
   return(Values_obtained)
 }
+#' Cross_Extremo_MV_all
+#'
+#' @param list_simul list[str: dataframe]. Simulated multivariate
+#' time series where each value corresponds to the 
+#' measures of one variable. 
+#' @param list_reality list[str: dataframe]. Observed multivariate
+#' time series where each value corresponds to the 
+#' measures of one variable. 
+#' @param q_per_time vector[float]. Proportion of 
+#' extreme values.
+#' @param B int. Number of bootstrap samples to provide
+#' a confidence band
+#' @param list_names_VAR vector[string]. Variable names
+#'
+#' @return Dataframe. Evolution with the time lag 
+#' of the correlation coefficient for each pair of variables.
+#' @export
+#'
+#' @examples
 Cross_Extremo_MV_all<-function(list_simul,list_reality,
                                q_per_time,B,
                                list_names_VAR){
+  
   ### i,j equals
   d<-length(list_names_VAR)
   Full_indexes<- expand.grid(
@@ -177,33 +197,34 @@ Cross_Extremo_MV_all<-function(list_simul,list_reality,
     df_cross_extremo_ij$category<-rep(Name_pair,
                                       nrow(df_cross_extremo_ij))
     return(df_cross_extremo_ij)
-    # GG_gam_ij<-ggplot(data=df_cross_extremo_ij,
-    #        aes(x=time_d,y=val_data,col="data"))+
-    #   geom_point()+
-    #   geom_line()+
-    #   geom_point(aes(x=time_d,y=val_sim,
-    #                  col="simulations"),pch=2)+
-    #   geom_line(aes(x=time_d,y=val_sim,col="simulations"))+
-    #   geom_ribbon(mapping = aes(ymin=Qinf,ymax=Qsup,col="confidence_band"),
-    #               alpha=0.15,
-    #               fill="grey", linetype = "dashed")+
-    #   scale_color_manual(values = cols_)+
-    #   ylab(Ylab_value)+xlab("Lag h")+
-    #   labs(col="Legend")+
-    #   theme(axis.title=element_text(size=20),
-    #         legend.text=element_text(size=12),
-    #         legend.title = element_text(size=13),
-    #         axis.text = element_text(size=14))+
-    #   scale_linetype_manual("Legend",
-    #                         values=c("confidence_band"=2,
-    #                                  "mean"=5))
-    # return(GG_gam_ij)
+   
   },MARGIN = 1)
   ### Obtained_graphics
   return(All_C_extremo)
 }
+#' Cross_Extremo_MV_ij
+#'
+#' @param list_simul list[str: dataframe]. Simulated multivariate
+#' time series where each value corresponds to the 
+#' measures of one variable. 
+#' @param list_reality list[str: dataframe]. Observed multivariate
+#' time series where each value corresponds to the 
+#' measures of one variable. 
+#' @param name_cond string. First variable. 
+#' @param name_other string. Second variable. 
+#' @param q_per_time vector[float]. Proportion of 
+#' extreme values.
+#' @param B int. Number of bootstrap samples to provide
+#' a confidence band
+#'
+#' @return Dataframe. Evolution with the time lag 
+#' of the correlation coefficient. 
+#' @export
+#'
+#' @examples
 Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
                            q_per_time,B){
+  
   ### Obs
   Variable_reality_cond<-list_reality[[name_cond]]
   Variable_reality_other<-list_reality[[name_other]]
@@ -265,10 +286,10 @@ Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
   
   # Bootstrap confidence_intervals ------------------------------------------
   Boot_extremo_results<-replicate(n = B,Resampling_cross_extremo(vect_distances = vect_distances,
-                                       Matrix_pairs = Matrix_pairs,
-                                       var_cond = Variable_reality_cond,
-                                       var_other = Variable_reality_other,
-                                       l_Tau = list_Tau))
+                   Matrix_pairs = Matrix_pairs,
+                   var_cond = Variable_reality_cond,
+                   var_other = Variable_reality_other,
+                   l_Tau = list_Tau))
   Extremo_inf<-apply(X =Boot_extremo_results,MARGIN = 1,
                      FUN = function(x){return(quantile(x,0.025))})
   Extremo_sup<-apply(X =Boot_extremo_results,MARGIN = 1,
@@ -285,20 +306,38 @@ Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
   return(result_delta)
 }
 
+#' Resampling_cross_extremo
+#'
+#' @param vect_distances vector[float]. Distance 
+#' between time steps.
+#' @param Matrix_pairs List. Each possible
+#' time pairs.
+#' @param var_cond dataframe. Univariate time series
+#' for the first variable.
+#' @param var_other dataframe. Univariate time series
+#' for the other variable.
+#' @param l_Tau list. Each value corresponds to
+#' the vector of threshold values. 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Resampling_cross_extremo<-function(vect_distances,
                                    Matrix_pairs ,
                                    var_cond,
                                    var_other,
                                    l_Tau){
+  
   Inds_taken<-nrow(var_cond)
   Resample_indexes<-sample(1:Inds_taken,size = Inds_taken,
                            replace = TRUE)
   var_cond_alt<-var_cond[Resample_indexes,]
   var_other_alt<-var_other[Resample_indexes,]
   Cross_boot_extremo<-cross_extremogram(Matrix_pairs =Matrix_pairs,
-                                        var_cond = var_cond_alt,
-                                        var_other = var_other_alt,
-                                        l_Tau = l_Tau)
+                    var_cond = var_cond_alt,
+                    var_other = var_other_alt,
+                    l_Tau = l_Tau)
   df_extremo<-cbind.data.frame(vect_distances,Cross_boot_extremo)
   colnames(df_extremo)<-c("time_d","boot_extremo")
   result_delta_boot<-df_extremo %>% group_by(time_d) %>% summarise(val_boot=mean(boot_extremo))
@@ -310,9 +349,25 @@ F_bounds_per_column<-function(x,Alpha_q){
              c(Alpha_q/2,1-(Alpha_q/2)
              )))))
 }
+#' cross_extremogram
+#' @param Matrix_pairs List. Each possible
+#' time pairs.
+#' @param var_cond Dataframe. Univariate time series 
+#' for one variable.
+#' @param var_other Dataframe. Univariate time series 
+#' for the other variable.
+#' @param l_Tau list. Each value corresponds to
+#' the vector of threshold values. 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 cross_extremogram<-function(Matrix_pairs,var_cond,var_other,l_Tau){
+  
   PIST_empirique<-sapply(Matrix_pairs,FUN = cross_pi_s_t,
-                         var_cond=var_cond,var_other=var_other,l_Tau=l_Tau)
+                         var_cond=var_cond,
+                         var_other=var_other,l_Tau=l_Tau)
   return(PIST_empirique)
 }
 cross_pi_s_t<-function(couple_s_t,var_cond,var_other,l_Tau){
@@ -423,7 +478,7 @@ F_automatic_ggplot_marg_Omega<-function(Obj_data,
          plot = GG1,
          width=8,height=6)
 }
-#' Title
+#' F_automatic_ggplot_marg
 #'
 #' @param Obj_data: df. Concatenated time series. 
 #' @param Obj_sim: df. Simulated concatenated angles.
@@ -773,12 +828,35 @@ Bivariate_Qreg_simul_vs_obs<-function(l_name_time,Obs_ij,
   }
   return(list_gg)
 }
-
+#' Bivariate_RLevel_simul_vs_obs
+#'
+#' @param Obs_ij Matrix. Bivariate observed values.
+#' @param Simul_ij Matrix. Bivariate values from 
+#' simulated multivariate time series. 
+#' @param l_name_time list. Variable and 
+#' time step analysed.
+#' @param cols_ggplot vector. Colors used 
+#' in the ggplot used.
+#' @param l_unit vector[string]. Variable unit.
+#' @param levels_used Float. Level of the return curve.
+#' @param zeta_sim float. Modification of the 
+#' return period to consider the effect of 
+#' simulating specifically extreme time series.
+#' @param hearts object from the parallel package.
+#' @param sub_pos Boolean. Select the indexes of 
+#' positive values. 
+#' @param Nb_boot int. Number of bootstrap samples 
+#' to provide a confidence band.
+#'
+#' @return Ggplot object. 
+#' @export
+#'
+#' @examples
 Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
                              l_name_time,cols_ggplot,l_unit,
                                levels_used,zeta_sim,
-                          hearts,sub_pos=TRUE,
-                          Obs_ext_ij,Nb_boot){
+                          hearts,sub_pos=TRUE,Nb_boot){
+  
   if(sub_pos){
     ### Need to modify zeta if positive values are used.
     ### Use Bayes to retrieve link extremes/positive values
@@ -807,8 +885,6 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
                       qmarg = rep(0.95, 2),
                       constrainedshape = T)
   Curves_found<-lapply(levels_used,FUN = function(x){
-    # texmex::JointExceedanceCurve(Sample = Obs_ij,
-    #                      ExceedanceProb = x)
     rch<-ReturnCurves::rc_est(margdata = expdata, w = whill, 
            p = x, method = "hill",
            q = 0.95, constrained = F)
@@ -841,35 +917,7 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
                List_Unc)
   colnames(combined_df)<-c("t","s","level")
   combined_df$level<-as.character(combined_df$level)
-  
-  # return(list("Unc"=Unc,
-  #             "Curve"=Curves))
-  # return(list("Curves"=List_Curve,
-  #             "Unc"=List_Unc))
-  # Curves_found<-cbind.data.frame(Curves_found)
-  # All<-lapply(c(1:length(levels_used)),function(x){
-  #   df_j<-data.frame(Curves_found[[x]])
-  #   nj<-nrow(df_j)
-  #   name_j<-rep(levels_used[x],nj)
-  #   df_j$cl<-name_j
-  #   return(df_j)
-  # })
-  # combined_df <- do.call(rbind, All)
-  # colnames(combined_df)<-c("t","s","level")
-  # combined_df$level<-as.character(combined_df$level)
-  ### Bootstrap confidence regions
-  # Result_boot_confRegions<-replicate(,
-  #             Onesample_Bootstrap_Bivar_RL(Obs_t_s = Obs_ij,
-  #                                          levels_used = levels_used))
-  # Df_transf<-apply(X=Result_boot_confRegions,
-  #                  as.data.frame,MARGIN=2)
-  # m<-150
-  # vect_ind<-c(1:m)
-  # Theta_vector_target<-pi*(m+1-vect_ind)/(2*(m+1))
-  # Rult<-lapply(Theta_vector_target,Candidates_per_theta,
-  #              list_boot_samples=Df_transf,
-  #              hearts=hearts)
-  # Bounds_for_graph<-do.call(rbind.data.frame,Rult)
+
   colnames(Bounds_for_graph)<-c("level","t","s","bounds")
   Bounds_for_graph$level<-paste0("rho==",
                           as.character(Bounds_for_graph$level))
@@ -897,26 +945,14 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   ### Curves for simulated
   ### consider formula of total probs.
   levels_used_for_sim<-levels_used/zeta_sim
-  # expsim<-ReturnCurves::margtransf(data = Simul_ij, 
-  #                          qmarg = rep(0.95, 2),
-  #                          constrainedshape = T)
   Curves_found_SIM<-lapply(levels_used_for_sim,
     FUN = function(x){
-    JCsim<-texmex::JointExceedanceCurve(Sample = Simul_ij,
-                                 ExceedanceProb = x)
+    JCsim<-texmex::JointExceedanceCurve(
+                  Sample = Simul_ij,
+                  ExceedanceProb = x)
     return(JCsim)
-    # rch_sim<-ReturnCurves::rc_est(margdata = expsim, 
-    #                 w = whill, 
-    #                 p = x, method = "hill",
-    #                 q = 0.95, constrained = F)
-    # rch_unc_sim<-ReturnCurves::rc_unc(rch_sim, 
-    #             nboot = 50, 
-    #              nangles = 150, 
-    #              alpha = 0.05)
-    # Curve_sim<-rch_unc_sim@retcurve@rc
+
   })
-  #Curves_found_SIM<-cbind.data.frame(Curves_found_SIM)
-  #print(Curves_found_SIM)
   All_sim<-lapply(c(1:length(levels_used)),function(x){
     df_j<-do.call(cbind.data.frame,Curves_found_SIM[[x]])
     nj<-nrow(df_j)
@@ -935,23 +971,12 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   Model_all <- mexAll(Obs_ij,mqu=0.7,dqu=rep(0.7,5))
   Simuls_from_tex_all <- mexMonteCarlo(nSample=5000,
                       mexList=Model_all)
-  # expCEV<-ReturnCurves::margtransf(data = Simuls_from_tex_all, 
-  #                        qmarg = rep(0.95, 2),
-  #                        constrainedshape = T)
   Curves_tex_<-lapply(levels_used,FUN = function(x){
     JRC_j<-texmex::JointExceedanceCurve(
       Sample = Simuls_from_tex_all,
        ExceedanceProb = x,
       which=c("V1","V2"))
-    # rch_CEV<-ReturnCurves::rc_est(margdata = expCEV,
-    #                 w = whill,
-    #                 p = x, method = "hill",
-    #                 q = 0.95, constrained = F)
-    # rch_unc_CEV<-ReturnCurves::rc_unc(rch_CEV,
-    #             nboot = 50,
-    #              nangles = 150,
-    #              alpha = 0.05)
-    # Curve_CEV<-rch_unc_CEV@retcurve@rc
+
     return(JRC_j)
   })
   hh<-lapply(Curves_tex_,FUN = function(x){
@@ -980,11 +1005,11 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   T1<-l_name_time[[N1]]
   T2<-l_name_time[[N2]]
   xlab_title<-do.call("substitute", list(exp_type[[1]], 
-                               list(t=T1,
-                                    x=N1_graph,v=l_unit[[N1]])))
+               list(t=T1,
+                    x=N1_graph,v=l_unit[[N1]])))
   ylab_title<-do.call("substitute", list(exp_type[[1]], 
-                               list(t=T2,
-                                    x=N2_graph,v=l_unit[[N2]])))
+               list(t=T2,
+                    x=N2_graph,v=l_unit[[N2]])))
   combined_df$level<-paste0("rho==",
                             combined_df$level)
   GG_BivRL_obs<-GG_BivRL_obs_with_Tawn+
@@ -1022,14 +1047,9 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
           legend.direction = "horizontal",
           strip.text=element_text(size=14))+
     scale_color_manual(values = cols_ggplot)
-  # return(list("dataObs"=combined_df,
-  #             "Bounds"=Bounds_for_graph,
-  #             "combi_sim"=combined_df_sim,
-  #             "obs"=Obs_ij,
-  #             "TEX"=combined_df_TEX)
-  # )
   return(GG_BivRL_obs)
 }
+
 Onesample_Bootstrap_Bivar_RL<-function(Obs_t_s,levels_used){
   Inds_t_s<-sample(x = c(1:nrow(Obs_t_s)),size = nrow(Obs_t_s),
                    replace = TRUE)
