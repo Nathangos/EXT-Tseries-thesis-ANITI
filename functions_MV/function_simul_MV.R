@@ -1,4 +1,17 @@
+#' Fct_correct_name
+#'
+#' @param x str. Vector to modify.
+#' @param target string. Element to
+#' replace in the vector.
+#' @param replacement string. Element to use
+#' as a replacement.
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Fct_correct_name<-function(x,target,replacement){
+  
   require(stringr)
   b<-as.numeric(str_locate(x,target))
   S<-sum((is.na(b)))
@@ -12,6 +25,31 @@ Fct_correct_name<-function(x,target,replacement){
     return(x_new)
   }
 }
+#' plot_Acf_modif
+#'
+#' @param x 
+#' @param ci 
+#' @param type 
+#' @param xlab 
+#' @param ylab 
+#' @param ylim 
+#' @param main 
+#' @param ci.col 
+#' @param ci.type 
+#' @param max.mfrow 
+#' @param ask 
+#' @param mar 
+#' @param oma 
+#' @param mgp 
+#' @param xpd 
+#' @param cex.main 
+#' @param verbose 
+#' @param ... 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 plot_Acf_modif<-function (x, ci = 0.95, type = "h", xlab = "Lag", ylab = NULL, 
                           ylim = NULL, main = NULL, ci.col = "blue", ci.type = c("white", 
                                                                                  "ma"), max.mfrow = 6, ask = Npgs > 1 && dev.interactive(), 
@@ -20,6 +58,7 @@ plot_Acf_modif<-function (x, ci = 0.95, type = "h", xlab = "Lag", ylab = NULL,
                                                                                                                                        2) c(1.5, 0.6, 0) else par("mgp"), xpd = par("xpd"), 
                           cex.main = if (nser > 2) 1 else par("cex.main"), verbose = getOption("verbose"), 
                           ...){
+  
   ### plot.acf with the option to add CCF and ACF at diagonal 
   ### and CCF for the anti diagonal
   ci.type <- match.arg(ci.type)
@@ -28,9 +67,6 @@ plot_Acf_modif<-function (x, ci = 0.95, type = "h", xlab = "Lag", ylab = NULL,
   if (is.null(ylab)) 
     ylab <- switch(x$type, correlation = "ACF", covariance = "ACF (cov)", 
                    partial = "Partial ACF")
-  # %%||% paste("Series ", if (nser == 1L) 
-  #   x$series
-  #   else 1L:nser
   snames <- x$snames
   with.ci <- ci > 0 && x$type != "covariance"
   with.ci.ma <- with.ci && ci.type == "ma" && x$type == "correlation"
@@ -140,10 +176,26 @@ Create_list_fromALL<-function(l_name,obj_source){
   }
   return(list_toreturn)
 } 
+#' Choice_automatic_thresh_per_variable_time
+#'
+#' @param var_t vector[float]. Univariate
+#' values at each time step.
+#' @param nb_threshs int. Number of candidate threshold.
+#' @param q_min float. Minimum quantile level.  
+#' @param q_max float. Maximum quantile level.  
+#' @param plot_graph boolean (FALSE by default). 
+#' Ask the printing of the criterion plot
+#'
+#' @return list. Selected threshold and 
+#' ordered quantiles using the criterion.
+#' @export
+#'
+#' @examples
 Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs,
                                                     q_min,
                                                     q_max,
                                                     plot_graph){
+  
   #Original paper
   #qmin=0
   #qmax=0.95
@@ -167,9 +219,23 @@ Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs,
               "ordered_quantiles"=Ordered_qtiles_metric_derived)
          )
 }
+
+#' Choice_automatic_thresh_per_variable
+#'
+#' @param df dataframe[float]. Univariate time series
+#' @param nb_threshs int. Number of candidate threshold.
+#' @param Qmin float. Minimum quantile level.
+#' @param Qmax float. Maximum quantile level.  
+#' @param hearts Object from parallel package 
+#' to use parallel computations
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Choice_automatic_thresh_per_variable<-function(df,
                       nb_threshs,Qmin, Qmax,hearts){
-  #
+  
   return(parallel::parApply(cl = hearts,
           X = df,MARGIN = 2,FUN =
           Choice_automatic_thresh_per_variable_time,
@@ -179,23 +245,25 @@ Choice_automatic_thresh_per_variable<-function(df,
 
 #' MarTransfo_TS_exts_Mixture
 #'
-#' @param type_donnees 
-#' @param coeurs 
-#' @param lien_racine 
-#' @param liste_noms 
-#' @param file_dates 
-#' @param n.dens 
-#' @param opt_Frech 
-#' @param type_entree 
+#' @param CPU_hearts object from the parallel package. 
+#' Used to apply the parallel computation.
+#' @param lien_racine string. Link for 
+#' the import for the time series measures.
+#' @param liste_noms vector[str]. Vector of variable names.
+#' @param file_dates string. Link for the import
+#' of date vector.
+#' @param n.dens int. Parameter of the 
+#' KdE estimate of the bulk of the marginal distributions
+#' @param opt_Frech Boolean. Type of marginal 
+#' transformation (Frechet or GPD)
 #'
 #' @return
 #' @export
 #'
 #' @examples
-MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
+MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,liste_noms,
                                      file_dates,n.dens,
-                                     opt_Frech,type_entree,
-                                     Nb_Threshs,CPU_hearts){
+                                     opt_Frech,Nb_Threshs,CPU_hearts){
   p_U<-list()
   l_Orig<-list()
   j<-1
@@ -208,15 +276,7 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
     ### Add d to prevent contamination problems.
     lien_donnees<-paste0(lien_racine,name_variable,"_residuals_",
                          d,".csv")
-    if(type_entree=="clust"){
-      All<-read.csv(file=lien_donnees)
-      colnames(All)<-c(1:38)
-      Vrais_indices<-All[,38]
-      Donnes<-All[,c(1:37)]
-    }
-    else{
-      Donnes<-read.csv(file=lien_donnees)
-    }
+    Donnes<-read.csv(file=lien_donnees)
     l_Orig[[name_variable]]<-Donnes
     dates_import<-read.csv(file=file_dates)[,2]
     d_POIXCT<-as.POSIXct(dates_import, format="%d/%m/%Y")
@@ -248,30 +308,13 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
                 })
 
     p_U[[name_variable]]<-p_uOpt
-    # AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,
-    #                           fonction_seuil = p_U[[name_variable]],n.dens = n.dens,
-    #                           nom=name_variable,type_entree=type_entree,
-    #                           dates_prises=dates_import,j_show = 19)
-    # l_AD[[name_variable]]<-AN_GPD
-    if(type_entree=="donnees_brutes"){
-      return(TRUE)
-    }
     Vecteur_DIM<-c(1:ncol(Donnes))
     ### Own code
     Resultat_P<-as.data.frame(t(sapply(Vecteur_DIM,
                   f_marginales_all_Pareto,data_to_tf=Donnes,
                      p_u=p_uOpt,
                     n.dens=n.dens)))
-    # Donnes2<-(Donnes)
-    # return(list("ddd"=Donnes,
-    #             "pu_"=p_U_variable))
-    # MARGTransf<-RC_emp_transf(data_obs = Donnes,p_U_variable)
-    
-    # L<-nrow(KDENS[[1]])
-    # Time_pst<-sapply(colnames(Vtransf),
-    #                  FUN = function(t){
-    #                    return(rep(t,L))
-    #                  })
+
     
     PARETO<-Resultat_P$obs
     ### Unit Pareto
@@ -328,15 +371,39 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,liste_noms,
           "k_dens"=l_Kdens,
           "Transf"=l_Transf))
 }
+#' RC_emp_transf_per_time
+#'
+#' @param data_obs dataframe[float]. Univariate 
+#' time step.
+#' @param vect_pu vector[float]. Proportion of 
+#' extreme values for each time step. 
+#'
+#' @return Return Curve object.
+#' @export
+#'
+#' @examples
 RC_emp_transf<-function(data_obs,vect_pu){
+  
   Result_conversion_EXP<-lapply(c(1:ncol(data_obs)),function(x){
     return(RC_emp_transf_per_time(col_obs = data_obs[[x]],
                                   p_u = vect_pu[x]))
   })
   return(Result_conversion_EXP)
 }
+#' RC_emp_transf_per_time
+#'
+#' @param col_obs vector[float]. Univariate values at a given time 
+#' step
+#' @param p_u float. Proportion of extreme values. 
+#'
+#' @return Return Curve object.
+#' @export
+#'
+#' @examples
 RC_emp_transf_per_time<-function(col_obs,p_u){
-  return(ReturnCurves::margtransf(data = col_obs,qmarg = p_u))
+  
+  return(ReturnCurves::margtransf(data = col_obs,
+                                  qmarg = p_u))
 }
 
 fct_extract_Transf<-function(time_list){
@@ -366,7 +433,6 @@ Fct_cplmt_ggplot<-function(Times_available,vect_name_variable,Melting_df,
                            option_facet_wrap){
   
   Comment<-"Time(hour) with respect to tidal peak"
-  #Time_index<-(c(1:T)-19)/6
   d<-length(vect_name_variable)
   Time_index_MV<-c()
   Time_index_first<-c()
@@ -581,10 +647,27 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
               "Init"=c(INIT,nu.start)))
 }
 
-MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
-                                 liste_noms,opt_Frech,n.dens,type_entree,p_U,
+#' Title
+#'
+#' @param CPU_hearts 
+#' @param lien_racine 
+#' @param liste_noms 
+#' @param opt_Frech 
+#' @param n.dens 
+#' @param p_U 
+#' @param file_dates 
+#' @param show_EGPD 
+#' @param list_params_EGPD 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
+                                 liste_noms,opt_Frech,n.dens,p_U,
                                  file_dates,show_EGPD,
                                  list_params_EGPD){
+  
   l_ALL<-list()
   l_Orig_all<-list()
   l_Orig<-list()
@@ -613,9 +696,6 @@ MarTransfo_TS_EXTGP_MV<-function(type_donnees,coeurs,lien_racine,
                               dates_prises=dates_import,j_show = 19)
     print("passed !")
     l_AD[[name_variable]]<-AN_GPD
-    if(type_entree=="donnees_brutes"){
-      return(TRUE)
-    }
     
     SUM_pos<-apply(Donnes>0,MARGIN = 1,FUN = sum)
     IND_posj<-which(SUM_pos==ncol(Donnes))
@@ -913,33 +993,6 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                           Vect_k = c(20:500),
                           l_name = l_variables,q = 0.80)
   Vect_lunif<-exp(-Vect_l_transf^(-1))
-
-  # Select_cop_fam<-VineCopula::BiCopSelect(Vect_lunif[,1],
-  #                         Vect_lunif[,2])
-  # FAMILY_set<-c(1:40,104,114,
-  #               124,134,204,214,
-  #               224,234)
-  # # Create a results data frame
-  # results_all<-sapply(FAMILY_set,FUN = FIT_cop
-  #                     ,u1 = Vect_lunif[,1],
-  #                     u2 = Vect_lunif[,2])
-  # Val<-sapply(results_all,FUN=function(x){
-  #   return(length(x))
-  # })
-  # Ind_pos<-which(Val>0)
-  # List_pos<-lapply(Ind_pos,FUN=function(x){
-  #   results_all[[x]]})
-  # DF<-t(cbind(sapply(List_pos,unlist)))
-  # DF<-as.data.frame(DF)
-  # DF$AIC<-round(as.numeric(DF$AIC),2)
-  # DF$LogLik<-round(as.numeric(DF$LogLik),2)
-  # DF$BIC<-round(as.numeric(DF$BIC),2)
-  # DF$par<-round(as.numeric(DF$par),2)
-  # DF$par2<-round(as.numeric(DF$par2),2)
-  # Sort_df<-head(DF[order(DF$AIC),c(1:6) ],5)
-  # write.csv(x = Sort_df,file = paste0(root_for_export,
-  #                  dir_AIC,"_",
-  #                  Approach,".csv"))
   Vect_Pareto_margins<-apply(Vect_lunif,
                     MARGIN=2,FUN = evd::qgpd,loc=0,
                               scale=1, shape=1)
@@ -1767,8 +1820,6 @@ Chi_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
   Couple<-Matrix_df_unif[,c(t,s)]
   Max_<-apply(X = Couple,MARGIN = 1,FUN = max)
   prob_max<-mean(as.numeric(Max_<=Order_quantile))
-  #prob_denom<-1-Order_quantile
-  #From chimeas
   chi <- 2 - log(prob_max)/log(Order_quantile)
   return(chi)
 }
@@ -1848,9 +1899,6 @@ AD_test_analysis<-function(Matrix_df,Mat_cthresh,
       geom_text(aes(label = round_Value), color = "black",
                 size = 3)
   }
-  # strip.text = element_text(size=15),
-  # axis.text  = element_text(size=12),
-  # legend.title = element_text(size=14)
   GG_complete_AD_AI<-GG_complete_AD_AI+   
     xlab("")+ylab("")+
     scale_fill_viridis(na.value="lightgrey",
@@ -1893,8 +1941,6 @@ Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
     Mat_Xi_found[i,range_i]<-Result_line
 
   }
-  #All<-t(Mat_Xi_found)+Mat_Xi_found
-  #diag(All)<-diag(All)/2
   if(is.na(Filename)){
     #return(All)
     return(t(Mat_Xi_found))
@@ -1926,8 +1972,21 @@ Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
   }
   
 }
+#' Chi_bar_measure_analysis_pair
+#'
+#' @param Matrix_df_unif dataframe[float]. Univariate
+#' matrix with uniform margins
+#' @param Order_quantile float. Quantile in the uniform scale.
+#' @param t int. Coordinate index to analyse. 
+#' @param s int. Other coordinate index to analyse. 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
                                        t,s){
+  
   Couple<-Matrix_df_unif[,c(t,s)]
   Min_<-apply(X = Couple,MARGIN = 1,FUN = min)
   prob_min<-mean(as.numeric(Min_>Order_quantile))
@@ -1936,8 +1995,22 @@ Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
   return(chibar)
 }
 
+#' Chi_bar_measure_analysis
+#'
+#' @param Matrix_df_unif dataframe[float]. Univariate
+#' matrix with uniform margins
+#' @param Order_quantile float. Quantile in the uniform scale.
+#' @param Filename 
+#' @param Name_main 
+#'
+#' @return Ggplot object summarising the asymptotic 
+#' dependencies between the components of the input matrix.
+#' @export
+#'
+#' @examples
 Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
                                Filename=NA,Name_main=NA){
+  
   d<-ncol(Matrix_df_unif)
   Mat_Xibar_found<-matrix(NA,nrow = d,
                        ncol=d)
@@ -1951,8 +2024,6 @@ Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
     Mat_Xibar_found[i,range_i]<-Result_line
 
   }
-  # All<-t(Mat_Xibar_found)+Mat_Xibar_found
-  # diag(All)<-diag(All)/2
   if(is.na(Filename)){
     #return(All)
     return(t(Mat_Xibar_found))
@@ -1983,10 +2054,27 @@ Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
   }
   
 }
+#' Complete_chi_measure_analysis
+#'
+#' @param Matrix_df_unif dataframe[float]. Univariate
+#' matrix with uniform margins
+#' @param Order_quantile float. Quantile in the uniform scale.
+#' @param Filename string. Name of the exported graphic. 
+#' @param Name_main string. Variable name
+#' @param New_breaks_labels vector[float]. Plot option
+#' to replace the raw x and y values by the variable name. 
+#' @param Lim_viridis Limits of the extremal correlation 
+#' coefficients in the ggplot objects. 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
                                         Filename=NA,Name_main=NA,
                                         New_breaks_labels=NA,
                                         Lim_viridis=NULL){
+  
   df_chi<-Chi_measure_analysis(
     Matrix_df_unif = Matrix_df_unif,
     Order_quantile = Order_quantile,Filename = NA,
@@ -2056,8 +2144,8 @@ Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
 }
 #' function_reconversion_Unif_EXTGPD
 #'
-#' @param Simul_Unif: vector. Simulated vector with uniform margins.
-#' @param Theta_k: list. List of EGPD estimators found at each time t.
+#' @param Simul_Unif vector. Simulated vector with uniform margins.
+#' @param Theta_k list. List of EGPD estimators found at each time t.
 #'
 #' @return Simulated vector with EGPD margins.
 #' @export
@@ -2072,9 +2160,9 @@ function_reconversion_Unif_EXTGPD<-function(Simul_Unif,Theta_k){
 }
 #' function_reconv_each_dim_EGPD
 #'
-#' @param Simul_Unif: vector. Simulated vector with uniform margins.
-#' @param Theta_k: list. List of EGPD estimators found at each time t.
-#' @param index_dim: int. Time index. 
+#' @param Simul_Unif vector. Simulated vector with uniform margins.
+#' @param Theta_k list. List of EGPD estimators found at each time t.
+#' @param index_dim int. Time index. 
 #'
 #' @return Value at time t of the vector at EGPD scale. 
 #' @export
@@ -2108,7 +2196,7 @@ Function_one_couple_l<-function(Params_Biv,z,Th,one_u){
 
 #' Function_conv_univ
 #'
-#' @param Shape_d: df. Matrix of observations for one forcing condition. 
+#' @param Shape_d df. Matrix of observations for one forcing condition. 
 #'
 #' @return Vect[float]. Mean absolute coordinates in 8 basis functions (sin) 
 #' for the input df. 
@@ -2119,7 +2207,6 @@ Function_conv_univ<-function(Shape_d){
   
   pas_x<-1/ncol(Shape_d)
   vecteur_temps<-c(1:ncol(Shape_d))/ncol(Shape_d)
-  #Fonction propre. 
   fonction_propre_j<-function(vecteur_temps,j){
     fnct_par_temps<-function(j,t){
       return(sin(2*pi*t*j))
@@ -2140,20 +2227,20 @@ Function_conv_univ<-function(Shape_d){
   return(LISTE_convergence)
 }
 
-DIndex_Poisson_Thresholds<-function(Vect_l_function,U,V,Decimal_date,Nb_years){
-  NPobs<-nrow(Vect_l_function)/Nb_years
-  Result<-1-as.numeric((Vect_l_function[,1]/NPobs<U)&(Vect_l_function[,2]/NPobs<V))
-  Lambda<-sum(Result)/Nb_years
-  #from diplot
-  date <- floor(Decimal_date)
-  tim.rec <- range(date)
-  nb.occ <- NULL
-  for (year in tim.rec[1]:tim.rec[2]) nb.occ <- c(nb.occ, 
-                                                  sum(Result & (date == year)))
-  Variance_<-var(nb.occ)
-  DIndex<-Lambda/Variance_
-  return(DIndex)
-}
+# DIndex_Poisson_Thresholds<-function(Vect_l_function,U,V,Decimal_date,Nb_years){
+#   NPobs<-nrow(Vect_l_function)/Nb_years
+#   Result<-1-as.numeric((Vect_l_function[,1]/NPobs<U)&(Vect_l_function[,2]/NPobs<V))
+#   Lambda<-sum(Result)/Nb_years
+#   #from diplot
+#   date <- floor(Decimal_date)
+#   tim.rec <- range(date)
+#   nb.occ <- NULL
+#   for (year in tim.rec[1]:tim.rec[2]) nb.occ <- c(nb.occ, 
+#                                                   sum(Result & (date == year)))
+#   Variance_<-var(nb.occ)
+#   DIndex<-Lambda/Variance_
+#   return(DIndex)
+# }
 Analyse_extreme_proj_gfunction<-function(base_RV,L,M1,M2,function_g){
 
   fnct_k<-function(Obs,k,function_g){
@@ -2252,10 +2339,10 @@ mindist_update<-function (data, ts = 0.15, method = "mad")
 }
 #' Couple_s_t_chi_measure
 #'
-#' @param t: int. First time of the pair.  
-#' @param s: int. Second time of the pair. 
-#' @param matrix_: matrix. Observations matrix.
-#' @param tail_quantile: float. High threshold in the uniform scale. 
+#' @param t int. First time of the pair.  
+#' @param s int. Second time of the pair. 
+#' @param matrix_ matrix. Observations matrix.
+#' @param tail_quantile float. High threshold in the uniform scale. 
 #'
 #' @return Extremal correlation coefficient Chi for the pair at (t,s) 
 #' @export
@@ -2270,8 +2357,8 @@ Couple_s_t_chi_measure<-function(t,s,matrix_,tail_quantile){
 }
 #'Matrix_chi_measure
 #'
-#' @param Data_unif: matrix. Observation with uniform margins. 
-#' @param tail_quantile: float. High threshold in the uniform scale. 
+#' @param Data_unif matrix. Observation with uniform margins. 
+#' @param tail_quantile float. High threshold in the uniform scale. 
 #'
 #' @return Matrix of extremal correlation coefficient Chi per pair (t,s) 
 #' @export
@@ -2455,10 +2542,31 @@ laplace_function<-function(p) {ifelse(p <
 }
 
 ### Plot functions density Mclust
+
+#' CRAFt_plot_density_D
+#'
+#' @param x 
+#' @param data 
+#' @param nlevels 
+#' @param levels 
+#' @param prob 
+#' @param points.pch 
+#' @param points.col 
+#' @param points.cex 
+#' @param gap 
+#' @param cex.annot 
+#' @param ... 
+#'
+#' @return Result of the slightly modified 
+#' mclust::plot_density_D function. 
+#' @export
+#'
+#' @examples
 CRAFt_plot_density_D<-function (x, data = NULL, nlevels = 11, levels = NULL, prob = c(0.25, 
                                                                                       0.5, 0.75), points.pch = 1, points.col = 1, points.cex = 0.8, 
                                 gap = 0.2, cex.annot,...) 
 {
+  
   object <- x
   mc <- match.call(expand.dots = TRUE)
   mc$x <- mc$points.pch <- mc$points.col <- mc$points.cex <- mc$gap <- NULL
@@ -2525,11 +2633,31 @@ CRAFt_plot_density_D<-function (x, data = NULL, nlevels = 11, levels = NULL, pro
   }
   invisible()
 }
+#' Title
+#'
+#' @param x 
+#' @param G 
+#' @param modelNames 
+#' @param symbols 
+#' @param colors 
+#' @param xlab 
+#' @param ylab 
+#' @param legendArgs 
+#' @param cex.lab.plot 
+#' @param cex.axis.plot 
+#' @param ... 
+#'
+#' @return Result of the slightly modified 
+#' mclust::plot_BIC function. 
+#' @export
+#'
+#' @examples
 CRAFt_plot_BIC<-function (x, G = NULL, modelNames = NULL, symbols = NULL, colors = NULL, 
                           xlab = NULL, ylab = "BIC", legendArgs = list(x = "bottomright", 
                                                                        ncol = 2, cex = 1, inset = 0.01), 
                           cex.lab.plot,cex.axis.plot,...) 
 {
+  
   args <- list(...)
   if (is.null(xlab)) 
     xlab <- "Number of components"

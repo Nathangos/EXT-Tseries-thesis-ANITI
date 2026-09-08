@@ -61,13 +61,30 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
              "Nb_scores_omega"=NbScores_Omega))
 }
 ### Approach the angle with one PCA basis.
+##########################
+
+#' Approach_Angle_One_PCA
+#'
+#' @param LIST_all list[dataframe]. Transformed time series
+#' @param Name_for_export string. Element to complete 
+#' the title of the exported file. 
+#' @param NbScores_Omega int. Number of PCA
+#' eigenvectors used.
+#' @param l_variables vector[string]. Variable names.
+#' @param Indices_exts vector[int]. Indices of
+#' extreme observations.
+#' @param d int. Number of variables. 
+#' @param f_transf 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
                                  NbScores_Omega,l_variables,
                                  Indices_exts,d,f_transf){
-  #ncol(LIST_all[[l_variables[1]]]$transf)
+  
   Length_T<-list()
-  # Omega<-matrix(NA,ncol=d*Length_T,
-  #               nrow =length(Indices_exts))
   Omega<-list()
   Ind_final<-0
   LIST_Frechet_OBS<-list()
@@ -132,7 +149,6 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
   plot(c(1:END),ANALYSE_PCA$svd$V[,1],ylab=expression(nu),xlab="Time/variable")
   points(c(1:END),ANALYSE_PCA$svd$V[,2],col="green")
   points(c(1:END),ANALYSE_PCA$svd$V[,3],col="red")
-  #abline(v=37,col="blue")
   dev.off()
   ### Select J eigenfunctions.
   Functions_eigen<-F_propres[,1:NbScores_Omega]
@@ -185,7 +201,6 @@ Simul_Omega_Mult_PCA_base<-function(list_Mod_Mult_PCA,M,d,list_nb_scores,
       mu_t =LIST_Mu[[Z]],
       sd_t = LIST_Sig[[Z]])
   }
-  #exp (f_inv) for inverse transformation
   return(f_transf_inv(Shape_Omega_simul))
 }
 
@@ -198,35 +213,27 @@ Inner_k_l<-function(l_kl,Mat){
                               colnames(Second_fcg))
   Vk<-as.numeric(unlist(First_fcg[,names_intersected]
                         ))
-  #L2k<-calcul_norm_L2(Vk)**2
   L2k<-as.numeric(t(Vk)%*%Vk)/length(Vk)
   Vl<-as.numeric(unlist(Second_fcg[,names_intersected]
                         ))
-  #L2l<-calcul_norm_L2(Vl)**2
   L2l<-as.numeric(t(Vl)%*%Vl)/length(Vl)
   ## prod scal
   Prod_scal<-as.numeric(t(Vk)%*%Vl)/length(Vk)
-  # 
-  #   # prod L2
-  #   Prod_sig<-prod(L2k,L2l)
   return(c(Prod_scal,L2k,L2l))
-  # return(list("sig_XY"=Prod_scal,
-  #             "sig_X"=c(L2k,L2l)))
-  #prod(colMeans(All_cov[,c(2:END_index)])**(1/2))
-  # return(list("prod_scal"=Prod_scal,
-  #             "sig_scal"=)
+
 }
 #' Extreme_cov_per_K
 #'
 #' @param j 
-#' @param liste_MV_simul: list[df]. List of time
+#' @param liste_MV_simul list[df]. List of time
 #' series per tidal cycle
-#' @param l_name: list[str]. List of variable names.
-#' @param L: int. Number of measures per ts
-#' @param d: int. Number of variables.
-#' @param Thresh_lg: float. Threshold used for gol
-
-#' @return
+#' @param l_name list[str]. List of variable names.
+#' @param L int. Number of measures per ts
+#' @param d int. Number of variables.
+#' @param Thresh_lg float. Threshold used for gol
+#' @param center_GPD boolean or mean value at each time step
+#'
+#' @return list. 
 #' @export
 #'
 #' @examples
@@ -568,7 +575,6 @@ Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
 #' @examples
 Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
                             Ref_RiskF,CPU_hearts,center=FALSE){
-  #cl = CPU_hearts,
   All_results<-lapply(vector_k,Launch_extreme_cov_per_K,
                       l_name=l_name,
                       liste_MV_Orig=liste_MV_Orig,
@@ -577,9 +583,28 @@ Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
   return(do.call(what = rbind.data.frame,
                  All_results))
 }
+#' Extreme_cov_confevol
+#'
+#' @param liste_MV_Orig 
+#' @param l_name 
+#' @param vector_k 
+#' @param Ref_RiskF 
+#' @param CPU_hearts object from the parallel package
+#' @param center Boolean or float. 
+#' @param Nboot int. Number of bootstrap samples.
+#' @param alpha_param float. Chosen parameter 
+#' of the confidence level
+#'
+#' @return list. Evolution of the bootstrap confidence 
+#' bands with the number of exceedances for each pair
+#' of variables.
+#' @export
+#'
+#' @examples
 Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
                            Ref_RiskF,CPU_hearts,center=FALSE,
                            Nboot,alpha_param){
+  
   N<-nrow(liste_MV_Orig[[1]])
   Results<-parLapply(cl = CPU_hearts,X = c(1:N),
          fun = Scale_norm_per_Ind,liste_MV_simul = liste_MV_Orig,
@@ -606,12 +631,16 @@ Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
   return(do.call(what = rbind.data.frame,
                  All_results))
 }
-#' Title
+#' Convgce_Angle_evol
 #'
-#' @param liste_MV_Orig 
-#' @param l_name 
-#' @param vector_k 
-#' @param Ref_RiskF 
+#' @param liste_MV_Orig list[str: dataframe]. Multivariate
+#' time series where the key corresponds to the variable name.
+#' 
+#' @param l_name vector[str]. Name of forcing conditions
+#' @param vector_k vector[int]. Possible number 
+#' of exceedances.
+#' @param Ref_RiskF vector[float]. Values of the 
+#' compound risk function.
 #'
 #' @return Determine the evolution of the convergence
 #' of the angular component for each forcing condition. 
@@ -626,18 +655,19 @@ Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
                         l_name=l_name,
                         liste_MV_Orig=liste_MV_Orig,
                         vect_lg=Ref_RiskF)
-  # All_results_df<-data.frame(apply(X = All_results,
-  #                                  MARGIN = 2,FUN = unlist))
+
   return(All_results)
 }
   
 ### Computing confidence band for this statistic
+#############
+
 #' Estimator_rho_sig_knowing_K
 #'
-#' @param list_inputs: list[df]. Multivariate time series
-#' @param Thresh_lg: float. Threshold used.
-#' @param CPU_hearts: object parallel. CPU used for parallel computing
-#'
+#' @param list_inputs list[df]. Multivariate time series
+#' @param Thresh_lg float. Threshold used.
+#' @param CPU_hearts object parallel. CPU used for parallel computing.
+#' @param center Bool
 #' @return Estimator for the given multivariate time series of the extremal correlation
 #'  coefficient
 #' @export
@@ -684,10 +714,15 @@ Estimator_rho_sig_knowing_K<-function(list_inputs,Thresh_lg,
 
 #' Estimator_1boostrap_sample
 #'
-#' @param list_obs_exts: list[df]. 
-#' @param l_name: vector[str]. Names of variables.
+#' @param list_obs_exts list[df]. 
+#' @param l_name vector[str]. Names of variables.
+#' @param Thresh_lg float. Threshold used.
+#' @param CPU_hearts object from the parallel 
+#' package to run parallel computation
+#' @param center 
 #'
-#' @return
+#' @return Run the function Estimator_rho_sig_knowing_K
+#' for resampled observations
 #' @export
 #'
 #' @examples
@@ -711,45 +746,3 @@ Estimator_1boostrap_sample<-function(list_obs_exts,
   return(Estimation_1sample)
 }
 
-# Conv_scalar_product<-function(list_TS,Nb_inds_exts,l_name_variables,
-#                               g_function){
-#   L<-length(l_name_variables)
-#   L2_d1<-apply(list_TS[[l_name_variables[1]]],MARGIN = 1,
-#                FUN = calcul_norm_L2)
-#   M<-length(L2_d1)
-#   Base_l<-matrix(NA,nrow = M,
-#                  ncol=L)
-#   Base_l[,1]<-L2_d1
-#   for(j in c(2:L)){
-#     L2_dj<-apply(list_TS[[l_name_variables[j]]],MARGIN = 1,
-#                  FUN = calcul_norm_L2)
-#     Base_l[,j]<-L2_dj
-#   }
-#   Lg<-apply(X = Base_l,
-#             MARGIN = 1,
-#             FUN = g_function)
-#   M<-length(L2_dj)
-#   Qlevel<-1-(Nb_inds_exts/M)
-#   Inds_extremes<-which(Lg>quantile(Lg,Qlevel))
-#   list_extj<-list()
-#   list_conv_j<-list()
-#   for(j in c(1:L)){
-#     L2_extj<-Base_l[Inds_extremes,j]
-#     Ext_j<-list_TS[[l_name_variables[j]]][Inds_extremes,]
-#     #convergence of first moments.
-#     Angle_extj<-t(t(Ext_j)
-#                   %*%diag(L2_extj^(-1)))
-#     list_extj[[l_name_variables[j]]]<-Ext_j
-#     
-#   }
-#   #convergence of scalar products.
-#   Sigmaxy<-sapply(c(1:length(Inds_extremes)),
-#                   liste_MV_simul = list_extj,
-#                   Extreme_corr,
-#                   l_name =l_name_variables,
-#                   L = ncol(Ext_j),
-#                   d = length(l_name_variables))
-#   return(list("corr"=mean(Sigmaxy),
-#               "sd_corr"=sd(Sigmaxy),
-#               "first_moments"=list_conv_j))
-# }

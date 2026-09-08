@@ -1407,36 +1407,39 @@ list_RiskF_ext<-lapply(OBS_ext,
 Matrix_RiskF_ext<-do.call("cbind",list_RiskF_ext)
 list_RiskF_sim<-lapply(Simul,
                        FUN = function(x){
-                         return(apply(X = x,
-                                      MARGIN = 1,FUN = calcul_norm_L2))})
+     return(apply(X = x,
+                  MARGIN = 1,FUN = calcul_norm_L2))})
+
 Matrix_RiskF_sim<-do.call("cbind",list_RiskF_sim)
 
 MMD_RFModel_vs_Obs<-eummd::meammd(X=Matrix_RiskF_sim,
-                                     Y=Matrix_RiskF_ext,
-                                     pval = TRUE)$pval
+                   Y=Matrix_RiskF_ext,
+                   pval = TRUE)$pval
 MMD_RFModel_vs_Obs
 CRAMER_RiskF<-cramer::cramer.test(x = Matrix_RiskF_sim,
                      y = Matrix_RiskF_ext)$pval
 CRAMER_RiskF
 ### FRECHET scale
 list_RiskF_ext_FCHET<-lapply(re$Frechet_normal$obs,
-                       FUN = function(x){
-                         return(apply(X = x,
-                                      MARGIN = 1,FUN = calcul_norm_L2))
+   FUN = function(x){
+     return(apply(X = x,
+                  MARGIN = 1,FUN = calcul_norm_L2))
                        })
 Matrix_RiskF_ext_FCHET<-do.call("cbind",list_RiskF_ext_FCHET)
 
 list_RiskF_sim_FCHET<-lapply(re$Frechet_normal$simul,
-                       FUN = function(x){
-                         return(apply(X = x,
-                                      MARGIN = 1,FUN = calcul_norm_L2))})
+     FUN = function(x){
+       return(apply(X = x,
+                    MARGIN = 1,FUN = calcul_norm_L2))})
 Matrix_RiskF_sim_FCHET<-do.call("cbind",list_RiskF_sim_FCHET)
-MMD_RFModel_vs_Obs_FCHET<-eummd::meammd(X=Matrix_RiskF_sim_FCHET,
-                                  Y=Matrix_RiskF_ext_FCHET,
-                                  pval = TRUE)$pval
+MMD_RFModel_vs_Obs_FCHET<-eummd::meammd(
+                X=Matrix_RiskF_sim_FCHET,
+                  Y=Matrix_RiskF_ext_FCHET,
+                  pval = TRUE)$pval
 MMD_RFModel_vs_Obs_FCHET
-CRAMER_RiskF_FCHET<-cramer::cramer.test(x = Matrix_RiskF_sim_FCHET,
-                                  y = Matrix_RiskF_ext_FCHET)
+CRAMER_RiskF_FCHET<-cramer::cramer.test(
+          x = Matrix_RiskF_sim_FCHET,
+          y = Matrix_RiskF_ext_FCHET)
 CRAMER_RiskF_FCHET$p.value
 ```
 
