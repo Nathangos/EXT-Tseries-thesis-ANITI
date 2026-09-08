@@ -351,10 +351,10 @@ for(nameV in l_name){
   df_transf<-SUMMARY[[nameV]]$transf
   NL2_TF<-apply(X = df_transf,MARGIN = 1,FUN = calcul_norm_L2)
   GG_var<-Graphics_estimators_gamma(series = NL2_TF,
-                                    vect_k = c(50:300),
-                                    Title_graphic = " ",
-                                    dims_elt_text = c(20,14,13,12),
-                                    SELECT_estim = "ML_gamma")
+                    vect_k = c(50:300),
+                    Title_graphic = " ",
+                    dims_elt_text = c(20,14,13,12),
+                    SELECT_estim = "ML_gamma")
   DF_tf_j<-GG_var$data
   DF_tf_j$variable<-rep(nameV,nrow(DF_tf_j))
   ALL_gam_transf[[nameV]]<-DF_tf_j
@@ -1215,9 +1215,12 @@ par(mfrow=c(1,1))
 # 3) Simulation of extreme multivariate time series ##########
 ###############
 
-re<-Simul_MV_residuals(result_transformation = Result_MV,
-         l_variables = l_name, Q_thresh = Qfound, M = M,
-         list_nb_scores = LIST_NB_SCORES,opt_Frech = OPT_FRECH,
+re<-Simul_MV_residuals(
+  result_transformation = Result_MV,
+         l_variables = l_name, Q_thresh = Qfound, 
+          M = M,
+         list_nb_scores = LIST_NB_SCORES,
+        opt_Frech = OPT_FRECH,
         rotations_available=Bool_rotations,
          Params_risk_Function=List_Params_RF
         ,root_for_export=ROOT_export_graph
