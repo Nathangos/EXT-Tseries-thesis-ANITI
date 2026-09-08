@@ -1842,8 +1842,9 @@ if(Run_Kzka_test){
   ### Choice of the statistic
   ################
   Extreme_cov_simul<-Estimator_rho_sig_knowing_K(
-    list_inputs = re$Frechet_normal$simul,
-          Thresh_lg = Threshold_gamma_0,CPU_hearts = heartsCPU,
+          list_inputs = re$Frechet_normal$simul,
+          Thresh_lg = Threshold_gamma_0,
+          CPU_hearts = heartsCPU,
           center=CGPD)
   
   Extreme_cov_simul$pair_vars<-sapply(Extreme_cov_simul$pair_vars,

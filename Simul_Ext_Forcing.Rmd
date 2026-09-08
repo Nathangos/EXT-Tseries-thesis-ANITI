@@ -178,9 +178,11 @@ Unit_variable<-list("Surcote"="(m)","U"="(m/s)",
                     "Hs"="(m)")
 common_linetype<-scale_linetype_manual("Legend",
                                        values=c("confidence_band"=2,
-                                                "mean"=5,
-                                                "real_data"=4))
+    "mean"=5,"real_data"=4))
 
+```
+```{r}
+REPERTORY_<-"data_detrend_Winter/"
 Output<-Generator_TSERIES_MV(type_donnees = "HIVER",
             hearts = hearts,list_variable = lNAME,
             link_import_residuals = Link_resid,
@@ -193,7 +195,8 @@ Output<-Generator_TSERIES_MV(type_donnees = "HIVER",
             cols_gg = cols_,Name_riskF=G_used2,
             Vect_VARtimes=c(1:37),
             Dates_Johanna=IndJohanna,Risk_Function=gl,
-            opt_used=OPT_USED)
+            opt_used=OPT_USED,
+            repertory=REPERTORY_)
 ```
 
 

@@ -1,7 +1,24 @@
 # Apply for each time the corresponding VAR model--------------------------------------------
 #####################
+
+#' Apply_VAR_per_t
+#'
+#' @param t int. Time step of the multivariate time series
+#' @param list_sim list[str: vector]. For each time 
+#' step, the simulated residual vector of variable values.
+#' @param listX_delta  list[str: vector]. For each time 
+#' step, the vector of previous multivariate time series X(M-Delta)
+#' @param list_VAR list[str]. Each value contains VAR parameters.
+#' @param Indexes_delta vector[int]. Indexes of chosen previous
+#' multivariate time series
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Apply_VAR_per_t<-function(t,list_sim,listX_delta,
                           list_VAR,Indexes_delta){
+  
   ### Pass by index or value
   ### index --> choice previous returning index
   ### value --> choice previous returning a fictive time series (KNN_2)
@@ -32,9 +49,6 @@ Apply_VAR_per_t<-function(t,list_sim,listX_delta,
   Rep_CONST<-matrix(rep(Const_,nrow(AX)),
                     nrow =nrow(AX),ncol(AX),
                     byrow = TRUE) 
-  #Coeff_tend_<-MOD_VAR_t[nrow(MOD_VAR_t),]
-  #TEND_<-Indexes_delta*Coeff_tend_
-  #TEND_+
   Determ_part<-AX+Rep_CONST
 
   ## Epsilon simulated to add
@@ -55,9 +69,6 @@ distance_sq<-function(h){
 KNN_distancef<-function(i,X_sim,X_data,f_distance,K,hearts){
   
   ### Compute distance for each forcing condition
-  # DL2<-apply(X=X_data,FUN=function(x_ref,x){
-  #   return(sum(f_distance(x-x_ref)))},x_ref=x,
-  #   MARGIN = 1)
   if(is.null(f_distance)){
   
     ### freely choosing the previous observation
@@ -102,9 +113,6 @@ KNN_distancef_returnMean<-function(i,X_sim,X_data,f_distance,K,hearts,
                                    Y_data){
   Variables_seen<-names(X_sim)
   ### Compute distance for each forcing condition
-  # DL2<-apply(X=X_data,FUN=function(x_ref,x){
-  #   return(sum(f_distance(x-x_ref)))},x_ref=x,
-  #   MARGIN = 1)
   if(is.null(f_distance)){
     ### freely choosing the previous observation
     Nber_candidates<-nrow(X_data[[1]])
@@ -163,17 +171,15 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
                                cols_gg,prefix_link_resid,
                                subfix_link_Sim,Dates_Johanna,
                                subfix_link_Data,Vect_VARtimes,
-                               Risk_Function,opt_used){
+                               Risk_Function,opt_used,
+                               repertory){
   
   link_export_SIM<-paste0(link_export_generations,opt_used,"_")
   link_g_chosen<-paste0("residuals_MV/",Name_riskF,"/")
 
   # (1) Import X(M-1) -----------------------------------------------------------
   ######
-  repertory<-"data_detrend_Winter/"
-  # if(type_donnees=="HIVER"){
-  #   repertory<-paste0(repertory,"HIVER/")
-  # }
+  repertory<-
   l_RiskF<-list()
   l_Orig<-lapply(Vect_VARtimes,
                     function(x){
@@ -670,9 +676,6 @@ K_fold_k_param<-function(hearts,f_distance,
 
     # # (2) Import indexes of exceedances -------------------------------------------
     # #########
-    # Indexes_exceed<-read.csv(file=paste0(link_g_chosen,
-    #                                      "ext_series_chosen_risks_",
-    #                                      d,".csv"))
     for(name_variable in list_variable){
       if(name_variable=="U"){
         lien_donnees<-paste0(repertory,name_variable,
