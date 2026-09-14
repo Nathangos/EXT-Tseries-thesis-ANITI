@@ -512,3 +512,27 @@ mindist_update<-function (data, ts = 0.15, method = "mad")
   colnames(df)<-c("Nb_k","value_metric","metric")
   return(df)
 }
+
+#' Title
+#'
+#' @param gamma 
+#' @param sigma_EGPD 
+#' @param kappa 
+#' @param order_quantiles 
+#' @param data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Ratio_log_model1<-function(gamma,sigma_EGPD,order_quantiles,data){
+  
+  Xfound<-as.numeric(quantile(data,order_quantiles))
+  logemp_fonction<-log(1-(1+gamma*(Xfound/sigma_EGPD))^(-1/gamma))/log(order_quantiles)
+  return(logemp_fonction)
+}
+RL_EGPD_model1<-function(gamma,sigma_EGPD,order_quantiles,Kappa){
+  return(mev::qextgp(p = order_quantiles,kappa =Kappa,
+                     sigma = sigma_EGPD,xi = gamma,
+                     type = 1))
+}

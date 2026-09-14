@@ -285,6 +285,7 @@ Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
                            l_Tau = list_Tau_sim)
   
   # Bootstrap confidence_intervals ------------------------------------------
+  
   Boot_extremo_results<-replicate(n = B,Resampling_cross_extremo(vect_distances = vect_distances,
                    Matrix_pairs = Matrix_pairs,
                    var_cond = Variable_reality_cond,
@@ -306,7 +307,8 @@ Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
   return(result_delta)
 }
 
-#' 
+#' Value of the cross-extremogram for a given 
+#' pair and resampled observations. 
 #'
 #' @param vect_distances vector[float]. Distance 
 #' between time steps.
@@ -316,10 +318,11 @@ Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
 #' for the first variable.
 #' @param var_other dataframe. Univariate time series
 #' for the other variable.
-#' @param l_Tau list. Each value corresponds to
+#' @param l_Tau list. It contains for each time series
 #' the vector of threshold values. 
 #'
-#' @return
+#' @return Dataframe with the evolution of the cross-extremogram
+#' with the time lag. 
 #' @export
 #'
 #' @examples
@@ -343,20 +346,32 @@ Resampling_cross_extremo<-function(vect_distances,
   result_delta_boot<-df_extremo %>% group_by(time_d) %>% summarise(val_boot=mean(boot_extremo))
   return(as.numeric(result_delta_boot$val_boot))
 }
+#' Obtain from a n-sample its (1-Alpha_q)% bounds.  
+#'
+#' @param x vector[float]. Observed values. 
+#' @param Alpha_q float. Confidence level.
+#'
+#' @return vector[float]. Bounds of the confidence interval
+#' @export
+#'
+#' @examples
 F_bounds_per_column<-function(x,Alpha_q){
+  
   return(c(as.numeric(
     quantile(x,
              c(Alpha_q/2,1-(Alpha_q/2)
              )))))
 }
-#' cross_extremogram
+#' Evolution of the dependence structure between two time steps 
+#' with the time lag 
+#' 
 #' @param Matrix_pairs List. Each possible
 #' time pairs.
 #' @param var_cond Dataframe. Univariate time series 
 #' for one variable.
 #' @param var_other Dataframe. Univariate time series 
 #' for the other variable.
-#' @param l_Tau list. Each value corresponds to
+#' @param l_Tau list. It contains for each time series
 #' the vector of threshold values. 
 #'
 #' @return
@@ -370,7 +385,23 @@ cross_extremogram<-function(Matrix_pairs,var_cond,var_other,l_Tau){
                          var_other=var_other,l_Tau=l_Tau)
   return(PIST_empirique)
 }
+#' Extremal correlation coefficient between 
+#' two time steps, for two specific components. 
+#'
+#' @param couple_s_t vector. Pair of time steps. 
+#' @param var_cond dataframe. Univariate time series
+#' for the first variable.
+#' @param var_other dataframe. Univariate time series
+#' for the other variable.
+#' @param l_Tau list. It contains for each time series
+#' the vector of threshold values. 
+#'
+#' @return float. Value of the empirical estimator.
+#' @export
+#'
+#' @examples
 cross_pi_s_t<-function(couple_s_t,var_cond,var_other,l_Tau){
+  
   t<-couple_s_t[1]
   s<-couple_s_t[2]
   v_cond<-l_Tau[["cond"]]
@@ -388,7 +419,9 @@ cross_pi_s_t<-function(couple_s_t,var_cond,var_other,l_Tau){
   return(numerateur/denominateur)
   
 }
-### Work on distrib of Omega
+### Work on the distribution of angular time series -----------
+################
+
 #' F_automatic_ggplot_marg_Omega
 #'
 #' @param Obj_data: df. Concatenated time series. 
@@ -478,22 +511,27 @@ F_automatic_ggplot_marg_Omega<-function(Obj_data,
          plot = GG1,
          width=8,height=6)
 }
-#' F_automatic_ggplot_marg
+#' Comparing graphically observed and simulated time
+#' series using several tools. 
 #'
-#' @param l_name_time 
-#' @param l_unit 
-#' @param risk_function 
-#' @param ind_var_cond 
-#' @param levels_used 
+#' @param l_name_time list. Variable and 
+#' time step analysed.
+#' @param l_unit vector[string]. Unit of each variable.
+#' @param risk_function function. Risk function used 
+#' in one of the tools. 
+#' @param ind_var_cond int. Conditioning variable
+#' used in one of the ggplot objects. 
+#' @param levels_used Float. Level of the return curve.
 #' @param cols_ vector [float]. 
-#' @param L_simul 
-#' @param L_obs 
-#' @param L_whole_obs 
-#' @param Path_TREND String. 
-#' @param Path_EXT String. Directory path for some ggplot objects.
-#' @param hearts String. Other directory path for other ggplot objects.
+#' @param L_simul list. Simulated extreme multivariate time series. 
+#' @param L_obs list. Observed extreme multivariate time series. 
+#' @param L_whole_obs list. Observed multivariate time series (standard and extreme). 
+#' @param Path_TREND String. Directory path for exporting ggplot objects.
+#' @param Path_EXT String. Directory path for exporting ggplot objects.
+#' @param hearts String. Other directory path for exporting ggplot objects.
 #' @param basis_functionGAM 
-#' @param n_sim 
+#' @param n_sim int. Number of bootstrapped sampled 
+#' 
 #' @param list_info_export 
 #' @param theme_common Theme object from ggplot2 library.
 #'
@@ -572,14 +610,10 @@ F_automatic_ggplot_marg<-function(l_name_time, l_unit,
     return(paste0("V",x))
   })
   BivRL<-Bivariate_RLevel_simul_vs_obs(Obs_ij = Obs_without_cond,
-           Simul_ij = Simul_ij,
-           l_name_time = l_name_time,
-           cols_ggplot = cols_,
-           l_unit = l_unit,
-           levels_used = levels_used,
-           zeta_sim = zeta_forsim,
-           hearts = hearts,
-           Obs_ext_ij=Obs_with_cond,
+           Simul_ij = Simul_ij, l_name_time = l_name_time,
+           cols_ggplot = cols_,zeta_sim = zeta_forsim,
+           l_unit = l_unit,levels_used = levels_used,
+           hearts = hearts,Obs_ext_ij=Obs_with_cond,
            Nb_boot = 500)+
     theme_common
   F_name2<-paste0(Path_EXT
@@ -592,26 +626,27 @@ F_automatic_ggplot_marg<-function(l_name_time, l_unit,
          plot = BivRL)
   
   ### Threshold for bivariate quantile regressions
-  Seq_th<-seq.int(from = 0.5,to = 0.95,length.out =2)
-  list_ggplot_qreg<-Bivariate_Qreg_simul_vs_obs(Obs_ij = Obs_without_cond,
-          Simul_ij = Simul_ij,l_name_time=l_name_time,
-          cols_ggplot = cols_,l_unit = l_unit,
-           zeta_sim = zeta_forsim,basis_functionGAM = basis_functionGAM,
-           hearts = hearts,n_sim=n_sim,Seq_th=Seq_th)
-  L_gg_plot<-length(list_ggplot_qreg)
-  for(j in c(1:L_gg_plot)){
-    plot_elt<-list_ggplot_qreg[[j]]+
-      theme_common
-    F_namej<-paste0(Path_EXT,"/",Prefix_export,
-                    "qreg_",N1,"t=",
-                    T1,"X",N2,"t=",
-                    T2,CPLMT_export,"_d=",D,
-                    opt_used,"_",j,".png")
-    ggsave(filename = F_namej,
-           width=8,height = 6,
-           plot = plot_elt)
-  }
-  
+  # Seq_th<-seq.int(from = 0.5,to = 0.95,length.out =2)
+  # list_ggplot_qreg<-Bivariate_Qreg_simul_vs_obs(
+  #         Obs_ij = Obs_without_cond,
+  #         Simul_ij = Simul_ij,l_name_time=l_name_time,
+  #         cols_ggplot = cols_,l_unit = l_unit,
+  #          zeta_sim = zeta_forsim,basis_functionGAM = basis_functionGAM,
+  #          hearts = hearts,n_sim=n_sim,Seq_th=Seq_th)
+  # L_gg_plot<-length(list_ggplot_qreg)
+  # for(j in c(1:L_gg_plot)){
+  #   plot_elt<-list_ggplot_qreg[[j]]+
+  #     theme_common
+  #   F_namej<-paste0(Path_EXT,"/",Prefix_export,
+  #                   "qreg_",N1,"t=",
+  #                   T1,"X",N2,"t=",
+  #                   T2,CPLMT_export,"_d=",D,
+  #                   opt_used,"_",j,".png")
+  #   ggsave(filename = F_namej,
+  #          width=8,height = 6,
+  #          plot = plot_elt)
+  # }
+  # 
   ## Cond_ext
   obj_cond<-Marg_2d_cond_ext(Simul_ij = Simul_ij,
                              Obs_ij = Obs_ij,
@@ -630,33 +665,12 @@ F_automatic_ggplot_marg<-function(l_name_time, l_unit,
          width=8,height = 6,
          plot = obj_cond)
 }
-#' Title
-#'
-#' @param gamma 
-#' @param sigma_EGPD 
-#' @param kappa 
-#' @param order_quantiles 
-#' @param data 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-Ratio_log_model1<-function(gamma,sigma_EGPD,order_quantiles,data){
-  
-  Xfound<-as.numeric(quantile(data,order_quantiles))
-  logemp_fonction<-log(1-(1+gamma*(Xfound/sigma_EGPD))^(-1/gamma))/log(order_quantiles)
-  return(logemp_fonction)
-}
-RL_EGPD_model1<-function(gamma,sigma_EGPD,order_quantiles,Kappa){
-  return(mev::qextgp(p = order_quantiles,kappa =Kappa,
-              sigma = sigma_EGPD,xi = gamma,
-              type = 1))
-}
-#' Compare with a ggplot object the simulated and observed
+
+#' Compare graphically the simulated and observed
 #' extreme time series for a given pair of time steps.
 #'
-#' @param l_name_time vector[string]. Variable names.
+#' @param l_name_time list. Variable and 
+#' time step analysed.
 #' @param Obs_ij dataframe. Observed values at the given pair.
 #' @param Simul_ij dataframe. Simulated values at the given pair. 
 #' @param cols_ggplot vector[string]. Graphical options
@@ -824,7 +838,8 @@ Bivariate_Qreg_simul_vs_obs<-function(l_name_time,Obs_ij,
   }
   return(list_gg)
 }
-#' Bivariate_RLevel_simul_vs_obs
+#' Bivariate return curve of observed and 
+#' simulated time series for several return levels
 #'
 #' @param Obs_ij Matrix. Bivariate observed values.
 #' @param Simul_ij Matrix. Bivariate values from 
@@ -917,11 +932,6 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   colnames(Bounds_for_graph)<-c("level","t","s","bounds")
   Bounds_for_graph$level<-paste0("rho==",
                           as.character(Bounds_for_graph$level))
-  # Build polygon data
-  # x and y are changing so we must create a ggplot polygon object
-  # arrange(level,t) for ordering
-  # group_by level--> polygon per level
-  # bind_rows to assemble rows per group
   poly_data <- Bounds_for_graph %>%
     group_by(level) %>%
     group_modify(~{
@@ -1127,30 +1137,6 @@ Bootstrap_conf_band<-function(M,n,theta_egpd,order_quantiles,
 Marg_2d_cond_ext<-function(Simul_ij,Obs_ij,l_name_time,
                                cols_ggplot,l_unit,risk_function,
                            ind_var_cond){
-  
-  # Z<-1
-  # NSimul_for_compar<-nrow(list_simul[[1]])
-  # NObs_for_compar<-nrow(L_obs[[1]])
-  # Simul_ij<-matrix(NA,nrow = NSimul_for_compar,
-  #                  ncol =length(vect_times) )
-  # Obs_ij<-matrix(NA,nrow = NObs_for_compar,
-  #                ncol =length(vect_times) )
-  # for(j in c(1:length(list_simul))){
-  #   if(names(list_simul)[j]%in%l_name_2V){
-  #     Simul_namev<-list_simul[[j]][,vect_times[Z]]
-  #     Simul_ij[,Z]<-Simul_namev
-  #     Obs_namev<-L_obs[[j]][,vect_times[Z]]
-  #     Obs_ij[,Z]<-Obs_namev
-  #     Z<-Z+1
-  #   }
-  # }
-  # Obs_ij<-as.data.frame(Obs_ij)
-  # colnames(Obs_ij)<-sapply(c(1:length(l_name_2V)),function(x){
-  #   return(paste0("V_",x))
-  # })
-  # Simul_ij<-as.data.frame(Simul_ij)
-  # colnames(Simul_ij)<-colnames(Obs_ij)
-  
   NAMES<-names(l_name_time)
   ### Select knowing that one coordinate is above the threshold
   
@@ -1323,108 +1309,5 @@ RLevel_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles){
   return(Rl_estim)
 }
 ### 
-#' Gaussian_mixture vs dnormal distrib
-#'
-#' @param vect_Id: matrix. Simulations from a N(0,1)
-#' @param alpha: float. Confidence level
-#'
-#' @return Indicator of null hypothesis rejection
-#' @export
-#'
-#' @examples
-TwoGM_versus_normal<-function(vect_Id,alpha){
-  phi1_mid<-Phi1_normal_stat(vect_Id = vect_Id,
-                             alpha = alpha/2)
-  phi2_mid<-Phi2_normal_stat(vect_Id = vect_Id,
-                             alpha = alpha/2)
-  l_2_based<-max(phi1_mid,phi2_mid)
-  phi4_mid<-Phi4_normal_stat(vect_Id = vect_Id,
-                             alpha = alpha/2)
-  phi5_mid<-Phi5_normal_stat(vect_Id = vect_Id,
-                             alpha = alpha/2)
-  l_inf_based<-max(phi4_mid,phi5_mid)
-  return(list("l_inf"=l_inf_based,
-              "l_2"=l_2_based))
-  
-}
-Phi1_normal_stat<-function(vect_Id,alpha){
-  n<-nrow(vect_Id)
-  d<-ncol(vect_Id)
-  mu_data<-colMeans(vect_Id)
-  S<-t(mu_data)%*%mu_data*n
-  Thresh_null<-qchisq(p = 1-(alpha),df = d)
-  return(as.numeric(S>Thresh_null))
-}
-Phi2_normal_stat<-function(vect_Id,alpha){
-  n<-nrow(vect_Id)
-  d<-ncol(vect_Id)
-  S<-rowSums(vect_Id**2)
-  Thresh_null<-qchisq(p=1-(alpha/n),df=d)
-  return(max(as.numeric(S>Thresh_null)))
-}
-### l(inf) based
-Phi4_normal_stat<-function(vect_Id,alpha){
-  n<-nrow(vect_Id)
-  d<-ncol(vect_Id)
-  S<-n*colMeans(vect_Id)**2
-  Thresh_null<-qchisq(p=1-(alpha/d),df=1)
-  return(max(as.numeric(S>Thresh_null)))
-}
-Phi5_normal_stat<-function(vect_Id,alpha){
-  n<-nrow(vect_Id)
-  d<-ncol(vect_Id)
-  Ind_Chi_Hnull<-vect_Id**2
-  Thresh_null<-qchisq(p=1-(alpha/(d*n)),df=1)
-  R<-Ind_Chi_Hnull>Thresh_null
-  Max_per_j<-apply(R,MARGIN = 2,FUN = max)
-  return(max(Max_per_j))
-}
-### Alternative hypothesis
-Simul_Contamination_Model<-function(prob_classes,nu){
-  d<-length(nu)
-  cl_used<-sample(c(1:length(prob_classes)),prob = prob_classes,
-                  size = 1)
-  if(cl_used==1){
-    u<-mvtnorm::rmvnorm(n = 1,mean = rep(0,d))
-  }else{
-    u<-mvtnorm::rmvnorm(n = 1,mean = nu)
-  }
-  return(u)
-}
-Candidates_per_theta<-function(list_boot_samples,Theta,alpha_prop,
-                               hearts){
-  Rult_for_theta<-parLapply(cl=hearts,list_boot_samples,
-          fun = Candidates_per_theta_1sample,
-         Theta=Theta)
-  Rult_for_theta<-do.call(rbind.data.frame,Rult_for_theta)
-  Rult_for_theta$level<-as.character(Rult_for_theta$level)
-  Rult_for_theta$R<-rowSums(cbind(Rult_for_theta$t,
-                        Rult_for_theta$s)**2)**(1/2)
-  Rays_found<-Rult_for_theta %>% 
-    group_by(level) %>% 
-    summarise(Qinf=quantile(R,0.025),
-              Qsup=quantile(R,0.975))
-  X<-Rays_found[,c(2:3)]*cos(Theta)
-  Y<-Rays_found[,c(2:3)]*sin(Theta)
-  Levels<-Rays_found[,1]
-  
-  Combinaison_coords<-cbind(melt(X,
-                                 id.vars = NULL),
-                            melt(Y,
-                                 id.vars = NULL)[,2])
-  colnames(Combinaison_coords)<-c("bounds","t","s")
-  ncomb<-nrow(Combinaison_coords)
-  n_for_rep<-ncomb/nrow(X)
-  Combinaison_coords$level<-rep(unlist(Levels),n_for_rep)
-  Combinaison_coords$theta<-rep(Theta,ncomb)
-  return(Combinaison_coords)
-}
 
-Candidates_per_theta_1sample<-function(Boot_Sample,Theta){
-  Boot_Sample$angle<-atan(Boot_Sample[,2]/Boot_Sample[,1])
-  Inds_chosen<-Boot_Sample %>% group_by(level) %>%
-    summarise(t=t[which.min(abs(Theta-angle))],
-              s=s[which.min(abs(Theta-angle))])
-  return(sapply(X =Inds_chosen,FUN = unlist))
-}
 
