@@ -32,7 +32,7 @@ source("functions_MV/functions_estim_simul_gPareto.R")
 
 ```
 
-```{r}
+```{r,warning=FALSE}
 F_names<-ls()
 nb_heartsCPU<-detectCores()-4
 FSIZE<-20
@@ -177,8 +177,8 @@ ROOT_export_graph<-paste0(path_graph,"/",
 try({
   Corr_path<-paste0(ROOT_export_graph,"Corr")
   dir.create(file.path(Corr_path))
-  TEND_path<-paste0(ROOT_export_graph,"Tend")
-  dir.create(file.path(TEND_path))
+  TREND_path<-paste0(ROOT_export_graph,"Trend")
+  dir.create(file.path(TREND_path))
   Theta_path<-paste0(ROOT_export_graph,"Theta")
   dir.create(file.path(Theta_path))
   Lg_path<-paste0(ROOT_export_graph,"RisKfunctions")
@@ -192,7 +192,7 @@ try({
   for(name_V in L_nameV){
     newfolder<-name_V
     try({
-      dir.create(file.path(TEND_path, newfolder))
+      dir.create(file.path(TREND_path, newfolder))
       dir.create(file.path(Theta_path, newfolder))
       dir.create(file.path(PCA_path, newfolder))
       dir.create(file.path(Extremo_path, newfolder))
@@ -292,14 +292,13 @@ if(ANALYSIS_for_resid){
   Theta_obs<-t(t(Fich_1))
   Theta_sim<-t(t(Fich_2))
   
-  # ### MV test PCA coords
-  # ########################
-  
-  #####
-  Combinaisons<-t(utils::combn(x = c(1:ncol(Fich_1)),m = 2))
-  for(j in c(1:nrow(Combinaisons))){
-    index_i<-Combinaisons[j,1]
-    index_j<-Combinaisons[j,2]
+  # MV test PCA coords ----------------
+  #################
+
+  Parwise_combined<-t(utils::combn(x = c(1:ncol(Fich_1)),m = 2))
+  for(j in c(1:nrow(Parwise_combined))){
+    index_i<-Parwise_combined[j,1]
+    index_j<-Parwise_combined[j,2]
     Pair_<-c(index_i,index_j)
     df_combo<-rbind.data.frame(Fich_1[,Pair_],
                                Fich_2[,Pair_])
@@ -468,7 +467,7 @@ for(NV in L_nameV){
     theme(axis.text.x = element_blank())+
     scale_fill_manual(values=cols_)
   ggsave(filename = 
-        paste0(TEND_path,"/",NV,"/",Prefix,NV,
+        paste0(TREND_path,"/",NV,"/",Prefix,NV,
             "_boxplot_sim_obs",CPLMT,"_d=",D,
             ".png"),
          plot = GG_violin,
@@ -570,30 +569,30 @@ for(NV in L_nameV){
   N_rep<-500
   B<-nrow(Reals_1)
   lq<-c(0.05,0.50,0.95,0.975)
-  Tend<-replicate(N_rep,Resamples_trends(B = B,extremes_indus= Reals_1,
+  Trend<-replicate(N_rep,Resamples_trends(B = B,extremes_indus= Reals_1,
                         list_Q =lq))
   
-  bound_minus05<-apply(Tend[1,,],MARGIN = 1,
+  bound_minus05<-apply(Trend[1,,],MARGIN = 1,
                        FUN = function(x){return(quantile(x,0.025))})
-  bound_plus05<-apply(Tend[1,,],MARGIN = 1,
+  bound_plus05<-apply(Trend[1,,],MARGIN = 1,
                       FUN = function(x){return(quantile(x,0.975))})
   
   ##########
-  bound_minus50<-apply(Tend[2,,],MARGIN = 1,
+  bound_minus50<-apply(Trend[2,,],MARGIN = 1,
                        FUN = function(x){return(quantile(x,0.025))})
-  bound_plus50<-apply(Tend[2,,],MARGIN = 1,
+  bound_plus50<-apply(Trend[2,,],MARGIN = 1,
                       FUN = function(x){return(quantile(x,0.975))})
   
   ########
-  bound_minus95<-apply(Tend[3,,],MARGIN = 1,
+  bound_minus95<-apply(Trend[3,,],MARGIN = 1,
                        FUN = function(x){return(quantile(x,0.025))})
-  bound_plus95<-apply(Tend[3,,],MARGIN = 1,
+  bound_plus95<-apply(Trend[3,,],MARGIN = 1,
                       FUN = function(x){return(quantile(x,0.975))})
   
   ######
-  bound_minus975<-apply(Tend[4,,],MARGIN = 1,
+  bound_minus975<-apply(Trend[4,,],MARGIN = 1,
                         FUN = function(x){return(quantile(x,0.025))})
-  bound_plus975<-apply(Tend[4,,],MARGIN = 1,
+  bound_plus975<-apply(Trend[4,,],MARGIN = 1,
                        FUN = function(x){return(quantile(x,0.975))})
   
   # Graphics ----------------------------------------------------------------
@@ -633,7 +632,7 @@ for(NV in L_nameV){
     scale_color_manual(values=cols_)+
     xlab(Time_label)+
     labs(col="Legend")
-  ggsave(filename = paste0(TEND_path,"/",NV,"/QQ_evol_",
+  ggsave(filename = paste0(TREND_path,"/",NV,"/QQ_evol_",
                            Prefix,NV,CPLMT,
                            opt_used,"_d=",D,".png"),
          plot = GG_percent,width = 10,height = 5)
@@ -1297,7 +1296,7 @@ Summary_pairs<-parallel::parLapply(cl = heartsCPU,
       
                                           list_summary,F_automatic_ggplot_marg,
       
-      Path_EXT = Extremo_path,Path_TREND = TEND_path,
+      Path_EXT = Extremo_path,Path_TREND = TREND_path,
       
       l_unit=Unit_variable,risk_function=Risk_f,
       
@@ -1315,84 +1314,6 @@ Summary_pairs<-parallel::parLapply(cl = heartsCPU,
 
 ```
 
-
-```{r}
-# DF_L2_simul<-as.data.frame(L_L2_simul)
-# DF_L2_obs<-as.data.frame(L_L2_obs)
-# 
-# ####MV gof test #######
-# #########
-# 
-# ### MMD test 
-# require(eummd)
-# require(cramer)
-# 
-# Data_RiskfF<-t(t(DF_L2_obs))
-# Sim_RiskfF<-t(t(DF_L2_simul))
-# cor.test(Data_RiskfF[,1],Data_RiskfF[,2]
-#          ,method="kendall")
-# cor.test(Sim_RiskfF[,1],Sim_RiskfF[,2]
-#          ,method="kendall")
-# 
-# MV_MMD_Laplace_RF<-eummd::mmd(X=Data_RiskfF,Y=Sim_RiskfF,
-#                            kernel = "Laplacian",pval = TRUE)$pval
-# MV_MMD_Gauss_RF<-eummd::mmd(X =Data_RiskfF,Y=Sim_RiskfF,
-#                          kernel = "Gaussian",pval = TRUE)$pval
-# MV_mmd_median_RF<-eummd::meammd(X =Data_RiskfF,Y=Sim_RiskfF,
-#                              pval = TRUE)$pval
-# MV_Cramer_RF<-cramer::cramer.test(Data_RiskfF,Sim_RiskfF)$p.value
-# print("MV MMD test on RiskF")
-# print(c(MV_MMD_Laplace_RF,MV_MMD_Gauss_RF,MV_mmd_median_RF))
-# 
-# print("Cramer test on RiskF")
-# print(MV_Cramer_RF)
-
-######
-```
-
-
-```{r}
-####### Plot simulations########
-#########
-
-# Whole_L2<-rbind.data.frame(DF_L2_simul,DF_L2_obs)
-# Whole_L2$Legend<-c(rep("simulations",nrow(DF_L2_simul)),
-#                    rep("data",nrow(DF_L2_obs)))
-# if(length(L_nameV)>2){
-#   Combn_rf<-utils::combn(c(1:length(L_nameV)),m = 2)
-# }else{
-#   Combn_rf<-matrix(c(1,2),nrow = 1,ncol = 2,byrow = TRUE)
-# }
-# apply(X = Combn_rf,MARGIN = 1,
-#       function(x){
-#         name_i<-L_nameV[x[1]]
-#         name_j<-L_nameV[x[2]]
-#         Sub_whole_j<-Whole_L2[,c(name_i,name_j,"Legend")]
-#         colnames(Sub_whole_j)<-c("V1","V2","Legend")
-#         GG_RF_j<-ggplot(data=Sub_whole_j,
-#                mapping = aes(x=V1,y=V2,colour=Legend,shape=Legend))+
-#           geom_point(aes(size=Legend))+
-#           geom_xsidedensity(data=Sub_whole_j,
-#                             aes(fill=Legend), alpha = 0.5)+
-#           geom_ysidedensity(data=Sub_whole_j,
-#                             aes(fill=Legend), alpha = 0.5)+
-#           scale_color_manual(values=cols_)+
-#           scale_fill_manual(values=cols_)+
-#           scale_shape_manual(values = c("simulations"=17,"data"=19))+
-#           scale_size_manual(values=c("simulations"=0.75,"data"=1.5))+
-#           guides(fill="none")+
-#           xlab(paste("Risk of",name_i,Unit_variable[[x[1]]]))+
-#           ylab(paste("Risk of",name_j,Unit_variable[[x[2]]]))+
-#           theme(axis.title=element_text(size=15),
-#                 legend.text=element_text(size=10))
-#         ggsave(filename =paste0(Lg_path,"/Distrib_RiskF",name_i,"_",
-#                                 name_j,"_",Prefix,
-#                                 opt_used,".png"),
-#                plot = GG_RF_j,width=8,height=6)
-#       
-# })
-
-```
 
 ```{r}
 # Consistency analysis with machine learning -----------------------------------------------------
@@ -1509,20 +1430,20 @@ for(name_elt_gg in names(LIST_ML)){
 ```
 
 ```{r}
-### MLearning with multivariate time series
+# MLearning with multivariate time series ----------------
 #######
 
-### X
+### X -------------
 Simuls_MV<-do.call(cbind, list_simul)
 colnames(Simuls_MV)<-c(1:ncol(Simuls_MV))
 Reals_MV<-do.call(cbind, list_obs)
 colnames(Reals_MV)<-colnames(Simuls_MV)
 
-### L_X
+### L_X ---------------
 L_L2_simul_MV<-do.call(cbind, L_L2_simul)
 L_L2_reals_MV<-do.call(cbind, L_L2_obs)
 
-### A(X)
+### A(X) ------------------
 A_X_simul_MV<-do.call(cbind, L_A_X_simul)
 A_X_reals_MV<-do.call(cbind, L_A_X_obs)
 colnames(A_X_reals_MV)<-c(1:ncol(A_X_reals_MV))
@@ -1586,7 +1507,7 @@ write.csv(file = paste0(ML_path,"/MV_ML_result_",
 ```
 
 ```{r}
-# End of the code ---------------------------------------------------------
+# End of the code --------------------------------------------------
 #########
 stopCluster(heartsCPU)
 ```
