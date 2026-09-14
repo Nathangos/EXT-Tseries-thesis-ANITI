@@ -63,7 +63,7 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
 ### Approach the angle with one PCA basis.
 ##########################
 
-#' Approach_Angle_One_PCA
+#' Apply PCA on the concatenated angular time series.
 #'
 #' @param LIST_all list[dataframe]. Transformed time series
 #' @param Name_for_export string. Element to complete 
@@ -74,9 +74,11 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
 #' @param Indices_exts vector[int]. Indices of
 #' extreme observations.
 #' @param d int. Number of variables. 
-#' @param f_transf 
+#' @param f_transf Optional function to convert 
+#' angles before applying PCA. 
 #'
-#' @return
+#' @return List with eigenvalues, eigenvectors and the
+#' mean, standard deviation at each time step of the observations.
 #' @export
 #'
 #' @examples
@@ -163,6 +165,31 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
               "Omega_target"=Omega,
               "inertia_explained"=Inertia_explained))
 }
+#' Simulate from a mclust object.
+#'
+#' @param n int. Number of simulated coordinates.
+#' @param Object_dens_clust mclust object. 
+#' @param NB_dim_PCA int. Number of PC scores
+#'
+#' @return Matrix of simulated coordinates.
+#' @export
+#'
+#' @examples
+Simul_from_MixtureGauss<-function(n,Object_dens_clust,NB_dim_PCA){
+  
+  Simulations_all<-mclust::sim(modelName = Object_dens_clust$modelName, 
+                               parameters = Object_dens_clust$parameters,
+                               n = n)
+  end_index<-NB_dim_PCA+1
+  Sub_simul<-Simulations_all[,c(2:end_index)]
+  if(n>1){
+    colnames(Sub_simul)<-c(1:ncol(Sub_simul))
+  }else{
+    Sub_simul<-matrix(Sub_simul,nrow=1,ncol=length(Sub_simul))
+  }
+  return(Sub_simul)
+}
+
 ######### Simulation from one PCA basis.
 Simul_Omega_One_PCA_base<-function(list_Mod_One_PCA,
                                    Simul_coords,
@@ -261,30 +288,7 @@ Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,d,
   }
   return(list_IKL)
 }
-Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,d,
-                             Thresh_lg,center_GPD=FALSE){
-  Mat<-list()
-  L2_found<-list()
-  for(l in c(1:d)){
-    Name<-l_name[l]
-    Df<-liste_MV_simul[[Name]]
-    if(!isFALSE(center_GPD)){
-      Df<-Df-center_GPD
-    }
-    Mat[[l]]<-Df[j,]/Thresh_lg
-  }
-  
-  ### Scalar_product
-  Combinations<-t(utils::combn(x = c(1:d),
-                               m = 2))
-  list_IKL<-list()
-  for(j in c(1:nrow(Combinations))){
-    IKL<-Inner_k_l(l_kl = Combinations[j,],
-                   Mat = Mat)
-    list_IKL[[j]]<-IKL
-  }
-  return(list_IKL)
-}
+
 Scale_norm_per_Ind<-function(j,liste_MV_simul,l_name,
                              center_GPD){
   Mat<-list()
@@ -502,15 +506,15 @@ Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
   return(DF_whole)
 }
 
-#' Launch_MVconvergence_per_K
+#' Value for each forcing condition 
+#' for a given k of the mean absolute coordinate for several basis functions.
 #'
 #' @param liste_MV_Orig: list[df]. 
 #' @param l_name: vect[str].
 #' @param k: int. Number of extreme multivariate extreme time series. 
 #' @param vect_lg: vect[float]. Value of the risk function (gol). 
 #'
-#' @return list. Value for each forcing condition 
-#' for a given k of the mean absolute coordinate for several basis functions.
+#' @return list.
 #' @export
 #'
 #' @examples
@@ -537,15 +541,15 @@ Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
   return(list_conv)
 }
 
-#' Title
+#' Determine the evolution of the sigma and
+#'  rho coreelation coefficient
 #'
 #' @param liste_MV_Orig 
 #' @param l_name 
 #' @param vector_k 
 #' @param Ref_RiskF 
 #'
-#' @return Determine the evolution of the sigma and
-#'  rho coreelation coefficient
+#' @return Dataframe
 #' @export
 #'
 #' @examples
@@ -559,7 +563,9 @@ Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
   return(do.call(what = rbind.data.frame,
                  All_results))
 }
-#' Extreme_cov_confevol
+#' Evolution of the bootstrap confidence 
+#' bands with the number of exceedances for each pair
+#' of variables.
 #'
 #' @param liste_MV_Orig 
 #' @param l_name 
@@ -571,9 +577,7 @@ Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
 #' @param alpha_param float. Chosen parameter 
 #' of the confidence level
 #'
-#' @return list. Evolution of the bootstrap confidence 
-#' bands with the number of exceedances for each pair
-#' of variables.
+#' @return list. 
 #' @export
 #'
 #' @examples
@@ -607,7 +611,8 @@ Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
   return(do.call(what = rbind.data.frame,
                  All_results))
 }
-#' Convgce_Angle_evol
+#' Evolution with k of the convergence
+#' of the angular component for each forcing condition. 
 #'
 #' @param liste_MV_Orig list[str: dataframe]. Multivariate
 #' time series where the key corresponds to the variable name.
@@ -618,8 +623,7 @@ Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
 #' @param Ref_RiskF vector[float]. Values of the 
 #' compound risk function.
 #'
-#' @return Determine the evolution of the convergence
-#' of the angular component for each forcing condition. 
+#' @return list.
 #' @export
 #'
 #' @examples
@@ -638,14 +642,14 @@ Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
 ### Computing confidence band for this statistic
 #############
 
-#' Estimator_rho_sig_knowing_K
+#' Estimator for the given multivariate time series of the extremal correlation
+#'  coefficient
 #'
 #' @param list_inputs list[df]. Multivariate time series
 #' @param Thresh_lg float. Threshold used.
 #' @param CPU_hearts object parallel. CPU used for parallel computing.
 #' @param center Bool
-#' @return Estimator for the given multivariate time series of the extremal correlation
-#'  coefficient
+#' @return Dataframe
 #' @export
 #'
 #' @examples
@@ -688,7 +692,8 @@ Estimator_rho_sig_knowing_K<-function(list_inputs,Thresh_lg,
   return(Estimator_)
 }
 
-#' Estimator_1boostrap_sample
+#' Obtain the extremal covariance coefficient for 
+#' a bootstrapped sample of extremal observations. 
 #'
 #' @param list_obs_exts list[df]. 
 #' @param l_name vector[str]. Names of variables.
@@ -697,8 +702,7 @@ Estimator_rho_sig_knowing_K<-function(list_inputs,Thresh_lg,
 #' package to run parallel computation
 #' @param center 
 #'
-#' @return Run the function Estimator_rho_sig_knowing_K
-#' for resampled observations
+#' @return 
 #' @export
 #'
 #' @examples

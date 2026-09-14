@@ -480,14 +480,24 @@ F_automatic_ggplot_marg_Omega<-function(Obj_data,
 }
 #' F_automatic_ggplot_marg
 #'
-#' @param Obj_data: df. Concatenated time series. 
-#' @param Obj_sim: df. Simulated concatenated angles.
-#' @param l_name_time: list[str:int]. List containing
-#' for each selected variable the analysed time. 
-#' @param cols_ggplot: vector[str]. Vector of desired cols in 
-#' the ggplot plot. 
-#' @return GGplot comparing the bivariate distribution of simulated angle 
-#' and observed from extreme time series. 
+#' @param l_name_time 
+#' @param l_unit 
+#' @param risk_function 
+#' @param ind_var_cond 
+#' @param levels_used 
+#' @param cols_ vector [float]. 
+#' @param L_simul 
+#' @param L_obs 
+#' @param L_whole_obs 
+#' @param Path_TREND String. 
+#' @param Path_EXT String. Directory path for some ggplot objects.
+#' @param hearts String. Other directory path for other ggplot objects.
+#' @param basis_functionGAM 
+#' @param n_sim 
+#' @param list_info_export 
+#' @param theme_common Theme object from ggplot2 library.
+#'
+#' @return NA
 #' @export
 #'
 #' @examples
@@ -496,6 +506,7 @@ F_automatic_ggplot_marg<-function(l_name_time, l_unit,
             L_simul,L_obs,L_whole_obs,
             Path_TREND,Path_EXT,hearts,basis_functionGAM,
             n_sim,list_info_export,theme_common){
+  
   Prefix_export<-list_info_export[["prefix"]]
   CPLMT_export<-list_info_export[["complement"]]
   opt_used<-list_info_export[["model"]]
@@ -642,14 +653,15 @@ RL_EGPD_model1<-function(gamma,sigma_EGPD,order_quantiles,Kappa){
               sigma = sigma_EGPD,xi = gamma,
               type = 1))
 }
-#' Marg_2d_simul_vs_obs
+#' Compare with a ggplot object the simulated and observed
+#' extreme time series for a given pair of time steps.
 #'
-#' @param list_simul: list [dataframe]. For each key, a dataframe 
-#' of simulated time series. 
-#' @param L_obs: list [dataframe].For each key, a dataframe 
-#' of simulated time series. 
-#' @param l_name_time: vector[str:int]. Vector of analysed times.
-#'@param l_unit: list[str]. Unit_used
+#' @param l_name_time vector[string]. Variable names.
+#' @param Obs_ij dataframe. Observed values at the given pair.
+#' @param Simul_ij dataframe. Simulated values at the given pair. 
+#' @param cols_ggplot vector[string]. Graphical options
+#' to distinguish observations and simulations.
+#' @param l_unit vector[string]. Unit of each variable.
 #'
 #' @return GGplot.
 #' @export
@@ -657,6 +669,7 @@ RL_EGPD_model1<-function(gamma,sigma_EGPD,order_quantiles,Kappa){
 #' @examples
 Marg_2d_simul_vs_obs<-function(l_name_time,Obs_ij,Simul_ij,
                                cols_ggplot,l_unit){
+  
   
   NAMES<-names(l_name_time)
   df_combo<-rbind.data.frame(Obs_ij,Simul_ij)
@@ -703,24 +716,7 @@ Bivariate_Qreg_simul_vs_obs<-function(l_name_time,Obs_ij,
                                       Seq_th,zeta_sim,
                                       basis_functionGAM,
                                       hearts,n_sim){
-  # NSimul_for_compar<-nrow(list_simul[[1]])
-  # NObs_for_compar<-nrow(L_obs[[1]])
-  # L_asked<-length(l_name_time)
-  # Simul_ij<-matrix(NA,nrow = NSimul_for_compar,
-  #                  ncol=L_asked )
-  # Obs_ij<-matrix(NA,nrow = NObs_for_compar,
-  #                ncol=L_asked)
-  # Names<-names(l_name_time)
-  # for(j in c(1:L_asked)){
-  #   NJ<-Names[j]
-  #   if(NJ%in%names(list_simul)){
-  #     value_t<-l_name_time[[j]]
-  #     Simul_namev<-list_simul[[NJ]][,value_t]
-  #     Simul_ij[,j]<-Simul_namev
-  #     Obs_namev<-L_obs[[NJ]][,value_t]
-  #     Obs_ij[,j]<-Obs_namev
-  #   }
-  # }
+
   Obs_ij<-as.data.frame(Obs_ij)
   colnames(Obs_ij)<-c("X_regressor","Y_target")
   

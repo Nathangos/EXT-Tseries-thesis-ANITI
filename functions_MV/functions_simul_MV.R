@@ -1,4 +1,5 @@
-#' Fct_correct_name
+#' Replace in the input x a substring by another one if 
+#' it is present.
 #'
 #' @param x str. Vector to modify.
 #' @param target string. Element to
@@ -25,7 +26,8 @@ Fct_correct_name<-function(x,target,replacement){
     return(x_new)
   }
 }
-#' plot_Acf_modif
+#' new implementation of the plot Acf to increase
+#' the the character size in the base plot Acf
 #'
 #' @param x 
 #' @param ci 
@@ -176,7 +178,8 @@ Create_list_fromALL<-function(l_name,obj_source){
   }
   return(list_toreturn)
 } 
-#' Choice_automatic_thresh_per_variable_time
+#' choose the threshold minimising the EQD metric 
+#' at a given time.
 #'
 #' @param var_t vector[float]. Univariate
 #' values at each time step.
@@ -220,8 +223,9 @@ Choice_automatic_thresh_per_variable_time<-function(var_t,nb_threshs,
          )
 }
 
-#' Choice_automatic_thresh_per_variable
-#'
+#' Choose for every time step t the criterion
+#' minimising the EQD metric.
+#' 
 #' @param df dataframe[float]. Univariate time series
 #' @param nb_threshs int. Number of candidate threshold.
 #' @param Qmin float. Minimum quantile level.
@@ -243,7 +247,9 @@ Choice_automatic_thresh_per_variable<-function(df,
           q_max = Qmax,plot_graph=TRUE))
 }
 
-#' MarTransfo_TS_exts_Mixture
+#' Convert every data margin to a heavy-tailed scale
+#' (Frechet or GPD) by estimatin the cdf with a
+#' mixture approach (empirical for the bulk and GPD for the tail)
 #'
 #' @param CPU_hearts object from the parallel package. 
 #' Used to apply the parallel computation.
@@ -371,40 +377,40 @@ MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,liste_noms,
           "k_dens"=l_Kdens,
           "Transf"=l_Transf))
 }
-#' RC_emp_transf_per_time
-#'
-#' @param data_obs dataframe[float]. Univariate 
-#' time step.
-#' @param vect_pu vector[float]. Proportion of 
-#' extreme values for each time step. 
-#'
-#' @return Return Curve object.
-#' @export
-#'
-#' @examples
-RC_emp_transf<-function(data_obs,vect_pu){
-  
-  Result_conversion_EXP<-lapply(c(1:ncol(data_obs)),function(x){
-    return(RC_emp_transf_per_time(col_obs = data_obs[[x]],
-                                  p_u = vect_pu[x]))
-  })
-  return(Result_conversion_EXP)
-}
-#' RC_emp_transf_per_time
-#'
-#' @param col_obs vector[float]. Univariate values at a given time 
-#' step
-#' @param p_u float. Proportion of extreme values. 
-#'
-#' @return Return Curve object.
-#' @export
-#'
-#' @examples
-RC_emp_transf_per_time<-function(col_obs,p_u){
-  
-  return(ReturnCurves::margtransf(data = col_obs,
-                                  qmarg = p_u))
-}
+#' #' Obtain the return curve 
+#' #'
+#' #' @param data_obs dataframe[float]. Univariate 
+#' #' time step.
+#' #' @param vect_pu vector[float]. Proportion of 
+#' #' extreme values for each time step. 
+#' #'
+#' #' @return Return Curve object.
+#' #' @export
+#' #'
+#' #' @examples
+#' RC_emp_transf<-function(data_obs,vect_pu){
+#'   
+#'   Result_conversion_EXP<-lapply(c(1:ncol(data_obs)),function(x){
+#'     return(RC_emp_transf_per_time(col_obs = data_obs[[x]],
+#'                                   p_u = vect_pu[x]))
+#'   })
+#'   return(Result_conversion_EXP)
+#' }
+#' #' RC_emp_transf_per_time
+#' #'
+#' #' @param col_obs vector[float]. Univariate values at a given time 
+#' #' step
+#' #' @param p_u float. Proportion of extreme values. 
+#' #'
+#' #' @return Return Curve object.
+#' #' @export
+#' #'
+#' #' @examples
+#' RC_emp_transf_per_time<-function(col_obs,p_u){
+#'   
+#'   return(ReturnCurves::margtransf(data = col_obs,
+#'                                   qmarg = p_u))
+#' }
 
 fct_extract_Transf<-function(time_list){
   return(time_list[["unif_convert_t"]])
@@ -418,7 +424,8 @@ fct_extract_InitEGPD<-function(time_list){
 fct_extract_FittingEGPD<-function(time_list){
   return(time_list[["Model_t"]])
 }
-#' 
+#' Represent with a ggplot a sample of multivariate time series for one 
+#' or two groups (option_facet_wrap)
 #'
 #' @param L_nameV 
 #' @param Max_time 
@@ -488,7 +495,6 @@ Fct_cplmt_ggplot<-function(Times_available,vect_name_variable,Melting_df,
       Cplmt_label<-c("0",
                      ENDTIME)
     }
-    print(Cplmt_label)
     LABELS<-c(LABELS,
               Cplmt_label)
   }
@@ -562,11 +568,13 @@ Fct_cplmt_ggplot<-function(Times_available,vect_name_variable,Melting_df,
           strip.text.x = element_text(size = 15))
   return(GG_present_object)
 }
-#' Convert_time_z
+#' Use the 
 #'
 #' @param z: int. Time index. 
 #' @param Data_pos: dataframe. Time series of positive marginals. 
 #' @param show_EGPD: Bool. Show or not the details of EGPD fitting. 
+#' @param list_params_EGPD list[vector,vector,vector]. EGPD parameter obtained
+#' at each time step. 
 #'
 #' @return
 #' @export
@@ -757,121 +765,31 @@ MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
 }
 
 
-#' AD_KS_B_choice
-#'
-#' @param NPY_per_block : Int. Length of each block. 
-#' @param Vect_l_function : vector(float). Vector of l() values for each variable
-#'
-#' @return Dataframe(float). P values of Frechet law for each stat test (KS, AD, CVM)
-#' and variable
-#' @export
-#'
-#' @examples
-AD_KS_B_choice<-function(NPY_per_block,Vect_l_function,l_name){
-  
-  NRows<-nrow(Vect_l_function)
-  M_max<-round(NRows/NPY_per_block)
-  BLOCKS<-as.character(round(c(1:NRows)/NPY_per_block))
-  Calul_max<-cbind.data.frame(Vect_l_function,BLOCKS)
-  colnames(Calul_max)<-c(l_name,"block")
-  Vect_input<-Calul_max %>% group_by(block) %>% 
-    summarise(across(l_name, ~ max(.x, na.rm = TRUE)))
-  #across to consider every name and max(.x) to realise 
-  #the operation, kind of sapply
-  #normalisation
-  Vect_input<-as.data.frame(Vect_input[,l_name])/NPY_per_block
-  delta_moment<-0.5
-  
-  # l law -------------------------------------------------------------------
-  value_found<-colMeans(Vect_input^delta_moment)
-  value_std_frechet<-factorial(-delta_moment)
-  scale_frechet_d<-(value_found/value_std_frechet)^(1/delta_moment)
-  scale_frechet_d
-  Result_std<-matrix(NA,nrow = nrow(Vect_input),
-                     ncol=ncol(Vect_input))
-  Output<-rep(ncol(Vect_input)*3)
-  Fill<-c()
-  for(j in c(1:ncol(Vect_input))){
-    Result_std[,j]<-Vect_input[,j]/scale_frechet_d[j]
-    pval<-goftest::ad.test(Vect_input[,j],null = extRemes::"pevd",
-                           scale=scale_frechet_d[j],shape=1,
-                           loc=scale_frechet_d[j],type="GEV")$p.value
-    pval2<-ks.test(Vect_input[,j],extRemes::"pevd",
-                   scale=scale_frechet_d[j],shape=1,
-                   loc=scale_frechet_d[j],type="GEV")$p.value
-    pval3<-goftest::cvm.test(Vect_input[,j],extRemes::"pevd",
-                             scale=scale_frechet_d[j],shape=1,
-                             loc=scale_frechet_d[j],type="GEV")$p.value
-    Fill<-c(Fill,c(pval,pval2,pval3))
-  }
-  CHAR<-rep(c("KS","AD","CVM"),ncol(Vect_input))
-  NPY_BLOCK<-rep(NPY_per_block,ncol(Vect_input))
-  DF<-cbind.data.frame(Fill,CHAR)
-  colnames(DF)<-c("value","name_test")
-  DF$NPY_BLOCK<-rep(NPY_per_block,nrow(DF))
-  D<-ncol(Vect_input)
-  Index_col<-c(sapply(X = c(1:D),
-                      function(x){rep(x,nrow(DF)/D)}))
-  DF$index_col<-Index_col
-  return(DF)
-  
-}
-Compar_MomentF_B<-function(NPY_per_block,Vect_l_function,l_name){
-  
-  NRows<-nrow(Vect_l_function)
-  M_max<-round(NRows/NPY_per_block)
-  BLOCKS<-as.character(round(c(1:NRows)/NPY_per_block))
-  Calul_max<-cbind.data.frame(Vect_l_function,BLOCKS)
-  colnames(Calul_max)<-c(l_name,"block")
-  Vect_input<-Calul_max %>% group_by(block) %>% 
-    summarise(across(l_name, ~ max(.x, na.rm = TRUE)))
-  #across to consider every name and max(.x) to realise 
-  #the operation, kind of sapply
-  #normalisation
-  Vect_input<-as.data.frame(Vect_input[,l_name])/NPY_per_block
-  delta_moment<-0.5
-  
-  # l law -------------------------------------------------------------------
-  value_found<-colMeans(Vect_input^delta_moment)
-  value_std_frechet<-factorial(-delta_moment)
-  scale_frechet_d<-(value_found/value_std_frechet)^(1/delta_moment)
-  scale_frechet_d
-  Result_std<-matrix(NA,nrow = nrow(Vect_input),
-                     ncol=ncol(Vect_input))
-  Output<-rep(ncol(Vect_input)*3)
-  Fill<-c()
-  for(j in c(1:ncol(Vect_input))){
-    Result_std[,j]<-Vect_input[,j]/scale_frechet_d[j]
-    pval<-goftest::ad.test(Vect_input[,j],null = extRemes::"pevd",
-                           scale=scale_frechet_d[j],shape=1,
-                           loc=scale_frechet_d[j],type="GEV")$p.value
-    pval2<-ks.test(Vect_input[,j],extRemes::"pevd",
-                   scale=scale_frechet_d[j],shape=1,
-                   loc=scale_frechet_d[j],type="GEV")$p.value
-    pval3<-goftest::cvm.test(Vect_input[,j],extRemes::"pevd",
-                             scale=scale_frechet_d[j],shape=1,
-                             loc=scale_frechet_d[j],type="GEV")$p.value
-    Fill<-c(Fill,c(pval,pval2,pval3))
-  }
-  CHAR<-rep(c("KS","AD","CVM"),ncol(Vect_input))
-  NPY_BLOCK<-rep(NPY_per_block,ncol(Vect_input))
-  DF<-cbind.data.frame(Fill,CHAR)
-  colnames(DF)<-c("value","name_test")
-  DF$NPY_BLOCK<-rep(NPY_per_block,nrow(DF))
-  D<-ncol(Vect_input)
-  Index_col<-c(sapply(X = c(1:D),
-                      function(x){rep(x,nrow(DF)/D)}))
-  DF$index_col<-Index_col
-  return(DF)
-  
-}
-#' Simul_MV_residuals
+#' Simulate extreme multivariate time series using 
+#' some results from regular variations.
 #'
 #' @param result_transformation : result of previous function.
-#' @param l_variables : list[str]. Liste of variables.
-#' @param Q_thresh : float. Proportion of extremes.
+#' @param l_variables : list[str]. List of variables.
+#' @param Q_thresh : float. Proportion of extreme events (to choose wisely). 
 #' @param NbScores_Omega : int. Number of scores of the PCA. 
 #' @param M : int. Number of simulated time series. 
+#' @param rotations_available Boolean. If TRUE, copula 
+#' models based on the rotations can be used.  
+#' @param Params_risk_Function List. List containing several key arguments such 
+#' as the definition of the compound risk function, graphical options and 
+#' some functions used for optimisation purpose. 
+#' @param root_for_export String. Directory path for the exported elements. 
+#' @param list_nb_scores list or int. Number of PC scores kept. 
+#' @param One_PCA_base Boolean. If True, the PCA is applied 
+#' on the concatenaed angles. 
+#' @param f_transf Optional function to apply on the angles
+#'  before PCA. Not used.
+#' @param f_transf_inv Optional function to go back to
+#'  original angles. Not used.
+#' @param opt_Frech 
+#' @param cols_ggplot vector. Graphic options used in ggplot. 
+#' @param Common_theme ggplot2::theme object. Argument to 
+#' impose the same graphical options on every ggplot2 graphic. 
 #'
 #' @return List. Extreme multivariate time series 
 #' with several modeling details
@@ -885,6 +803,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                              list_nb_scores,One_PCA_base,f_transf,
                              f_transf_inv,opt_Frech,
                              cols_ggplot,Common_theme){
+  
   
   Shape_evd<-Params_risk_Function[["Shape_parameter"]]
   # CF Kokozka ---------------------------------------------------------------
@@ -1428,8 +1347,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       }
     }
     if(M_Theta=="GaussMixture"){
-      Coords_ech_orig<-t(replicate(n = N_sim,
-            expr=Simul_from_MixtureGauss(Model_coords))[1,,])
+      Coords_ech_orig<-Simul_from_MixtureGauss(n = N_sim,
+                    Object_dens_clust = Model_coords,
+                    NB_dim_PCA = ncol(Scores))
     }
     if(One_PCA_base){
       Shape_Omega_simul<-Simul_Omega_One_PCA_base(list_Mod_One_PCA = LIST_Mod,
@@ -1815,333 +1735,6 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
               "CHULL_HTAWN"=CHULL))
 }
 
-Chi_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
-                                    t,s){
-  Couple<-Matrix_df_unif[,c(t,s)]
-  Max_<-apply(X = Couple,MARGIN = 1,FUN = max)
-  prob_max<-mean(as.numeric(Max_<=Order_quantile))
-  chi <- 2 - log(prob_max)/log(Order_quantile)
-  return(chi)
-}
-AD_test_pair<-function(Matrix_df,Mat_cthresh,
-                       t,s){
-  Couple<-Matrix_df[,c(t,s)]
-  Cts<-Mat_cthresh[t,s]
-  Test_ad<-taildep.test(Couple[,1], Couple[,2],cthresh = Cts)
-  if(s==27){
-    print(c(t,s))
-    print(Test_ad)
-  }
-  PVAL<-as.numeric(Test_ad$p.value)
-  Prop<-as.numeric(Test_ad$parameter[4])*(10)^(-2)
-  df<-as.data.frame(cbind(PVAL,Prop))
-  colnames(df)<-c("pval","prop")
-  return(df)
-}
-AD_test_analysis<-function(Matrix_df,Mat_cthresh,
-                               Filename=NA,Name_main=NA,
-                           New_breaks_labels=NA,
-                           only_pval=NA,THEME_ad_ai){
-  d<-ncol(Matrix_df)
-  Mat_pval_found<-matrix(NA,nrow = d,
-                       ncol=d)
-  Mat_prop_found<-matrix(NA,nrow = d,
-                         ncol=d)
-  d_minus<-d-1
-  for(i in c(1:d_minus)){
-    beg<-i+1
-    range_i<-c(beg:d)
-    Result_line<-lapply(range_i,FUN = AD_test_pair,
-                        t=i,Mat_cthresh=Mat_cthresh,
-                        Matrix_df=Matrix_df)
-    Correspdg_df<-do.call(rbind.data.frame,
-                          Result_line)
-    Mat_pval_found[i,range_i]<-as.numeric(Correspdg_df[,"pval"])
-    Mat_prop_found[i,range_i]<-as.numeric(Correspdg_df[,"prop"])
-  }
-  Mat_pval_found<-t(Mat_pval_found)
-  rownames(Mat_pval_found)<- as.character(c(1:ncol(Mat_pval_found)))
-  colnames(Mat_pval_found) <- as.character(c(1:ncol(Mat_pval_found)))
-  m_pval<- melt(Mat_pval_found)
-  colnames(m_pval) <- c("Row", "Col", "Value")
-  m_pval$category<-rep("pvalue",nrow(m_pval))
-  
-  ### Proportion
-  Mat_prop_found<-t(Mat_prop_found)
-  rownames(Mat_prop_found)<- as.character(c(1:ncol(Mat_prop_found)))
-  colnames(Mat_prop_found) <- as.character(c(1:ncol(Mat_prop_found)))
-  m_prop<- melt(Mat_prop_found)
-  colnames(m_prop) <- c("Row", "Col", "Value")
-  m_prop$category<-rep("exceedance rate",nrow(m_prop))
-  ## NA gives error with ==--> use isTrue to prevent this
-  Case_1<-isTRUE(only_pval)
-  if(Case_1){
-    All_AD_AI<-m_pval
-  }else{
-    ### Concatenation
-    All_AD_AI<-rbind.data.frame(m_pval,m_prop)
-  }
-  ### Title graph
-  Name_main_graph<-paste0("AD test of ",Name_main)
-
-  d<-ncol(Matrix_df)
-  All_AD_AI$round_Value<-round(All_AD_AI$Value,2)
-  GG_complete_AD_AI<-ggplot(All_AD_AI, aes(x = Col, y = Row, fill = Value)) 
-  if(!Case_1){
-    ### if two elements--> facet_wrap
-    GG_complete_AD_AI<-GG_complete_AD_AI+
-    facet_wrap(~category) 
-  }
-  GG_complete_AD_AI<-GG_complete_AD_AI+
-    geom_tile()
-  if(d<5){
-    GG_complete_AD_AI<-GG_complete_AD_AI+
-      geom_text(aes(label = round_Value), color = "black",
-                size = 3)
-  }
-  GG_complete_AD_AI<-GG_complete_AD_AI+   
-    xlab("")+ylab("")+
-    scale_fill_viridis(na.value="lightgrey",
-                       alpha = 0.8)+
-   # labs(title=Name_main_graph)+
-    labs(fill="Legend")+
-    THEME_ad_ai+theme(legend.text = element_text(size=11))+
-    theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 20),
-          legend.direction="horizontal",
-          legend.position="bottom")
-  if(sum(!is.na(New_breaks_labels))==length(New_breaks_labels)){
-    pb <- ggplot_build(GG_complete_AD_AI)
-    y_breaks <-pb$layout$panel_params[[1]]$y$breaks
-    New_breaks_labels<-New_breaks_labels[y_breaks]
-    GG_complete_AD_AI<-GG_complete_AD_AI+
-      scale_x_continuous(breaks = y_breaks,
-                         labels = New_breaks_labels)+
-      
-      scale_y_continuous(breaks = y_breaks,
-                         labels = New_breaks_labels)
-  }
-  ggsave(filename = Filename,
-         plot = GG_complete_AD_AI,
-         width=12,height = 6)
-  return(GG_complete_AD_AI)
-}
-
-Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
-                               Filename=NA,Name_main=NA){
-  d<-ncol(Matrix_df_unif)
-  Mat_Xi_found<-matrix(NA,nrow = d,
-                       ncol=d)
-  d_minus<-d-1
-  for(i in c(1:d_minus)){
-    beg<-i+1
-    range_i<-c(beg:d)
-    Result_line<-sapply(range_i,FUN = Chi_measure_analysis_pair,
-                        t=i,Order_quantile=Order_quantile,
-                        Matrix_df_unif=Matrix_df_unif)
-    Mat_Xi_found[i,range_i]<-Result_line
-
-  }
-  if(is.na(Filename)){
-    #return(All)
-    return(t(Mat_Xi_found))
-  }else{
-    mat <-All
-    rownames(mat) <- as.character(c(1:ncol(mat)))
-    colnames(mat)<- as.character(c(1:ncol(mat)))
-    Name_froot<-expression(chi~"matrix of "~ NAME_VAR)
-    Name_main_modif<-do.call("substitute", 
-                             list(Name_froot[[1]], 
-                                  list(NAME_VAR = Name_main)))  
-    # Convert matrix to long format
-    df <- melt(mat)
-    require(viridis)
-    colnames(df) <- c("Row", "Col", "Value")
-    GGdefault<-ggplot(df, aes(x = Col, y = Row, fill = Value)) +
-      geom_tile() +
-      xlab("")+ylab("")+
-      scale_fill_viridis()+
-      labs(title=Name_main_modif)+
-      labs(fill="Value")+
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
-        axis.title = element_text(size=15))
-    ggsave(filename = Filename,
-           plot = GGdefault,
-           width=8,height = 6)
-    return(GGdefault)
-  }
-  
-}
-#' Chi_bar_measure_analysis_pair
-#'
-#' @param Matrix_df_unif dataframe[float]. Univariate
-#' matrix with uniform margins
-#' @param Order_quantile float. Quantile in the uniform scale.
-#' @param t int. Coordinate index to analyse. 
-#' @param s int. Other coordinate index to analyse. 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
-                                       t,s){
-  
-  Couple<-Matrix_df_unif[,c(t,s)]
-  Min_<-apply(X = Couple,MARGIN = 1,FUN = min)
-  prob_min<-mean(as.numeric(Min_>Order_quantile))
-  #From chimeas
-  chibar <- 2 * log(1-Order_quantile)/log(prob_min) - 1
-  return(chibar)
-}
-
-#' Chi_bar_measure_analysis
-#'
-#' @param Matrix_df_unif dataframe[float]. Univariate
-#' matrix with uniform margins
-#' @param Order_quantile float. Quantile in the uniform scale.
-#' @param Filename 
-#' @param Name_main 
-#'
-#' @return Ggplot object summarising the asymptotic 
-#' dependencies between the components of the input matrix.
-#' @export
-#'
-#' @examples
-Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
-                               Filename=NA,Name_main=NA){
-  
-  d<-ncol(Matrix_df_unif)
-  Mat_Xibar_found<-matrix(NA,nrow = d,
-                       ncol=d)
-  d_minus<-d-1
-  for(i in c(1:d_minus)){
-    beg<-i+1
-    range_i<-c(beg:d)
-    Result_line<-sapply(range_i,FUN = Chi_bar_measure_analysis_pair,
-                        t=i,Order_quantile=Order_quantile,
-                        Matrix_df_unif=Matrix_df_unif)
-    Mat_Xibar_found[i,range_i]<-Result_line
-
-  }
-  if(is.na(Filename)){
-    #return(All)
-    return(t(Mat_Xibar_found))
-  }else{
-    mat <-All
-    rownames(mat) <- as.character(c(1:ncol(mat)))
-    colnames(mat)<- as.character(c(1:ncol(mat)))
-    
-    # Convert matrix to long format
-    df <- melt(mat)
-    require(viridis)
-    input_for_tex<-paste0("$\\bar{\\chi}$ matrix of ",Name_main)
-    Name_main_modif<-latex2exp::TeX(input_for_tex)
-    colnames(df) <- c("Row", "Col", "Value")
-    GGdefault<-ggplot(df, aes(x = Col, y = Row, fill = Value)) +
-      geom_tile() +
-      xlab("")+ylab("")+
-      scale_fill_viridis()+
-      labs(title=Name_main_modif)+
-      labs(fill="Value")+
-      theme(
-        plot.title = element_text(hjust = 0.5, face = "bold", size = 16),
-        axis.title = element_text(size=15))
-    ggsave(filename = Filename,
-           plot = GGdefault,
-           width=8,height = 6)
-    return(GGdefault)
-  }
-  
-}
-#' Complete_chi_measure_analysis
-#'
-#' @param Matrix_df_unif dataframe[float]. Univariate
-#' matrix with uniform margins
-#' @param Order_quantile float. Quantile in the uniform scale.
-#' @param Filename string. Name of the exported graphic. 
-#' @param Name_main string. Variable name
-#' @param New_breaks_labels vector[float]. Plot option
-#' to replace the raw x and y values by the variable name. 
-#' @param Lim_viridis Limits of the extremal correlation 
-#' coefficients in the ggplot objects. 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
-                                        Filename=NA,Name_main=NA,
-                                        New_breaks_labels=NA,
-                                        Lim_viridis=NULL){
-  
-  df_chi<-Chi_measure_analysis(
-    Matrix_df_unif = Matrix_df_unif,
-    Order_quantile = Order_quantile,Filename = NA,
-    Name_main = Name_main)
-  rownames(df_chi) <- as.character(c(1:ncol(df_chi)))
-  colnames(df_chi) <- as.character(c(1:ncol(df_chi)))
-  m_chi<- melt(df_chi)
-  colnames(m_chi) <- c("Row", "Col", "Value")
-  m_chi$category<-rep("chi",nrow(m_chi))
-  
-  df_chi_bar<-Chi_bar_measure_analysis(
-    Matrix_df_unif = Matrix_df_unif,
-    Order_quantile = Order_quantile,Filename = NA,
-    Name_main = Name_main)
-  colnames(df_chi_bar)<- as.character(c(1:ncol(df_chi_bar)))
-  rownames(df_chi_bar)<- as.character(c(1:ncol(df_chi_bar)))
-
-  m_chi_bar<- melt(df_chi_bar)
-  colnames(m_chi_bar) <- c("Row", "Col", "Value")
-  m_chi_bar$category<-rep("chi_bar",
-                          nrow(m_chi_bar))
-  ### Concatenation
-  All_chi<-rbind.data.frame(m_chi,m_chi_bar)
-  ### Title graph
-  Name_main_graph<-paste0("Correlation matrix of ",Name_main)
-  cat_labels<-c("chi"="chi",
-                "chi_bar"="bar(chi)")
-  d<-ncol(Matrix_df_unif)
-  All_chi$round_Value<-round(All_chi$Value,2)
-  GG_complete_chi<-ggplot(All_chi, aes(x = Col, y = Row, fill = Value)) +
-      facet_wrap(~category,
-             labeller=as_labeller(cat_labels,label_parsed))+
-      geom_tile()
-  if(d<5){
-    GG_complete_chi<-GG_complete_chi+
-      geom_text(aes(label = round_Value), color = "black",
-                size = 3)
-  }
-  GG_complete_chi<-GG_complete_chi+   
-      xlab("")+ylab("")+
-      scale_fill_viridis_c(na.value="lightgrey",
-                       alpha = 0.8,
-                limits=Lim_viridis)+
-      labs(fill="Value")+
-      theme(plot.title = element_text(hjust = 0.5, face = "bold", size = 20),
-        strip.text = element_text(size=14),
-        axis.text  = element_text(size=12),
-        legend.title = element_text(size=13),
-        axis.title=element_text(size=14),
-        legend.direction = "horizontal",
-        legend.position = "bottom")
-  if(sum(!is.na(New_breaks_labels))==length(New_breaks_labels)){
-    pb <- ggplot_build(GG_complete_chi)
-    y_breaks <-pb$layout$panel_params[[1]]$y$breaks
-    New_breaks_labels<-New_breaks_labels[y_breaks]
-    GG_complete_chi<-GG_complete_chi+
-      scale_x_continuous(breaks = y_breaks,
-                         labels = New_breaks_labels)+
-      
-      scale_y_continuous(breaks = y_breaks,
-                         labels = New_breaks_labels)
-  }
-  ggsave(filename = Filename,
-         plot = GG_complete_chi,
-         width=8,height = 6)
-  return(GG_complete_chi)
-}
 #' function_reconversion_Unif_EXTGPD
 #'
 #' @param Simul_Unif vector. Simulated vector with uniform margins.
@@ -2227,116 +1820,7 @@ Function_conv_univ<-function(Shape_d){
   return(LISTE_convergence)
 }
 
-# DIndex_Poisson_Thresholds<-function(Vect_l_function,U,V,Decimal_date,Nb_years){
-#   NPobs<-nrow(Vect_l_function)/Nb_years
-#   Result<-1-as.numeric((Vect_l_function[,1]/NPobs<U)&(Vect_l_function[,2]/NPobs<V))
-#   Lambda<-sum(Result)/Nb_years
-#   #from diplot
-#   date <- floor(Decimal_date)
-#   tim.rec <- range(date)
-#   nb.occ <- NULL
-#   for (year in tim.rec[1]:tim.rec[2]) nb.occ <- c(nb.occ, 
-#                                                   sum(Result & (date == year)))
-#   Variance_<-var(nb.occ)
-#   DIndex<-Lambda/Variance_
-#   return(DIndex)
-# }
-Analyse_extreme_proj_gfunction<-function(base_RV,L,M1,M2,function_g){
 
-  fnct_k<-function(Obs,k,function_g){
-    LISTE_p<-function_analyse_convergence_gPto(Obs=Obs,K= k,
-                                          function_g=function_g)
-    return(LISTE_p)
-  }
-  vecteur_k<-seq(50,L,by=1)
-  # Travail sur la convergence vers un processus l-Pareto. ----------------------------------------------
-  
-  vecteur_CONVERG<-sapply(X = vecteur_k,FUN = fnct_k,Obs=base_RV,
-                          function_g=function_g)
-  MATRICE_moy_coord<-t(cbind.data.frame(vecteur_CONVERG))
-  par(mfrow=c(2,2))
-  # TITLE_proj<-expression("First moment of "~Theta[M]~"'s projection for "~nom_graph)
-  # TITLE_proj<-do.call("substitute", list(TITLE_proj[[1]], list(nom_graph = nom_graph)))                                                                            
-  for(j in c(1:ncol(MATRICE_moy_coord))){
-    express_h<-expression("Moment with "~h[j])
-    express_h<-do.call("substitute", list(express_h[[1]], list(j = j)))
-    plot(MATRICE_moy_coord[,j],type="l",ylab=express_h,
-         xlab="Exceedances",cex.lab=1.2)
-    abline(v=M1,col="red")
-    abline(v=M2,col="red")
-    # if(j==4){
-    #   mtext(outer=TRUE,text =  TITLE_proj,
-    #         line = -2)
-    # }
-  }
-  # mtext(outer=TRUE,text = TITLE_proj,
-  #       line = -2)
-  par(mfrow=c(1,1))
-}
-
-function_analyse_convergence_gPto<-function(Obs,K,function_g){
-  
-  g_data<-apply(Obs,FUN =function_g,MARGIN = 1)
-  pas_x<-1/ncol(Obs)
-  indice_k<-order(g_data,decreasing = TRUE)[K]
-  Seuil_L2<-g_data[indice_k]
-  Indices<-which(g_data>Seuil_L2)
-  Conservees<-Obs[Indices,]
-  g_data_cons<-g_data[Indices]
-  FORME_d<-t(t(Conservees)%*%diag(g_data_cons^(-1)))
-  vecteur_temps<-c(1:ncol(Obs))/ncol(Obs)
-  #Fonction propre. 
-  fonction_propre_j<-function(vecteur_temps,j){
-    fnct_par_temps<-function(j,t){
-      return(sin(2*pi*t*j))
-    }
-    vecteur_r<-sapply(vecteur_temps,fnct_par_temps,j=j)
-    return(vecteur_r)
-  }
-  LISTE_convergence<-c()
-  for(l in c(1:8)){
-    fonction_obtenue<-fonction_propre_j(vecteur_temps =vecteur_temps,j=l )
-    
-    # approx de Rieman --------------------------------------------------------
-    coordonnees<-(FORME_d%*%fonction_obtenue)*(pas_x)
-    LISTE_convergence<-c(LISTE_convergence,mean(abs(coordonnees)))
-  }
-  
-  return(LISTE_convergence)
-}
-
-### base comes from tea::mindist, idea is to better 
-### see the variations of the distance 
-### to prevent take a not so interesting threshold.
-mindist_update<-function (data, ts = 0.15, method = "mad") 
-{
-  xstat = sort(data, decreasing = TRUE)
-  n = length(data)
-  T = floor(n * ts)
-  i = 1:(n - 1)
-  h = (cumsum(log(xstat[i]))/i) - log(xstat[i + 1])
-  xstat = sort(data)
-  A = matrix(ncol = T - 1, nrow = T - 1)
-  for (k in 1:(T - 1)) {
-    for (j in 1:(T - 1)) {
-      A[k, j] = abs((((k/j) * xstat[n - k + 1]^(1/h[k]))^h[k]) - 
-                      xstat[n - j])
-    }
-  }
-  if (method == "mad") {
-    M = rowMeans(A)
-  }
-  if (method == "ks") {
-    rowMax <- function(rowData) {
-      apply(rowData, MARGIN = c(1), max)
-    }
-    M = rowMax(A)
-  }
-  method<-rep(method,length(M))
-  df<-cbind.data.frame(1:(T-1),M,method)
-  colnames(df)<-c("Nb_k","value_metric","metric")
-  return(df)
-}
 #' Couple_s_t_chi_measure
 #'
 #' @param t int. First time of the pair.  
