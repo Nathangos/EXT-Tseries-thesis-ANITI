@@ -16,13 +16,13 @@ require(grid)
 require(gridExtra)
 require(mvPot)
 #Functions from univariate case. 
-source("fonctions/fonctions_Pareto.R")
-source("fonctions/fonctions.r")
+source("functions/fonctions_Pareto.R")
+source("functions/fonctions.r")
 #source("fonctions/fonctions_r_pareto_EVOLTAU.r")
 
 ### Generation functions
-source("functions_MV/function_generation_MV.R")
-source("functions_MV/function_simul_MV.R")
+source("functions_MV/functions_generation_MV.R")
+source("functions_MV/functions_simul_MV.R")
 ### Source des fonctions. ####
 F_names<-ls()
 nb_hearts<-detectCores()-4

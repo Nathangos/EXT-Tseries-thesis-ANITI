@@ -21,19 +21,17 @@ require(mev)
 require(scales)
 require(gamlss)
 
-### Source des fonctions. ####
-#Functions from univariate case. 
-source("fonctions/fonctions_Pareto.R")
-source("fonctions/fonctions.r")
+source("functions/fonctions_Pareto.R")
+source("functions/fonctions.r")
 
-#Specific multivariate functions. 
-source("functions_MV/function_simul_MV.r")
+#Specific functions for the multivariate case
+source("functions_MV/functions_simul_MV.r")
 
 # import G pareto --------------------------------------------------------
-source("functions_MV/function_estim_simul_gPareto.R")
+source("functions_MV/functions_estim_simul_gPareto.R")
 
 # Consistency results -----------------------------------------------------
-source("functions_MV/Fonctions_consistency.R")
+source("functions_MV/functions_consistency.R")
 source("Choice_auto_thresh/src/eqd.R")
 source("Choice_auto_thresh/src/helper_functions.R")
 
@@ -44,8 +42,9 @@ nb_coeurs<-detectCores()-4
 coeurs<-makeCluster(nb_coeurs)
 clusterExport(coeurs,varlist=F_names)
 
-# Lancement fonction ------------------------------------------------------
-# ------------------------------------------------------------------------
+```
+```{r}
+
 l_root<-"residuals_MV/"
 l_name<-c("Surge","Hs","U")
 TE<-"residus"
@@ -58,6 +57,7 @@ try({
 })
 path_conversion<-paste0(path,"/",newfolder,"/")
 ```
+
 
 ```{r}
 ### Create sub folder
@@ -242,9 +242,7 @@ for(nameV in l_name){
                           ".csv"),
             x =Transf,
             row.names = FALSE)
-  # write.csv(file = paste0(path_conversion,nameV,
-  #                         "_data_ref_",d,"_gpd.csv"),
-  #           x =DATA_j,row.names = FALSE)
+
   #### GPD
   write.csv(file = paste0(path_conversion,nameV,"_GPD_params_",
                           d,".csv"),

@@ -20,13 +20,13 @@ require(cowplot)
 require(texmex)
 
 #Functions from univariate case. 
-source("fonctions/fonctions_perfs_ML.R")
-source("fonctions/fonctions.R")
+source("functions/fonctions_perfs_ML.R")
+source("functions/fonctions.R")
 
 ### Generation functions
-source("functions_MV/Fonctions_consistency.R")
-source("functions_MV/function_simul_MV.R")
-source("functions_MV/function_estim_simul_gPareto.R")
+source("functions_MV/functions_consistency.R")
+source("functions_MV/functions_simul_MV.R")
+source("functions_MV/functions_estim_simul_gPareto.R")
 
 
 
@@ -156,12 +156,10 @@ if(ANALYSIS_for_resid){
   CPLMT<-"_data"
   path_graph<-paste0(getwd(),"/Graphics_MV/data")
 }
-path_graph
-
 
 ```
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
 ### New directories to export graphics--------------
 
 ## Create the new sub directory if needed
@@ -176,7 +174,6 @@ try({
 Updated<-paste0(path_graph,"/",Name_riskF2)
 ROOT_export_graph<-paste0(path_graph,"/",
                           Name_riskF2,"/")
-ROOT_export_graph
 try({
   Corr_path<-paste0(ROOT_export_graph,"Corr")
   dir.create(file.path(Corr_path))
@@ -476,7 +473,7 @@ for(NV in L_nameV){
             ".png"),
          plot = GG_violin,
          width = 8,height = 6)
-  # QQ evol -----------------------------------------------------------------
+  # Quantile evolution -----------------------------------------------------------------
   #####
   # Simul -------------------------------------------------------------------
   estimator_95_simul<-apply(Simuls_1,MARGIN =2,
@@ -495,7 +492,8 @@ for(NV in L_nameV){
                              function(x){
                               return(as.numeric(quantile(x,0.975)))})
   
-  ### data estimator
+  ### Data ------------------
+  ###############
   estimator_025<-apply(Reals_1,MARGIN =2,
                       function(x){
                         return(as.numeric(quantile(x,0.025)))})
@@ -553,8 +551,6 @@ for(NV in L_nameV){
                 aes(x=Time,y=valeur,col=Index,
                     group=Index,
                 ))+
-    ### prevent stacking ribbons
-    ### with the group parameter. 
     geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
                     linetype="confidence_band",
                     group=1),
@@ -737,7 +733,8 @@ for(NV in L_nameV){
                            CPLMT,opt_used,"_d=",D,".png"),
          plot = GG_kendall,
          width = 8,height = 6)
-  ### Return levels
+  # Return levels -------------------------
+  ################
   LIST_GG_RL<-list()
   Bool_var<-sapply(as.character(Times_chosen),
                 function(x){
@@ -949,7 +946,7 @@ write.csv(x = DF_pca_mmd,
 ```
 
 ```{r}
-### Exs simuls
+### Exs simuls ---------------
 ################
 
 LGD_exs<-plot_grid(LEGEND_exs)
@@ -970,7 +967,7 @@ ggsave(filename = paste0(ROOT_export_graph,"/",Prefix,
 ```
 
 ```{r}
-#### PCA
+# PCA -----------------
 #############
 LGD<-plot_grid(LEGEND_whole)
 Xlab<-textGrob("First dimension",
@@ -1042,8 +1039,9 @@ ggsave(filename = paste0(Extremo_path,"/",Prefix,"cross_extremo_",
 
 
 ```{r}
-# Correlation values ------------------------------------------------------
+# Correlation values-----------------------------------------------------
 ###########
+
 # Fbvplot with several values ---------------------------------------------
 t<-19
 s<-13
@@ -1051,7 +1049,6 @@ i_index<-1
 name_i<-L_nameV[i_index]
 j_index<-2
 name_j<-L_nameV[j_index]
-print(name_j)
 Prop<-0.90
 Pair_for_bv<-cbind(L_whole[[name_i]][,t],
                    L_whole[[name_j]][,s]
@@ -1132,10 +1129,11 @@ ggsave(plot=GG_violin,
 ```
 
 ```{r}
-####MV gof test #######
+# MV gof test -----------------
 #########
 DF_L2_simul<-as.data.frame(L_L2_simul)
 DF_L2_obs<-as.data.frame(L_L2_obs)
+
 ### MMD test ----------------
 require(eummd)
 require(cramer)

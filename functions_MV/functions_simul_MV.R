@@ -263,7 +263,7 @@ Choice_automatic_thresh_per_variable<-function(df,
 #' @examples
 MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,liste_noms,
                                      file_dates,n.dens,
-                                     opt_Frech,Nb_Threshs,CPU_hearts){
+                                     opt_Frech,Nb_Threshs){
   p_U<-list()
   l_Orig<-list()
   j<-1

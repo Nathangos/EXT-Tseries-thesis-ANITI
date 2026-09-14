@@ -20,7 +20,7 @@ require(cowplot)
 require(viridis)
 
 ### Use defined functions
-source("functions_MV/function_simul_MV.R")
+source("functions_MV/functions_simul_MV.R")
 ```
 
 ```{r}
@@ -36,7 +36,7 @@ COMMON_theme<-theme(axis.title = element_text(size=20),
 ```{r}
 
 ### Source des fonctions. ####
-source("fonctions/fonctions.R")
+source("functions/fonctions.R")
 F_names<-ls()
 nb_coeurs<-detectCores()-4
 coeurs<-makeCluster(nb_coeurs)

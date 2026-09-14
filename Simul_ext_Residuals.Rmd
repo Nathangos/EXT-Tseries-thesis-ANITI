@@ -62,12 +62,12 @@ source("fonctions/fonctions_Pareto.R")
 source("fonctions/fonctions.r")
 
 #Specific multivariate functions. 
-source("functions_MV/function_simul_MV.r")
+source("functions_MV/functions_simul_MV.r")
 source("functions_MV/functions_Angle_MV.r")
 source("functions_MV/F_simulations_cond.R")
 source("functions_MV/GenericEGPDg_carrer.R")
 # import G pareto ---------------------------------------------------------
-source("functions_MV/function_estim_simul_gPareto.R")
+source("functions_MV/functions_estim_simul_gPareto.R")
 source("functions_MV/Stat_test_MV.R")
 source("functions_MV/Hidden_RV_functions.R")
 

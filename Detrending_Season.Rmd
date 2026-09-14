@@ -18,7 +18,7 @@ require(parallel)
 require(POT)
 require(scales)
 require(ggside)
-source("fonctions/fonctions.R")
+source("functions/fonctions.R")
 
 ```
 
