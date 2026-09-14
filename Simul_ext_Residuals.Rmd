@@ -929,7 +929,7 @@ if(Launch_graph_conv){
 
 if(Launch_graph_conv){
   Convgce_Angle_criterion<-Convgce_Angle_evol(
-    liste_MV_Orig = ALL_transf,l_name = l_name,
+    list_MV_Orig = ALL_transf,l_name = l_name,
     vector_k = Vector_K2,
     Ref_RiskF = Riskf_data)
   RUT<-lapply(Convgce_Angle_criterion,
@@ -1003,7 +1003,7 @@ if(Launch_graph_conv){
 ```{r}
 if(Launch_graph_conv){
   Evol_conv_criterion<-Extreme_cov_evol(
-    liste_MV_Orig = ALL_transf,l_name = l_name,
+    list_MV_Orig = ALL_transf,l_name = l_name,
     vector_k =Vector_K2,
     Ref_RiskF = Riskf_data,
     CPU_hearts = heartsCPU,center=CGPD)
@@ -1177,7 +1177,7 @@ if(Launch_graph_conv){
   # Data confidence band for each covariance coefficient ---------
   ################
   Conf_band<-Extreme_cov_confevol(
-    liste_MV_Orig = ALL_transf,
+    list_MV_Orig = ALL_transf,
             l_name = l_name,
             vector_k =Vector_K2,
             Ref_RiskF = Riskf_data,
@@ -1791,7 +1791,7 @@ source("functions_MV/functions_consistency.R")
 K<-length(re$Indices_exts)
 if(Run_Kzka_test){
   Extreme_cov_data<-Launch_extreme_cov_per_K(
-    liste_MV_Orig = ALL_transf,
+    list_MV_Orig = ALL_transf,
     l_name =l_name,k = K,
     vect_lg = Riskf_data,center = CGPD)
   Nboot<-500

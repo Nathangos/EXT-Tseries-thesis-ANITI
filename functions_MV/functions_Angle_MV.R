@@ -191,15 +191,31 @@ Simul_from_MixtureGauss<-function(n,Object_dens_clust,NB_dim_PCA){
 }
 
 ######### Simulation from one PCA basis.
+
+#' Simulations of projected (angular) time series. 
+#'
+#' @param list_Mod_One_PCA List. Arguments for the projection 
+#' such as the basis functions. 
+#' @param Simul_coords Matrix[float]. Simulated coordinates of dimension (n.sim, p) 
+#' @param NbScores_Omega int. Dimension of the PC plan. 
+#' @param f_transf_inv Optional argument. To use if
+#' a transformation was applied on the time series before
+#' using the PCA.  
+#'
+#' @return Matrix[float] of dimensions (n.sim, T)
+#' @export
+#'
+#' @examples
 Simul_Omega_One_PCA_base<-function(list_Mod_One_PCA,
                                    Simul_coords,
                                    NbScores_Omega,
                                    f_transf_inv){
+  
   Shape_Omega_simul<-function_reconstitution_trajectory_std(Vector_coords = Simul_coords,
-                                                            Base_functions_p = list_Mod_One_PCA$Eigen_functions,
-                                                            NB_dim =NbScores_Omega,
-                                                            mu_t =list_Mod_One_PCA$Mu,
-                                                            sd_t =list_Mod_One_PCA$Sig)
+          Base_functions_p = list_Mod_One_PCA$Eigen_functions,
+          NB_dim =NbScores_Omega,
+          mu_t =list_Mod_One_PCA$Mu,
+          sd_t =list_Mod_One_PCA$Sig)
   return(f_transf_inv(Shape_Omega_simul))
 }
 ######### Simulation with several PCA basis.
@@ -231,7 +247,18 @@ Simul_Omega_Mult_PCA_base<-function(list_Mod_Mult_PCA,M,d,list_nb_scores,
   return(f_transf_inv(Shape_Omega_simul))
 }
 
+#' Scalar product between two components 
+#' of an extreme multivariate time series. 
+#'
+#' @param l_kl vector[int]. Pair of coordinates analysed.
+#' @param Mat list[dataframe]. Multivariate time series. 
+#'
+#' @return vector. 
+#' @export
+#'
+#' @examples
 Inner_k_l<-function(l_kl,Mat){
+  
   k<-l_kl[1]
   l<-l_kl[2]
   First_fcg<-Mat[[k]]
@@ -249,32 +276,35 @@ Inner_k_l<-function(l_kl,Mat){
   return(c(Prod_scal,L2k,L2l))
 
 }
-#' Extreme_cov_per_K
+#' Element of the empirical extremal covariance
 #'
-#' @param j 
-#' @param liste_MV_simul list[df]. List of time
+#' @param i_ext int. Member of the indexes
+#' of extreme events. 
+#' @param list_MV_simul list[df]. List of time
 #' series per tidal cycle
 #' @param l_name list[str]. List of variable names.
 #' @param L int. Number of measures per ts
 #' @param d int. Number of variables.
 #' @param Thresh_lg float. Threshold used for gol
-#' @param center_GPD boolean or mean value at each time step
-#'
-#' @return list. 
+#' @param center_GPD Optional argument to remove the mean at 
+#' each time step. 
+#' 
+#' @return list. Value of the element for each pair
+#' of variables. 
 #' @export
 #'
 #' @examples
-Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,d,
+Extreme_cov_per_K<-function(i_ext,list_MV_simul,l_name,d,
                              Thresh_lg,center_GPD=FALSE){
   Mat<-list()
   L2_found<-list()
   for(l in c(1:d)){
     Name<-l_name[l]
-    Df<-liste_MV_simul[[Name]]
+    Df<-list_MV_simul[[Name]]
     if(!isFALSE(center_GPD)){
       Df<-Df-center_GPD
     }
-    Mat[[l]]<-Df[j,]/Thresh_lg
+    Mat[[l]]<-Df[i_ext,]/Thresh_lg
   }
   
   ### Scalar_product
@@ -289,14 +319,14 @@ Extreme_cov_per_K<-function(j,liste_MV_simul,l_name,d,
   return(list_IKL)
 }
 
-Scale_norm_per_Ind<-function(j,liste_MV_simul,l_name,
+Scale_norm_per_Ind<-function(j,list_MV_simul,l_name,
                              center_GPD){
   Mat<-list()
   d<-length(l_name)
   L2_found<-list()
   for(l in c(1:d)){
     Name<-l_name[l]
-    Df<-liste_MV_simul[[Name]]
+    Df<-list_MV_simul[[Name]]
     if(!isFALSE(center_GPD)){
       Df<-Df-center_GPD
     }
@@ -314,15 +344,18 @@ Scale_norm_per_Ind<-function(j,liste_MV_simul,l_name,
   }
   return(list_IKL)
 }
-#' Title
+#' Confidence interval for several extremal covariance estimators
+#' for a given number of exceedances. 
 #'
-#' @param l_name 
-#' @param k 
-#' @param vect_lg 
-#' @param Nboot 
-#' @param alpha_param 
-#' @param CPU_hearts 
-#' @param list_sig_L2 
+#' @param l_name vector[string]. Variable names.
+#' @param k int. Number of extreme events.
+#' @param vect_lg vector[float]. Values of the compound 
+#' risk function. 
+#' @param Nboot int. Number of bootstrap samples.
+#' @param alpha_param float. Chosen parameter 
+#' of the confidence level
+#' @param CPU_hearts object parallel. CPU used for parallel computing.
+#' @param list_sig_L2 list[float]. L2 norm of each time series. 
 #'
 #' @return
 #' @export
@@ -340,6 +373,8 @@ Launch_extreme_confcov_per_K<-function(l_name,k,
   Threshold_lg<-vect_lg_sort[k]
   ### Subset of extreme events.
   sub_order<-Order_lg[c(1:k)]
+  #1) produce Nboot bootstrapped estimators ----------------
+  ###################
   Resampled_results<-replicate(n = Nboot,
             Result_1sample_ext(list_sig_L2 = list_sig_L2,
                 l_name = l_name,k = k,
@@ -353,6 +388,8 @@ Launch_extreme_confcov_per_K<-function(l_name,k,
   Melt<-do.call(rbind.data.frame,G)
   Ind_sub<-which(Melt$variable=="gamXY")
   result_resamp<-Melt[Ind_sub,"variable"]
+  #2) extract from them a confidence interval ----------------
+  ###############
   summary_QQ<-as.data.frame(Melt %>% 
     group_by(pair_vars,variable) %>% 
     summarise(Q1=quantile(value,(alpha_param/2)),
@@ -364,14 +401,15 @@ Launch_extreme_confcov_per_K<-function(l_name,k,
   return(summary_QQ)
 }
 
-#' Title
+#' Bootstrapped estimators of the extremal covariances. 
 #'
-#' @param list_sig_L2 
-#' @param l_name 
-#' @param k 
-#' @param Threshold_lg 
-#' @param Inds_exts 
-#' @param CPU_hearts 
+#' @param list_sig_L2 list[float]. Elements used in the 
+#' estimation of the extremal covariances. 
+#' @param l_name vector[string]. Variable names. 
+#' @param k int. Number of extreme events.
+#' @param Threshold_lg float. Threshold used in the simulation
+#' @param Inds_exts vector[int]. Indexes of extreme events. 
+#' @param CPU_hearts object parallel. CPU used for parallel computing.
 #'
 #' @return
 #' @export
@@ -430,19 +468,22 @@ Result_1sample_ext<-function(list_sig_L2,l_name,k,
   return(DF_whole_NEW)
 }
 
-#' Title
+#' Empirical values of the extremal covariance
+#' for each pair of variables.
 #'
-#' @param liste_MV_Orig 
-#' @param l_name 
-#' @param k 
-#' @param vect_lg 
-#' @param center 
+#' @param list_MV_Orig list[dataframe]. Multivariate time series.
+#' @param l_name vector[string]. Variable names. 
+#' @param k int. Number of extreme events.
+#' @param vect_lg vector[float]. Values of the compound 
+#' risk function. 
+#' @param center Optional argument to remove the mean at 
+#' each time step. 
 #'
-#' @return
+#' @return Dataframe with the pairwise coefficients. 
 #' @export
 #'
 #' @examples
-Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
+Launch_extreme_cov_per_K<-function(list_MV_Orig,l_name,k,
                                    vect_lg,center){
   
   Order_lg<-order(vect_lg,
@@ -454,7 +495,7 @@ Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
   sub_order<-Order_lg[c(1:k)]
   Df<-list()
   for(nameV in l_name){
-    Whole<-liste_MV_Orig[[nameV]]
+    Whole<-list_MV_Orig[[nameV]]
     Sub_Mat<-Whole[sub_order,]
     Df[[nameV]]<-Sub_Mat
   }
@@ -463,7 +504,7 @@ Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
   L<-Dims[2]
   All_results<-lapply(c(1:k),
                       FUN = Extreme_cov_per_K,
-                      liste_MV_simul = Df,
+                      list_MV_simul = Df,
                       l_name = l_name,d = d,
                       Thresh_lg=Threshold_lg,
                       center_GPD=center)
@@ -508,23 +549,24 @@ Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
 
 
 
-#' Determine the evolution of the sigma and
-#'  rho coreelation coefficient
+#' Evolution of the sigma and
+#'  rho coreelation coefficient with the number of exceedances. 
 #'
-#' @param liste_MV_Orig 
-#' @param l_name 
-#' @param vector_k 
-#' @param Ref_RiskF 
+#' @param list_MV_Orig list[df]. Multivariate time series
+#' @param l_name vector[string]. Variable names.
+#' @param vector_k vector[int]. Candidate numbers of exceedances. 
+#' @param Ref_RiskF vector[float]. Vector of the values
+#' of the compound risk function.
 #'
 #' @return Dataframe
 #' @export
 #'
 #' @examples
-Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
+Extreme_cov_evol<-function(list_MV_Orig,l_name,vector_k,
                             Ref_RiskF,CPU_hearts,center=FALSE){
   All_results<-lapply(vector_k,Launch_extreme_cov_per_K,
                       l_name=l_name,
-                      liste_MV_Orig=liste_MV_Orig,
+                      list_MV_Orig=list_MV_Orig,
                       vect_lg=Ref_RiskF,
                       center=center)
   return(do.call(what = rbind.data.frame,
@@ -534,12 +576,14 @@ Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
 #' bands with the number of exceedances for each pair
 #' of variables.
 #'
-#' @param liste_MV_Orig 
-#' @param l_name 
-#' @param vector_k 
-#' @param Ref_RiskF 
-#' @param CPU_hearts object from the parallel package
-#' @param center Boolean or float. 
+#' @param list_MV_Orig list[df]. Multivariate time series
+#' @param l_name variable names
+#' @param vector_k vector[int]. Candidate numbers of exceedances. 
+#' @param Ref_RiskF vector[float]. Vector of the values
+#' of the compound risk function.
+#' @param CPU_hearts object parallel. CPU used for parallel computing.
+#' @param center Optional argument to remove the mean at 
+#' each time step. 
 #' @param Nboot int. Number of bootstrap samples.
 #' @param alpha_param float. Chosen parameter 
 #' of the confidence level
@@ -548,13 +592,13 @@ Extreme_cov_evol<-function(liste_MV_Orig,l_name,vector_k,
 #' @export
 #'
 #' @examples
-Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
+Extreme_cov_confevol<-function(list_MV_Orig,l_name,vector_k,
                            Ref_RiskF,CPU_hearts,center=FALSE,
                            Nboot,alpha_param){
   
-  N<-nrow(liste_MV_Orig[[1]])
+  N<-nrow(list_MV_Orig[[1]])
   Results<-parLapply(cl = CPU_hearts,X = c(1:N),
-         fun = Scale_norm_per_Ind,liste_MV_simul = liste_MV_Orig,
+         fun = Scale_norm_per_Ind,list_MV_simul = list_MV_Orig,
                             l_name = l_name,
                             center_GPD = center
                             )
@@ -589,7 +633,9 @@ Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
 #' @param list_inputs list[df]. Multivariate time series
 #' @param Thresh_lg float. Threshold used.
 #' @param CPU_hearts object parallel. CPU used for parallel computing.
-#' @param center Bool
+#' @param center Optional argument to remove the mean at 
+#' each time step. 
+#' 
 #' @return Dataframe
 #' @export
 #'
@@ -601,7 +647,7 @@ Estimator_rho_sig_knowing_K<-function(list_inputs,Thresh_lg,
   l_name<-names(list_inputs)
   All_results<-parLapply(cl = CPU_hearts,X=c(1:N),
        fun = Extreme_cov_per_K,
-       liste_MV_simul = list_inputs,
+       list_MV_simul = list_inputs,
        l_name = l_name,d = d,
        Thresh_lg = Thresh_lg,
        center_GPD=center)
@@ -639,11 +685,11 @@ Estimator_rho_sig_knowing_K<-function(list_inputs,Thresh_lg,
 #' @param list_obs_exts list[df]. 
 #' @param l_name vector[str]. Names of variables.
 #' @param Thresh_lg float. Threshold used.
-#' @param CPU_hearts object from the parallel 
-#' package to run parallel computation
-#' @param center 
+#' @param CPU_hearts object parallel. CPU used for parallel computing.
+#' @param center Optional argument to remove the mean at 
+#' each time step. 
 #'
-#' @return 
+#' @return Dataframe. 
 #' @export
 #'
 #' @examples

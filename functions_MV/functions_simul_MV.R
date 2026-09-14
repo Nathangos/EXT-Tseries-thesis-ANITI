@@ -255,7 +255,7 @@ Choice_automatic_thresh_per_variable<-function(df,
 #' Used to apply the parallel computation.
 #' @param lien_racine string. Link for 
 #' the import for the time series measures.
-#' @param liste_noms vector[str]. Vector of variable names.
+#' @param list_noms vector[str]. Vector of variable names.
 #' @param file_dates string. Link for the import
 #' of date vector.
 #' @param n.dens int. Parameter of the 
@@ -267,7 +267,7 @@ Choice_automatic_thresh_per_variable<-function(df,
 #' @export
 #'
 #' @examples
-MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,liste_noms,
+MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,list_noms,
                                      file_dates,n.dens,
                                      opt_Frech,Nb_Threshs){
   p_U<-list()
@@ -276,9 +276,9 @@ MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,liste_noms,
   l_AD<-list()
   l_Kdens<-list()
   l_ev_theta<-list()
-  d<-length(liste_noms)
+  d<-length(list_noms)
   l_Transf<-list()
-  for(name_variable in liste_noms){
+  for(name_variable in list_noms){
     ### Add d to prevent contamination problems.
     lien_donnees<-paste0(lien_racine,name_variable,"_residuals_",
                          d,".csv")
@@ -363,8 +363,8 @@ MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,liste_noms,
     l_Kdens[[name_variable]]<-do.call(rbind.data.frame,
                                       LK)
     
-    if(name_variable==liste_noms[1]){
-      df<-matrix(NA,ncol=length(liste_noms),
+    if(name_variable==list_noms[1]){
+      df<-matrix(NA,ncol=length(list_noms),
                  nrow=nrow(Vtransf))
     }
     df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norm_L2)
@@ -659,7 +659,7 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
 #'
 #' @param CPU_hearts 
 #' @param lien_racine 
-#' @param liste_noms 
+#' @param list_noms 
 #' @param opt_Frech 
 #' @param n.dens 
 #' @param p_U 
@@ -672,7 +672,7 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
 #'
 #' @examples
 MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
-                                 liste_noms,opt_Frech,n.dens,p_U,
+                                 list_noms,opt_Frech,n.dens,p_U,
                                  file_dates,show_EGPD,
                                  list_params_EGPD){
   
@@ -684,8 +684,8 @@ MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
   LIST_SUB_TRANSFO<-list()
   j<-1
   df<-list()
-  d<-length(liste_noms)
-  for(name_variable in liste_noms){
+  d<-length(list_noms)
+  for(name_variable in list_noms){
     
     ### ADD d to prevent contamination error
     lien_donnees<-paste0(lien_racine,name_variable,
@@ -714,7 +714,7 @@ MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
     j<-j+1
   }
   return(l_Orig_all)
-  for(name_variable in liste_noms){
+  for(name_variable in list_noms){
     Donnes<-l_Orig_all[[name_variable]]
     
     rownames(Donnes)<-c(1:nrow(Donnes))
@@ -812,11 +812,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   Array_simul<-array(data = NA,dim = c(length(l_variables),
                 M,37))
   
-  LISTE_obs_exts<-list()
+  list_obs_exts<-list()
   Times_per_FCG<-list()
-  Liste_all<-result_transformation$resume
-  for(name_FCG in names(Liste_all)){
-    RAW<-colnames(Liste_all[[name_FCG]]$transf)
+  list_all<-result_transformation$resume
+  for(name_FCG in names(list_all)){
+    RAW<-colnames(list_all[[name_FCG]]$transf)
     Times_per_FCG[[name_FCG]]<-substr(RAW,start = 2,
                            stop = 3)  
   }
@@ -1269,7 +1269,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   l_fonction<-list()
   l_Mat_moyenne<-list()
   l_sigma<-list()
-  LISTE_SHAPE_OBS<-list()
+  list_SHAPE_OBS<-list()
   d<-ncol(Vect_l_function)
   
   L<-length(l_variables)-1
@@ -1282,7 +1282,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   
   if(One_PCA_base){
     print("One PCA basis")
-    LIST_Mod<-Approach_Angle_One_PCA(LIST_all = Liste_all,
+    LIST_Mod<-Approach_Angle_One_PCA(LIST_all = list_all,
                                      Name_for_export =root_for_export,
                                      NbScores_Omega = NbScores_Omega,
                                      l_variables = l_variables,
@@ -1293,14 +1293,14 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   }else{
     print("Several PCA basis")
     LIST_Mod<-Approach_Angle_Mult_PCA(Indices_exts = Indices_exts,
-                                      LIST_all = Liste_all,
+                                      LIST_all = list_all,
                                       root_export = root_for_export,
                                       l_variables = l_variables,
                                       list_nb_scores=list_nb_scores,
                                       f_transf = f_transf)
     NbScores_Omega<-LIST_Mod[["Nb_scores_omega"]]
   }
-  LISTE_Frechet_OBS<-LIST_Mod[["L_Frechet"]]
+  list_Frechet_OBS<-LIST_Mod[["L_Frechet"]]
   Scores<-LIST_Mod[["Scores"]]
   Length_T<-LIST_Mod[["Length_TS"]]
   EIGEN_functions<-LIST_Mod[["Eigen_functions"]]
@@ -1536,8 +1536,8 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     ggsave(plot = Combn_leg,filename = File_rmg,
       height=6,width=10)
 
-    LISTE_shapes<-list()
-    LISTE_candidats<-list()
+    list_shapes<-list()
+    list_candidats<-list()
     DF_simul_lprime<-c()
     NB_Forcg_cond<-length(l_variables)
     Beg<-0
@@ -1553,9 +1553,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       L2_shape_name<-apply(Shape_forcing,MARGIN = 1,
                            FUN = calcul_norm_L2)
       Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
-      LISTE_shapes[[nom_s]]<-Shape_forcing_std
+      list_shapes[[nom_s]]<-Shape_forcing_std
       Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
-      LISTE_candidats[[nom_s]]<-Z_varj
+      list_candidats[[nom_s]]<-Z_varj
       DF_simul_lprime<-c(DF_simul_lprime,
             apply(X = Z_varj,MARGIN = 1,
                     FUN = calcul_norm_L2))
@@ -1598,7 +1598,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     Lag<-End_filled-Beg_filled+1
     for(k in c(1:length(l_variables))){
       name_variable<-l_variables[k]
-      Z_vark<-LISTE_candidats[[name_variable]][Inds_final_chosen,]
+      Z_vark<-list_candidats[[name_variable]][Inds_final_chosen,]
       Sub_coords<-Coords_ech_orig[Inds_final_chosen,]
       Sub_coords<-Sub_coords[c(1:Lag),]
 
@@ -1629,9 +1629,9 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
 
   # Conversion of the simulated multivariate TS --------------------------------------------------------------
   # ------------------------------------------------------------------------
-  LISTE_Frechet_SIMUL<-list()
-  LISTE_simul<-list()
-  LISTE_obs_exts<-list()
+  list_Frechet_SIMUL<-list()
+  list_simul<-list()
+  list_obs_exts<-list()
   print(Length_T)
   
   # Since two methods are possible to reconvert the MV TS, 
@@ -1652,10 +1652,10 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Times_used<-Times_per_FCG[[name_variable_for_conv]]
       DF<-as.data.frame(Conv_for_analyse)
       colnames(DF)<-Times_used
-      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-DF
+      list_Frechet_SIMUL[[name_variable_for_conv]]<-DF
       INDICES_ACP<-1:nrow(Z_varj)
       # Reconversion in the correct scale--------------------------------------
-      Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
+      Theta_EXTGPD_k<-list_all[[name_variable_for_conv]]$params_transfo
       K<-Theta_EXTGPD_k$K
       LEVT<-Theta_EXTGPD_k$LEVT
 
@@ -1668,12 +1668,12 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Variables_reconversion_ACP<-do.call(cbind.data.frame,
                      Variables_reconversion_ACP)
       colnames(Variables_reconversion_ACP)<-Times_used
-      LISTE_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
+      list_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
       
       # Extreme observations -----------------------------------------------------
       obs_ext<-result_transformation$orig[[name_variable_for_conv]][Indices_exts,]
       colnames(obs_ext)<-Times_used
-      LISTE_obs_exts[[name_variable_for_conv]]<-obs_ext
+      list_obs_exts[[name_variable_for_conv]]<-obs_ext
     }
   }else{
     for(k in c(1:length(l_variables))){
@@ -1692,13 +1692,13 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       ### Unif-->Frechet to compare in Frechet scale of obs.
       DF<-as.data.frame(Conv_for_analyse)
       colnames(DF)<-Times_used
-      LISTE_Frechet_SIMUL[[name_variable_for_conv]]<-DF
+      list_Frechet_SIMUL[[name_variable_for_conv]]<-DF
       NO_ACP<-lapply(INDICES_ACP,FUN = fnct_select_colonne,
                      df=Simul_whole_kunif)
       
       # Reconversion in the correct scale--------------------------------------
       ### Change the colnames using correct times
-      Theta_EXTGPD_k<-Liste_all[[name_variable_for_conv]]$params_transfo
+      Theta_EXTGPD_k<-list_all[[name_variable_for_conv]]$params_transfo
       Variables_reconversion_ACP<-lapply(NO_ACP,
                     function_reconversion_Unif_EXTGPD,
                     Theta_k=Theta_EXTGPD_k)
@@ -1706,12 +1706,12 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       Variables_reconversion_ACP<-do.call(rbind,
                       Variables_reconversion_ACP)
       colnames(Variables_reconversion_ACP)<-Times_used
-      LISTE_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
+      list_simul[[name_variable_for_conv]]<-Variables_reconversion_ACP
       
       # Extreme observations -----------------------------------------------------
       obs_ext<-result_transformation$orig[[name_variable_for_conv]][Indices_exts,]
       colnames(obs_ext)<-Times_used
-      LISTE_obs_exts[[name_variable_for_conv]]<-obs_ext
+      list_obs_exts[[name_variable_for_conv]]<-obs_ext
     }
     
   }
@@ -1721,11 +1721,11 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
   else{
     Object_modelisation<-Model_coords
   }
-  return(list("Param_found"=Theta_opt,"simul"=LISTE_simul,
-              "obs_exts"=LISTE_obs_exts,"Indices_exts"=Indices_exts,
+  return(list("Param_found"=Theta_opt,"simul"=list_simul,
+              "obs_exts"=list_obs_exts,"Indices_exts"=Indices_exts,
               "coords_simul"=Coords_simul, "coords_data"=Scores,
-              "Frechet_normal"=list("obs"=LISTE_Frechet_OBS,
-                                    "simul"=LISTE_Frechet_SIMUL),
+              "Frechet_normal"=list("obs"=list_Frechet_OBS,
+                                    "simul"=list_Frechet_SIMUL),
               "EIGEN_functions"= EIGEN_functions,
               "threshold"=Threshold,
               "Vect_RiskF_transf"=Vect_l_transf,
