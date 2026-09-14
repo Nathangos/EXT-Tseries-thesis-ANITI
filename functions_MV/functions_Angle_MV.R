@@ -310,10 +310,25 @@ Scale_norm_per_Ind<-function(j,liste_MV_simul,l_name,
   }
   return(list_IKL)
 }
+#' Title
+#'
+#' @param l_name 
+#' @param k 
+#' @param vect_lg 
+#' @param Nboot 
+#' @param alpha_param 
+#' @param CPU_hearts 
+#' @param list_sig_L2 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Launch_extreme_confcov_per_K<-function(l_name,k,
                                        vect_lg,
                                        Nboot,alpha_param,
                                        CPU_hearts,list_sig_L2){
+  
   Order_lg<-order(vect_lg,
                   decreasing = TRUE)
   vect_lg_sort<-sort(vect_lg,
@@ -345,9 +360,23 @@ Launch_extreme_confcov_per_K<-function(l_name,k,
   return(summary_QQ)
 }
 
+#' Title
+#'
+#' @param list_sig_L2 
+#' @param l_name 
+#' @param k 
+#' @param Threshold_lg 
+#' @param Inds_exts 
+#' @param CPU_hearts 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Result_1sample_ext<-function(list_sig_L2,l_name,k,
                      Threshold_lg,Inds_exts,
                      CPU_hearts){
+  
   L_ext<-length(Inds_exts)
   Indexes_sampled<-sample(x = c(1:L_ext),
                           size = L_ext,replace = TRUE)
@@ -397,8 +426,21 @@ Result_1sample_ext<-function(list_sig_L2,l_name,k,
   return(DF_whole_NEW)
 }
 
+#' Title
+#'
+#' @param liste_MV_Orig 
+#' @param l_name 
+#' @param k 
+#' @param vect_lg 
+#' @param center 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
                                    vect_lg,center){
+  
   Order_lg<-order(vect_lg,
                   decreasing = TRUE)
   vect_lg_sort<-sort(vect_lg,
@@ -460,72 +502,6 @@ Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
   return(DF_whole)
 }
 
-#' Launch_extrem_cov_per_K
-#'
-#' @param liste_MV_Orig 
-#' @param l_name 
-#' @param k 
-#' @param vect_lg 
-#' 
-#' @return
-#' @export
-#'
-#' @examples
-# Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
-#                                   vect_lg,center){
-#   Order_lg<-order(vect_lg,
-#                       decreasing = TRUE)
-#   vect_lg_sort<-sort(vect_lg,
-#                      decreasing = TRUE)
-#   Threshold_lg<-vect_lg_sort[k]
-#   ### Subset of extreme events.
-#   sub_order<-Order_lg[c(1:k)]
-#   Df<-list()
-#   for(nameV in l_name){
-#     Whole<-liste_MV_Orig[[nameV]]
-#     Sub_Mat<-Whole[sub_order,]
-#     Df[[nameV]]<-Sub_Mat
-#   }
-#   Dims<-dim(Sub_Mat)
-#   d<-length(l_name)
-#   L<-Dims[2]
-#   All_results<-lapply(c(1:k),
-#                       FUN = Extreme_cov_per_K,
-#                       liste_MV_simul = Df,
-#                       l_name = l_name,d = d,
-#                       Thresh_lg=Threshold_lg,
-#                       center_GPD=center)
-#   Pairs_found<-t(utils::combn(x = c(1:length(l_name)),
-#                              m = 2))
-#   END_index<-nrow(Pairs_found)
-#   list_Sig_RHO<-list()
-#   for(Z in c(1:END_index)){
-#     Conv_rho_sig_PairZ<-t(sapply(X = All_results,
-#                          FUN = function(x){
-#                            return(x[[Z]])
-#                          }))
-#     Mu_whole<-colMeans(Conv_rho_sig_PairZ)
-#     prod_sig<-prod(Mu_whole[-1]**(1/2))
-#     Pair_z<-l_name[Pairs_found[Z,]]
-#     Category<-paste0("(",Pair_z[1],",",Pair_z[2],")")
-#     list_Sig_RHO[[Z]]<-c(k, Mu_whole[1],Mu_whole[1]/prod_sig,
-#                          Category)
-#   }
-#   DF_whole<-do.call(rbind.data.frame,list_Sig_RHO)
-#   colnames(DF_whole)<-c("k","sigXY","rhoXY","pair_vars")
-#   # Toconvert<-c("sigXY","k","rhoXY")
-#   # DF_whole[,Toconvert]<-sapply(Toconvert,
-#   #                function(x)
-#   #                {return(as.numeric(DF_whole[,x]))
-#   #                })
-#   return(DF_whole)
-#   # Accelerated version with CPU_hearts
-#   # DF_whole<-Estimator_rho_sig_knowing_K(list_inputs = Df,
-#   #                           Thresh_lg = Thresh_lg,
-#   #                           CPU_hearts = CPU_hearts)
-#   # return(DF_whole)
-#   
-# }
 #' Launch_MVconvergence_per_K
 #'
 #' @param liste_MV_Orig: list[df]. 
