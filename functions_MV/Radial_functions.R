@@ -1,14 +1,18 @@
 ### Convergence of the defined "angles" of the radial vector ------------
 #################
 
-#' Title
+#' Pairwise correlations within the 
+#' radial tail components for a given 
+#' number of exceedances.
 #'
-#' @param Df_Rad_Orig 
-#' @param l_name 
-#' @param k 
-#' @param vect_lg 
+#' @param Df_Rad_Orig matrix[float]. Observed values 
+#' of the radial components. 
+#' @param l_name vector[string]. Variable names. 
+#' @param k int. Number of extreme events. 
+#' @param vect_lg vector[float]. Vector of the values
+#' of the compound risk function. 
 #'
-#' @return
+#' @return Dataframe. 
 #' @export
 #'
 #' @examples
@@ -36,13 +40,19 @@ Extreme_covRad_per_K<-function(Df_Rad_Orig,l_name,k,
   Mat_corr$number_exceed<-rep(k,nrow(Mat_corr))
   return(Mat_corr)
 }
-#' Title
+
+#' Evolution of the pairwise correlations within the 
+#' radial tail components with the
+#' number of exceedances.
 #'
-#' @param Df_Rad_Orig 
-#' @param l_name 
-#' @param vector_k 
-#' @param Ref_RiskF 
-#' @param CPU_hearts 
+#' @param Df_Rad_Orig matrix[float]. Observed values 
+#' of the radial components. 
+#' @param l_name vector[string]. Variable names. 
+#' @param vector_k vector[int]. Candidate numbers of exceedances. 
+#' @param Ref_RiskF vector[float]. Vector of the values
+#' of the compound risk function.
+#' @param CPU_hearts object from the parallel package to run 
+#' the computation in parallel. 
 #'
 #' @return
 #' @export
@@ -59,83 +69,7 @@ Extreme_covRad_evol<-function(Df_Rad_Orig,l_name,vector_k,
   return(do.call(what = rbind.data.frame,
                  All_results))
 }
-
-#' Title
-#'
-#' @param Mu_vector 
-#' @param Cov_mat 
-#' @param g 
-#' @param Th_g 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-Sample_cond_g_Rjection_Sampling<-function(Mu_vector,
-                                          Cov_mat,g,Th_g){
-  
-  verified<-FALSE
-  d<-ncol(Cov_mat)
-  while(verified==FALSE){
-    vect_norm<-c(mvtnorm::rmvnorm(n = 1,mean = Mu_vector,
-                                sigma = Cov_mat))
-    g_sim<-g(vect_norm)
-    if(g_sim>Th_g){
-      verified<-TRUE
-    }
-  }
-  return(vect_norm)
-  
-}
-
-#' Title
-#'
-#' @param Mu_vector 
-#' @param Cov_mat 
-#' @param g 
-#' @param Th_g 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-Sample_cond_g<-function(Mu_vector,Cov_mat,
-                        g,Th_g){
-  
-  verified<-FALSE
-  d<-ncol(Cov_mat)
-  while(verified==FALSE){
-    j_chosen<-sample(c(1:d),size = 1)
-    vect_norm<-rep(NA,d)
-    W_sim<-truncnorm::rtruncnorm(1,a=Th_g,b=Inf)
-    Sigma_inv_W<-solve(Cov_mat[j_chosen,j_chosen])
-    Cov_U_condW<-Cov_mat[-j_chosen,j_chosen]
-    Rest_mean<-Cov_U_condW%*%Sigma_inv_W%*%(W_sim-Mu_vector[j_chosen])
-    mu_vector_cond<-Mu_vector[-j_chosen]+Rest_mean
-    Rest_cov_mat<-Cov_U_condW%*%Sigma_inv_W%*%t(Cov_U_condW)
-    cov_mat_cond<-Cov_mat[j_chosen,j_chosen]-Rest_cov_mat
-    if(d>2){
-      
-      Simul_rest<-mvtnorm::rmvnorm(
-        n = 1,mean = mu_vector_cond,
-        sigma =cov_mat_cond)
-    }else{
-      cov_mat_cond<-as.numeric(cov_mat_cond)
-      mu_vector_cond<-as.numeric(mu_vector_cond)
-      sig<-sqrt(cov_mat_cond)
-      Simul_rest<-rnorm(1,mean = mu_vector_cond,
-                        sd = sig)
-    }
-    vect_norm[-j_chosen]<-Simul_rest
-    vect_norm[j_chosen]<-W_sim
-    g_sim<-g(vect_norm)
-    if(g_sim>Th_g){
-      verified<-TRUE
-    }
-  }
-  return(vect_norm)
-}
-#' Simul_from_Htawn
+#' Simulation from a mixture of CEV models.
 #'
 #' @param model_mex_all: MexALL object.
 #' @param n_sim: int. Number of simulations.
@@ -146,7 +80,8 @@ Sample_cond_g<-function(Mu_vector,Cov_mat,
 #' @param thresh_censor: float. Threshold used for (-ind_ref) cases.
 #' @param Q_sim: float. Quantile used for the conditioning variable.
 #'
-#' @return
+#' @return matrix[float] of dimensions (n_sim, d). It contains all
+#' the simulations of extreme events. 
 #' @export
 #'
 #' @examples
@@ -154,11 +89,13 @@ Simul_from_Htawn<-function(model_mex_all,n_sim,d,Name_vars,
                            prop_class,ind_ref,
                            thresh_censor,Q_sim){
   Data_rad<-data.frame(matrix(NA,nrow = n_sim,
-                    ncol=d))
+                              ncol=d))
   colnames(Data_rad)<-c(Name_vars)
   ### same value for prob above threshold.
   list_sample<-list()
   probs_class<-prop_class/sum(prop_class)
+  #(1) Determine the sub-group of the simulated point-----
+  #################
   sample_marg<-sample(c(1:d),size = n_sim,replace = TRUE,
                       prob = probs_class)
   for(z in c(1:d)){
@@ -167,11 +104,14 @@ Simul_from_Htawn<-function(model_mex_all,n_sim,d,Name_vars,
     Model_z<-model_mex_all[[z]]
     Qsim_z<-Q_sim[z]
     n_sim_z<-length(Ind_z)
+    #(2) Apply a simulation with censoring
+    ## to sample this point-----
+    #################
     Pop_sims_z<-t(replicate(n_sim_z,
-      HTAWN_censorshisp(model_z = Model_z,
-        prop_z = Qsim_z,thresh_censor = thresh_censor,
-        ind_ref = ind_ref,z = z,
-        l_name=Name_vars)))
+                            HTAWN_censorshisp(model_z = Model_z,
+                                              prop_z = Qsim_z,thresh_censor = thresh_censor,
+                                              ind_ref = ind_ref,z = z,
+                                              l_name=Name_vars)))
     #return(Pop_sims_z)
     for(variable in Name_vars){
       Data_rad[Ind_z,variable]<-Pop_sims_z[,variable]
@@ -212,7 +152,7 @@ TexmexMCarlo_Extrapol<-function (nSample, mexList, pqu_extrapol,mult = 10)
   which <- sample(1:nData, size = nSample, replace = TRUE)
   MCsampleOriginal <- data[which, ]
   dataLaplace <- Craft_MEX_transform(mexList[[1]]$margins, margins = margins, 
-                              method = "mixture")$transformed
+                                     method = "mixture")$transformed
   MCsampleLaplace <- dataLaplace[which, ]
   ### Where does the maximum appears ? 
   whichMax <- apply(MCsampleLaplace, 1, which.max) 
@@ -232,11 +172,11 @@ TexmexMCarlo_Extrapol<-function (nSample, mexList, pqu_extrapol,mult = 10)
   
   ### When does the maximum is above the desired threshold--> CEV can be used
   whichMaxAboveThresh <- sapply(1:nSample, function(i) MCsampleLaplace[i, 
-                                    whichMax[i]] >= dth_extrapol[whichMax[i]])
+                                                                       whichMax[i]] >= dth_extrapol[whichMax[i]])
   mexKeep <- lapply(1:d, function(i) {
     ### to extrapolate--> use new argument pqu_extrapol
     mc <- predict(mexList[[i]], pqu = pqu_extrapol[i], nsim = nSample * 
-                        d * mult,smoothZdistribution=TRUE)
+                    d * mult,smoothZdistribution=TRUE)
     ### keep in memory only the simulations for which the maximum appears 
     ### for the ith model
     mc$data$simulated[mc$data$CondLargest, order(c(i, c(1:d)[-i]))]
@@ -330,14 +270,18 @@ Craft_MEX_transform<-function (x, margins, r = NULL, method = "mixture", divisor
 }
 ### (CEV model) function for threshold selection ---------------
 
-#' Title
+#' Analyse the dependence between CEV residuals 
+#' and the conditioning variable.
 #'
-#' @param mqu 
-#' @param dqu 
-#' @param vect_l 
-#' @param ind_ref 
+#' @param mqu Float. Marginal quantile used
+#' for marginal transformation. 
+#' @param dqu Float. Proportion of extreme events 
+#' for the conditioning coordinate. 
+#' @param vect_l vector[float]. Observed values. 
+#' @param ind_ref int. Index of the conditioning 
+#' variable in the vector.
 #'
-#' @return
+#' @return list composed of several ggplot objects. 
 #' @export
 #'
 #' @examples
@@ -361,17 +305,17 @@ Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
       Resid<-Z
       Absolute_values<-abs(Resid-colMeans(Resid))
       Result_per_column<-apply(Resid,MARGIN = 2,
-             FUN = function(x){
-               result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
-                             3)
-               return(result)
-             })
+                               FUN = function(x){
+                                 result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                               3)
+                                 return(result)
+                               })
       Result_per_column2<-apply(X = Absolute_values,MARGIN = 2,
-            FUN = function(x){
-              result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
-                            3)
-              return(result)
-            })
+                                FUN = function(x){
+                                  result<-round(cor.test(x,Ref_var,method="kendall")$p.value,
+                                                3)
+                                  return(result)
+                                })
       
     }
   }else{
@@ -392,12 +336,14 @@ Params_HTawn_one_dqu<-function(mqu,dqu,vect_l,ind_ref){
               "Test_2"=Result_per_column2,
               "Theta"=Theta))
 }
-#' Title
+#' Convex hull of the estimators of the CEV parameters 
+#' for a given conditioning coordinate.
 #'
-#' @param Theta_opt 
-#' @param vect_name_variables 
+#' @param Theta_opt mex object from the texmex package.
+#' @param vect_name_variables vector[string]. Vector of variable
+#' names. 
 #'
-#' @return
+#' @return ggplot2 object. 
 #' @export
 #'
 #' @examples
@@ -410,7 +356,7 @@ Analysis_diag_HTawn_Conv_Hull<-function(Theta_opt,vect_name_variables){
   for(Z in c(1:d)){
     HTawn_z<-Theta_opt[[Z]]
     Modelboot_z<-texmex::bootmex(x = HTawn_z)
-
+    
     Results<-lapply(Modelboot_z$boot,function(x){
       y<-x$dependence
       matrix<-as.data.frame(t(y[1:2,]))
@@ -428,16 +374,16 @@ Analysis_diag_HTawn_Conv_Hull<-function(Theta_opt,vect_name_variables){
   Combinaison_for_hull<-do.call(rbind.data.frame,
                                 list_GG_for_hull)
   Combinaison_for_hull$variable<-sapply(Combinaison_for_hull$variable,
-            FUN = function(x){
-              return(Fct_correct_name(x = x,target = "Surcote",
-                                      replacement = "Surge"))
-            })
+                                        FUN = function(x){
+                                          return(Fct_correct_name(x = x,target = "Surcote",
+                                                                  replacement = "Surge"))
+                                        })
   Vector_shown_chull<-sapply(vect_name_variables,
-           FUN = function(x){
-             return(Fct_correct_name(x = x,
-                                     target = "Surcote",
-                                     replacement = "Surge"))
-           })
+                             FUN = function(x){
+                               return(Fct_correct_name(x = x,
+                                                       target = "Surcote",
+                                                       replacement = "Surge"))
+                             })
   DEFAULT_colors<-scales::hue_pal()(
     length(Vector_shown_chull))
   Real_labels <- parse(
@@ -471,14 +417,21 @@ Analysis_diag_HTawn_Conv_Hull<-function(Theta_opt,vect_name_variables){
 
 
 
-#' Title
+#' Evolution of the CEV parameters and independence test 
+#' with the proportion of extreme events for every 
+#' conditioning coordinate. 
 #'
-#' @param vect_dqu 
-#' @param Vect_obs 
-#' @param MQU 
-#' @param chosen_dqu 
+#' @param vect_dqu vector[float]. Candidate thresholds for
+#' the estimation of the CEV parameters, which handle the 
+#' dependence structure between the coordinates. 
+#' @param Vect_obs vector[float]. Observed values (the radial 
+#' components in the application). 
+#' @param MQU vector[float]. Threshold used to estimate the 
+#' marginal cdf. 
+#' @param chosen_dqu vector[float]. Threshold used in
+#' the simulation.
 #'
-#' @return
+#' @return List[S4 object]. List composed of two ggplot. 
 #' @export
 #'
 #' @examples
@@ -671,48 +624,127 @@ Analysis_diag_HTawn_evol_DQU<-function(vect_dqu,
               "indep"=GG_Indep))
 }
 
-#' Title
+#' simulation of a specific CEV model with censorship
 #'
-#' @param model_z 
-#' @param prop_z 
-#' @param thresh_censor 
-#' @param ind_ref 
-#' @param z 
-#' @param l_name 
+#' @param model_z object mexAll from the texmex package. CEV model.
+#' @param prop_z probability that the conditioning variable being
+#' below the threshold we imposed.
+#' @param thresh_censor threshold used. 
+#' @param ind_ref index. Index used to impose the censorship. 
+#' @param z index of the conditioning variable
+#' @param l_name variable names
 #'
-#' @return
+#' @return vector[float]. Simulated vector. 
 #' @export
 #'
 #' @examples
 HTAWN_censorshisp<-function(model_z,prop_z,thresh_censor,ind_ref,z,
                             l_name){
   
-    accept<-FALSE
-    while(accept==FALSE){
-      Sims_Cond_z<-predict(object= model_z,pqu=prop_z,
-                     nsim =2,which = z,
-                     smoothZdistribution=TRUE)$data$simulated
-      ###Select the first one (breaks if nsim=1)
-      Sims_Cond_z<-unlist(Sims_Cond_z[1,])
-      d<-length(Sims_Cond_z)
-      if(z==ind_ref){
-        #c(ind_ref
+  accept<-FALSE
+  while(accept==FALSE){
+    Sims_Cond_z<-predict(object= model_z,pqu=prop_z,
+                         nsim =2,which = z,
+                         smoothZdistribution=TRUE)$data$simulated
+    ###Select the first one (breaks if nsim=1)
+    Sims_Cond_z<-unlist(Sims_Cond_z[1,])
+    d<-length(Sims_Cond_z)
+    if(z==ind_ref){
+      return(Sims_Cond_z)
+    }else{
+      z_minus<-z-1
+      Sims_Cond_z<-Sims_Cond_z[l_name]
+      Rest_vector<-Sims_Cond_z[1:z_minus]
+      M<-max(Rest_vector)
+      ### If we use the third model, 
+      ### we must not simulate 
+      ### extreme obs for the first second obs
+      if(M<thresh_censor){
         return(Sims_Cond_z)
-      }else{
-        z_minus<-z-1
-        Sims_Cond_z<-Sims_Cond_z[l_name]
-        Rest_vector<-Sims_Cond_z[1:z_minus]
-        M<-max(Rest_vector)
-        ### If we use the third model, 
-        ### we must not simulate 
-        ### extreme obs for the first second obs
-        if(M<thresh_censor){
-          return(Sims_Cond_z)
-        }
       }
-      
     }
+    
+  }
 }
+
+#### Functions used when the radial vector is assumed Gaussian ------------------------
+#' Title
+#'
+#' @param Mu_vector 
+#' @param Cov_mat 
+#' @param g 
+#' @param Th_g 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Sample_cond_g_Rjection_Sampling<-function(Mu_vector,
+                                          Cov_mat,g,Th_g){
+  
+  verified<-FALSE
+  d<-ncol(Cov_mat)
+  while(verified==FALSE){
+    vect_norm<-c(mvtnorm::rmvnorm(n = 1,mean = Mu_vector,
+                                sigma = Cov_mat))
+    g_sim<-g(vect_norm)
+    if(g_sim>Th_g){
+      verified<-TRUE
+    }
+  }
+  return(vect_norm)
+  
+}
+
+#' Title
+#'
+#' @param Mu_vector 
+#' @param Cov_mat 
+#' @param g 
+#' @param Th_g 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Sample_cond_g<-function(Mu_vector,Cov_mat,
+                        g,Th_g){
+  
+  verified<-FALSE
+  d<-ncol(Cov_mat)
+  while(verified==FALSE){
+    j_chosen<-sample(c(1:d),size = 1)
+    vect_norm<-rep(NA,d)
+    W_sim<-truncnorm::rtruncnorm(1,a=Th_g,b=Inf)
+    Sigma_inv_W<-solve(Cov_mat[j_chosen,j_chosen])
+    Cov_U_condW<-Cov_mat[-j_chosen,j_chosen]
+    Rest_mean<-Cov_U_condW%*%Sigma_inv_W%*%(W_sim-Mu_vector[j_chosen])
+    mu_vector_cond<-Mu_vector[-j_chosen]+Rest_mean
+    Rest_cov_mat<-Cov_U_condW%*%Sigma_inv_W%*%t(Cov_U_condW)
+    cov_mat_cond<-Cov_mat[j_chosen,j_chosen]-Rest_cov_mat
+    if(d>2){
+      
+      Simul_rest<-mvtnorm::rmvnorm(
+        n = 1,mean = mu_vector_cond,
+        sigma =cov_mat_cond)
+    }else{
+      cov_mat_cond<-as.numeric(cov_mat_cond)
+      mu_vector_cond<-as.numeric(mu_vector_cond)
+      sig<-sqrt(cov_mat_cond)
+      Simul_rest<-rnorm(1,mean = mu_vector_cond,
+                        sd = sig)
+    }
+    vect_norm[-j_chosen]<-Simul_rest
+    vect_norm[j_chosen]<-W_sim
+    g_sim<-g(vect_norm)
+    if(g_sim>Th_g){
+      verified<-TRUE
+    }
+  }
+  return(vect_norm)
+}
+###############
+
 
 ### HGD + Laplace distributions
 #' Convert_HGD_Unif

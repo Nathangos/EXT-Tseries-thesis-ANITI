@@ -44,10 +44,28 @@ AD_test_pair<-function(Matrix_df,Mat_cthresh,
   colnames(df)<-c("pval","prop")
   return(df)
 }
+#' Compute the asymptotic dependence test 
+#' for an pair of time steps and observation matrix. 
+#'
+#' @param Matrix_df Matrix. Univariate time series with uniform margins.  
+#' @param Mat_cthresh Matrix. Matrix of threshold values to apply the AD test. 
+#' @param Filename string. Name of the exported graphic. 
+#' @param Name_main String (NA by default). Name of the variable 
+#' analysed (used for the title of ggplot2 object). 
+#' @param New_breaks_labels vector[float]. Plot option
+#' to replace the raw x and y values by the variable name. 
+#' @param only_pval 
+#' @param THEME_ad_ai 
+#'
+#' @return
+#' @export
+#'
+#' @examples
 AD_test_analysis<-function(Matrix_df,Mat_cthresh,
                            Filename=NA,Name_main=NA,
                            New_breaks_labels=NA,
                            only_pval=NA,THEME_ad_ai){
+  
   d<-ncol(Matrix_df)
   Mat_pval_found<-matrix(NA,nrow = d,
                          ncol=d)
@@ -221,8 +239,9 @@ Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
 #' @param Matrix_df_unif dataframe[float]. Univariate
 #' matrix with uniform margins
 #' @param Order_quantile float. Quantile in the uniform scale.
-#' @param Filename 
-#' @param Name_main 
+#' @param Filename string. Name of the exported graphic. 
+#' @param Name_main String (NA by default). Name of the variable 
+#' analysed (used for the title of ggplot2 object). 
 #'
 #' @return Ggplot object summarising the asymptotic 
 #' dependencies between the components of the input matrix.
@@ -281,7 +300,8 @@ Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
 #' matrix with uniform margins
 #' @param Order_quantile float. Quantile in the uniform scale.
 #' @param Filename string. Name of the exported graphic. 
-#' @param Name_main string. Variable name
+#' @param Name_main String (NA by default). Name of the variable 
+#' analysed (used for the title of ggplot2 object). 
 #' @param New_breaks_labels vector[float]. Plot option
 #' to replace the raw x and y values by the variable name. 
 #' @param Lim_viridis Limits of the extremal correlation 
@@ -363,44 +383,83 @@ Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
          width=8,height = 6)
   return(GG_complete_chi)
 }
-
-Analyse_extreme_proj_gfunction<-function(base_RV,L,M1,M2,function_g){
+#' Evolution with k of the convergence
+#' of the angular component for each forcing condition. 
+#'
+#' @param liste_MV_Orig list[str: dataframe]. Multivariate
+#' time series where the key corresponds to the variable name.
+#' 
+#' @param l_name vector[str]. Name of forcing conditions
+#' @param vector_k vector[int]. Possible number 
+#' of exceedances.
+#' @param Ref_RiskF vector[float]. Values of the 
+#' compound risk function.
+#'
+#' @return list.
+#' @export
+#'
+#' @examples
+Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
+                             Ref_RiskF){
   
-  fnct_k<-function(Obs,k,function_g){
-    LISTE_p<-function_analyse_convergence_gPto(Obs=Obs,K= k,
-                                               function_g=function_g)
-    return(LISTE_p)
-  }
-  vecteur_k<-seq(50,L,by=1)
-  # Travail sur la convergence vers un processus l-Pareto. ----------------------------------------------
+  All_results<-lapply(X = vector_k,
+                      Launch_MVconvergence_per_K,
+                      l_name=l_name,
+                      liste_MV_Orig=liste_MV_Orig,
+                      vect_lg=Ref_RiskF)
   
-  vecteur_CONVERG<-sapply(X = vecteur_k,FUN = fnct_k,Obs=base_RV,
-                          function_g=function_g)
-  MATRICE_moy_coord<-t(cbind.data.frame(vecteur_CONVERG))
-  par(mfrow=c(2,2))
-  for(j in c(1:ncol(MATRICE_moy_coord))){
-    express_h<-expression("Moment with "~h[j])
-    express_h<-do.call("substitute", list(express_h[[1]], list(j = j)))
-    plot(MATRICE_moy_coord[,j],type="l",ylab=express_h,
-         xlab="Exceedances",cex.lab=1.2)
-    abline(v=M1,col="red")
-    abline(v=M2,col="red")
+  return(All_results)
+}
+#' Value for a given k of the mean absolute 
+#' coordinates in a finite-dimensional basis for
+#' several forcing conditions. 
+#' 
+#' @param liste_MV_Orig: list[df]. 
+#' @param l_name: vect[str].
+#' @param k: int. Number of extreme multivariate extreme time series. 
+#' @param vect_lg: vect[float]. Value of the risk function (gol). 
+#'
+#' @return list.
+#' @export
+#'
+#' @examples
+Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
+                                     vect_lg){
+  
+  Order_lg<-order(vect_lg,
+                  decreasing = TRUE)
+  vect_lg_sort<-sort(vect_lg,
+                     decreasing = TRUE)
+  Threshold_lg<-vect_lg_sort[k]
+  ### Subset of extreme events.
+  sub_order<-Order_lg[c(1:k)]
+  Df<-list()
+  list_conv<-list()
+  for(nameV in l_name){
+    Sub_Mat<-liste_MV_Orig[[nameV]][sub_order,]
+    L2_extj<-apply(X = Sub_Mat,MARGIN = 1,
+                   FUN = calcul_norm_L2)
+    Angle_extj<-t(t(Sub_Mat)%*%diag(L2_extj^(-1)))
+    list_conv[[nameV]]<-Function_conv_univ(
+      Shape_d =Angle_extj )
   }
-  par(mfrow=c(1,1))
+  return(list_conv)
 }
 
-function_analyse_convergence_gPto<-function(Obs,K,function_g){
+#' Value for each forcing condition 
+#' for a given k of the mean absolute coordinate for several basis functions.
+#'
+#' @param Shape_d df. Matrix of observations for one forcing condition. 
+#'
+#' @return Vect[float]. Mean absolute coordinates in 8 basis functions (sin) 
+#' for the input df. 
+#' @export 
+#'
+#' @examples
+Function_conv_univ<-function(Shape_d){
   
-  g_data<-apply(Obs,FUN =function_g,MARGIN = 1)
-  pas_x<-1/ncol(Obs)
-  indice_k<-order(g_data,decreasing = TRUE)[K]
-  Seuil_L2<-g_data[indice_k]
-  Indices<-which(g_data>Seuil_L2)
-  Conservees<-Obs[Indices,]
-  g_data_cons<-g_data[Indices]
-  FORME_d<-t(t(Conservees)%*%diag(g_data_cons^(-1)))
-  vecteur_temps<-c(1:ncol(Obs))/ncol(Obs)
-  #Fonction propre. 
+  pas_x<-1/ncol(Shape_d)
+  vecteur_temps<-c(1:ncol(Shape_d))/ncol(Shape_d)
   fonction_propre_j<-function(vecteur_temps,j){
     fnct_par_temps<-function(j,t){
       return(sin(2*pi*t*j))
@@ -413,8 +472,9 @@ function_analyse_convergence_gPto<-function(Obs,K,function_g){
     fonction_obtenue<-fonction_propre_j(vecteur_temps =vecteur_temps,j=l )
     
     # approx de Rieman --------------------------------------------------------
-    coordonnees<-(FORME_d%*%fonction_obtenue)*(pas_x)
-    LISTE_convergence<-c(LISTE_convergence,mean(abs(coordonnees)))
+    coordonnees<-(Shape_d%*%fonction_obtenue)*(pas_x)
+    LISTE_convergence<-c(LISTE_convergence,
+                         mean(abs(coordonnees)))
   }
   
   return(LISTE_convergence)

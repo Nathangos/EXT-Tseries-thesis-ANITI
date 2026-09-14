@@ -138,7 +138,8 @@ Sample_level_correlation<-function(df1,df2,method_corr){
                    Intersect_times = Intersection_times)
   return(Values_obtained)
 }
-#' Cross_Extremo_MV_all
+#' Evolution with the time lag 
+#' of the correlation coefficient for each pair of variables.
 #'
 #' @param list_simul list[str: dataframe]. Simulated multivariate
 #' time series where each value corresponds to the 
@@ -152,8 +153,7 @@ Sample_level_correlation<-function(df1,df2,method_corr){
 #' a confidence band
 #' @param list_names_VAR vector[string]. Variable names
 #'
-#' @return Dataframe. Evolution with the time lag 
-#' of the correlation coefficient for each pair of variables.
+#' @return Dataframe. 
 #' @export
 #'
 #' @examples
@@ -202,7 +202,8 @@ Cross_Extremo_MV_all<-function(list_simul,list_reality,
   ### Obtained_graphics
   return(All_C_extremo)
 }
-#' Cross_Extremo_MV_ij
+#' Evolution with the time lag 
+#' of the correlation coefficient for a given pair (name_cond, name_other)
 #'
 #' @param list_simul list[str: dataframe]. Simulated multivariate
 #' time series where each value corresponds to the 
@@ -217,8 +218,7 @@ Cross_Extremo_MV_all<-function(list_simul,list_reality,
 #' @param B int. Number of bootstrap samples to provide
 #' a confidence band
 #'
-#' @return Dataframe. Evolution with the time lag 
-#' of the correlation coefficient. 
+#' @return Dataframe. 
 #' @export
 #'
 #' @examples
@@ -306,7 +306,7 @@ Cross_Extremo_MV_ij<-function(list_simul,list_reality,name_cond,name_other,
   return(result_delta)
 }
 
-#' Resampling_cross_extremo
+#' 
 #'
 #' @param vect_distances vector[float]. Distance 
 #' between time steps.

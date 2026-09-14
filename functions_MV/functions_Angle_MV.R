@@ -506,40 +506,7 @@ Launch_extreme_cov_per_K<-function(liste_MV_Orig,l_name,k,
   return(DF_whole)
 }
 
-#' Value for each forcing condition 
-#' for a given k of the mean absolute coordinate for several basis functions.
-#'
-#' @param liste_MV_Orig: list[df]. 
-#' @param l_name: vect[str].
-#' @param k: int. Number of extreme multivariate extreme time series. 
-#' @param vect_lg: vect[float]. Value of the risk function (gol). 
-#'
-#' @return list.
-#' @export
-#'
-#' @examples
-Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
-                                   vect_lg){
-  
-  Order_lg<-order(vect_lg,
-                  decreasing = TRUE)
-  vect_lg_sort<-sort(vect_lg,
-                     decreasing = TRUE)
-  Threshold_lg<-vect_lg_sort[k]
-  ### Subset of extreme events.
-  sub_order<-Order_lg[c(1:k)]
-  Df<-list()
-  list_conv<-list()
-  for(nameV in l_name){
-    Sub_Mat<-liste_MV_Orig[[nameV]][sub_order,]
-    L2_extj<-apply(X = Sub_Mat,MARGIN = 1,
-                   FUN = calcul_norm_L2)
-    Angle_extj<-t(t(Sub_Mat)%*%diag(L2_extj^(-1)))
-    list_conv[[nameV]]<-Function_conv_univ(
-      Shape_d =Angle_extj )
-  }
-  return(list_conv)
-}
+
 
 #' Determine the evolution of the sigma and
 #'  rho coreelation coefficient
@@ -611,33 +578,7 @@ Extreme_cov_confevol<-function(liste_MV_Orig,l_name,vector_k,
   return(do.call(what = rbind.data.frame,
                  All_results))
 }
-#' Evolution with k of the convergence
-#' of the angular component for each forcing condition. 
-#'
-#' @param liste_MV_Orig list[str: dataframe]. Multivariate
-#' time series where the key corresponds to the variable name.
-#' 
-#' @param l_name vector[str]. Name of forcing conditions
-#' @param vector_k vector[int]. Possible number 
-#' of exceedances.
-#' @param Ref_RiskF vector[float]. Values of the 
-#' compound risk function.
-#'
-#' @return list.
-#' @export
-#'
-#' @examples
-Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
-                            Ref_RiskF){
-  
-  All_results<-lapply(X = vector_k,
-                  Launch_MVconvergence_per_K,
-                        l_name=l_name,
-                        liste_MV_Orig=liste_MV_Orig,
-                        vect_lg=Ref_RiskF)
 
-  return(All_results)
-}
   
 ### Computing confidence band for this statistic
 #############

@@ -1787,38 +1787,6 @@ Function_one_couple_l<-function(Params_Biv,z,Th,one_u){
   return(c(realisation,realisation_y))
 }
 
-#' Function_conv_univ
-#'
-#' @param Shape_d df. Matrix of observations for one forcing condition. 
-#'
-#' @return Vect[float]. Mean absolute coordinates in 8 basis functions (sin) 
-#' for the input df. 
-#' @export 
-#'
-#' @examples
-Function_conv_univ<-function(Shape_d){
-  
-  pas_x<-1/ncol(Shape_d)
-  vecteur_temps<-c(1:ncol(Shape_d))/ncol(Shape_d)
-  fonction_propre_j<-function(vecteur_temps,j){
-    fnct_par_temps<-function(j,t){
-      return(sin(2*pi*t*j))
-    }
-    vecteur_r<-sapply(vecteur_temps,fnct_par_temps,j=j)
-    return(vecteur_r)
-  }
-  LISTE_convergence<-c()
-  for(l in c(1:8)){
-    fonction_obtenue<-fonction_propre_j(vecteur_temps =vecteur_temps,j=l )
-    
-    # approx de Rieman --------------------------------------------------------
-    coordonnees<-(Shape_d%*%fonction_obtenue)*(pas_x)
-    LISTE_convergence<-c(LISTE_convergence,
-                         mean(abs(coordonnees)))
-  }
-  
-  return(LISTE_convergence)
-}
 
 
 #' Couple_s_t_chi_measure
