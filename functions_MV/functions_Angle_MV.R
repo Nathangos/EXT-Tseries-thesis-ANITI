@@ -12,13 +12,13 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
                          ncol=10)
   LIST_Frechet_OBS<-list()
   for(Z in c(1:length(l_variables))){
-    nom_v<-l_variables[Z]
-    DF_nom<-LIST_all[[nom_v]]$transf[Indices_exts,]
-    LIST_Frechet_OBS[[nom_v]]<-DF_nom
-    colnames(DF_nom)<-c(1:ncol(DF_nom))
-    Excedents_l<-apply(X = DF_nom,MARGIN = 1,
+    name_v<-l_variables[Z]
+    DF_name<-LIST_all[[name_v]]$transf[Indices_exts,]
+    LIST_Frechet_OBS[[name_v]]<-DF_name
+    colnames(DF_name)<-c(1:ncol(DF_name))
+    Excedents_l<-apply(X = DF_name,MARGIN = 1,
                        FUN = calcul_norm_L2)
-    FORME_v<-f_transf(t(t(DF_nom)%*%diag(Excedents_l^(-1))))
+    FORME_v<-f_transf(t(t(DF_name)%*%diag(Excedents_l^(-1))))
     ## With log transformation
     Mu_<-colMeans(FORME_v)
     Sig_<-apply(FORME_v,MARGIN = 2,FUN = sd)
@@ -29,7 +29,7 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
     vect_diff<-cumsum(c(0,val_lambda))/sum(val_lambda)
     vecteur_propvarexp<-1-vect_diff
     
-    Name_for_export_inertia<-paste0(root_export,"/Theta/",nom_v,"/evolMultPCA_inertia_Theta_",nom_v,
+    Name_for_export_inertia<-paste0(root_export,"/Theta/",name_v,"/evolMultPCA_inertia_Theta_",name_v,
                                     ".png")
     print(Name_for_export_inertia)
     Nb_scores<-list_nb_scores[[Z]]
@@ -47,9 +47,9 @@ Approach_Angle_Mult_PCA<-function(Indices_exts,root_export,
     Coordonnees<-ANALYSE_PCA$ind$coord
     MATRICE_SCORES[, beg:End]<-Coordonnees[,1:Nb_scores]
     
-    LIST_Mu[[nom_v]]<-Mu_
-    LIST_Sig[[nom_v]]<-Sig_
-    LIST_PCA_functs[[nom_v]]<-F_propres[,1:Nb_scores]
+    LIST_Mu[[name_v]]<-Mu_
+    LIST_Sig[[name_v]]<-Sig_
+    LIST_PCA_functs[[name_v]]<-F_propres[,1:Nb_scores]
     
   }
   return(list("Scores"=MATRICE_SCORES[,c(1:NbScores_Omega)],
@@ -97,15 +97,15 @@ Approach_Angle_One_PCA<-function(LIST_all,Name_for_export,
     NE<-paste0(Name_for_export,"_",l_variables[w])
   }
   for(Z in c(1:d)){
-    nom_v<-l_variables[Z]
-    DF_base<-LIST_all[[nom_v]]$transf
-    DF_nom<-DF_base[Indices_exts,]
-    LIST_Frechet_OBS[[nom_v]]<-DF_nom
-    colnames(DF_nom)<-c(1:ncol(DF_nom))
-    Excedents_l<-apply(X = DF_nom,MARGIN = 1,
+    name_v<-l_variables[Z]
+    DF_base<-LIST_all[[name_v]]$transf
+    DF_name<-DF_base[Indices_exts,]
+    LIST_Frechet_OBS[[name_v]]<-DF_name
+    colnames(DF_name)<-c(1:ncol(DF_name))
+    Excedents_l<-apply(X = DF_name,MARGIN = 1,
                        FUN = calcul_norm_L2)
-    FORME_v<-t(t(DF_nom)%*%diag(Excedents_l^(-1)))
-    Length_T[[nom_v]]<-ncol(FORME_v)
+    FORME_v<-t(t(DF_name)%*%diag(Excedents_l^(-1)))
+    Length_T[[name_v]]<-ncol(FORME_v)
     Omega[[Z]]<-f_transf(FORME_v)
   }
   ### Retrieve matrix form

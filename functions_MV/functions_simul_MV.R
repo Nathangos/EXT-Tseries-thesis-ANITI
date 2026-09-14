@@ -255,7 +255,7 @@ Choice_automatic_thresh_per_variable<-function(df,
 #' Used to apply the parallel computation.
 #' @param lien_racine string. Link for 
 #' the import for the time series measures.
-#' @param list_noms vector[str]. Vector of variable names.
+#' @param list_names vector[str]. Vector of variable names.
 #' @param file_dates string. Link for the import
 #' of date vector.
 #' @param n.dens int. Parameter of the 
@@ -267,7 +267,7 @@ Choice_automatic_thresh_per_variable<-function(df,
 #' @export
 #'
 #' @examples
-MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,list_noms,
+MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,list_names,
                                      file_dates,n.dens,
                                      opt_Frech,Nb_Threshs){
   p_U<-list()
@@ -276,9 +276,9 @@ MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,list_noms,
   l_AD<-list()
   l_Kdens<-list()
   l_ev_theta<-list()
-  d<-length(list_noms)
+  d<-length(list_names)
   l_Transf<-list()
-  for(name_variable in list_noms){
+  for(name_variable in list_names){
     ### Add d to prevent contamination problems.
     lien_donnees<-paste0(lien_racine,name_variable,"_residuals_",
                          d,".csv")
@@ -363,8 +363,8 @@ MarTransfo_TS_exts_Mixture<-function(CPU_hearts,lien_racine,list_noms,
     l_Kdens[[name_variable]]<-do.call(rbind.data.frame,
                                       LK)
     
-    if(name_variable==list_noms[1]){
-      df<-matrix(NA,ncol=length(list_noms),
+    if(name_variable==list_names[1]){
+      df<-matrix(NA,ncol=length(list_names),
                  nrow=nrow(Vtransf))
     }
     df[,j]<-apply(X = Vtransf,MARGIN = 1,FUN = calcul_norm_L2)
@@ -659,7 +659,7 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
 #'
 #' @param CPU_hearts 
 #' @param lien_racine 
-#' @param list_noms 
+#' @param list_names 
 #' @param opt_Frech 
 #' @param n.dens 
 #' @param p_U 
@@ -672,7 +672,7 @@ Convert_time_z<-function(z,Data_pos,show_EGPD,
 #'
 #' @examples
 MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
-                                 list_noms,opt_Frech,n.dens,p_U,
+                                 list_names,opt_Frech,n.dens,p_U,
                                  file_dates,show_EGPD,
                                  list_params_EGPD){
   
@@ -684,8 +684,8 @@ MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
   LIST_SUB_TRANSFO<-list()
   j<-1
   df<-list()
-  d<-length(list_noms)
-  for(name_variable in list_noms){
+  d<-length(list_names)
+  for(name_variable in list_names){
     
     ### ADD d to prevent contamination error
     lien_donnees<-paste0(lien_racine,name_variable,
@@ -700,7 +700,7 @@ MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
     NPY<-nrow(Donnes)/Nb_annees
     AN_GPD<-Analyse_seuil_GPD(donnees = Donnes,fonction_seuil = p_U[[name_variable]],
                           n.dens = n.dens,
-                              nom=name_variable,type_entree=type_entree,
+                              name=name_variable,type_entree=type_entree,
                               dates_prises=dates_import,j_show = 19)
     print("passed !")
     l_AD[[name_variable]]<-AN_GPD
@@ -714,7 +714,7 @@ MarTransfo_TS_EXTGP_MV<-function(CPU_hearts,lien_racine,
     j<-j+1
   }
   return(l_Orig_all)
-  for(name_variable in list_noms){
+  for(name_variable in list_names){
     Donnes<-l_Orig_all[[name_variable]]
     
     rownames(Donnes)<-c(1:nrow(Donnes))
@@ -1543,19 +1543,19 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
     Beg<-0
     list_ind_pos<-list()
     for(k in c(1:NB_Forcg_cond)){
-      nom_s<-l_variables[k]
+      name_s<-l_variables[k]
       L_prime_simul<-Sim_l[,k]
       #Deconcatenate the Omega----------------
       #####
       Beg<-Beg+1
-      END<-Beg+Length_T[[nom_s]]-1
+      END<-Beg+Length_T[[name_s]]-1
       Shape_forcing<-Shape_Omega_simul[,Beg:END]
       L2_shape_name<-apply(Shape_forcing,MARGIN = 1,
                            FUN = calcul_norm_L2)
       Shape_forcing_std<-t(t(Shape_forcing)%*%diag(L2_shape_name^(-1)))
-      list_shapes[[nom_s]]<-Shape_forcing_std
+      list_shapes[[name_s]]<-Shape_forcing_std
       Z_varj<-t(t(Shape_forcing_std)%*%(diag(L_prime_simul)))
-      list_candidats[[nom_s]]<-Z_varj
+      list_candidats[[name_s]]<-Z_varj
       DF_simul_lprime<-c(DF_simul_lprime,
             apply(X = Z_varj,MARGIN = 1,
                     FUN = calcul_norm_L2))
