@@ -158,8 +158,6 @@ TITLE<-ggdraw() +
 Z_seen<-1
 YLIM<-c(0,5)
 YTheta_Lim<-c(0,2)
-DF_transf<-read.csv(file = paste0(path_conversion,NV_DKG,
-                                  METHOD_MGtransf,d,".csv"))
 
 ```
 
@@ -169,9 +167,10 @@ DF_transf<-read.csv(file = paste0(path_conversion,NV_DKG,
 for(nameV in l_name){
   DF_transf<-read.csv(file = paste0(path_conversion,nameV,
                                 METHOD_MGtransf,d,".csv"))
+  
   ### Convert_to_Pareto(pow_transform)
   DF_transf<-(DF_transf+1)^(Shape_chosen)-1
-  
+
   rf_j<-apply(X = DF_transf,MARGIN = 1,FUN = calcul_norm_L2)
   ### Export Z_vs_Theta with nameV
   ##############
@@ -180,7 +179,8 @@ for(nameV in l_name){
   DF_mini<-DF_transf[Inds_shown,]
   Cpdg_L2<-rf_j[Inds_shown]
   Cpdg_theta<-t(t(DF_mini)%*%diag(Cpdg_L2^(-1)))
-  Melting_df<-melt(t(DF_mini))
+  Melting_df<-reshape2::melt(t(DF_mini))
+  
   Melting_theta<-melt(t(Cpdg_theta))
   colnames(Melting_df)<-c("Time","index","value")
   colnames(Melting_theta)<-c("Time","index","value")
@@ -211,7 +211,7 @@ for(nameV in l_name){
     YLAB<-NULL
     YLAB_theta<-NULL
   }
-  GG_Zuniv<-ggplot(data=Melting_df)+
+  GG_Zuniv<-ggplot2::ggplot(data=Melting_df)+
     geom_line(aes(x=Time,
                   y=value,group=interaction(index),
                   col=index))+
@@ -219,7 +219,7 @@ for(nameV in l_name){
     scale_y_continuous(limits = YLIM)+
     COMMON_theme+
     guides(col="none")
-  GG_Z<-ggplot(data=Melting_df)+
+  GG_Z<-ggplot2::ggplot(data=Melting_df)+
     geom_line(aes(x=Time,
                       y=value,group=interaction(index),
                       col=index))+
@@ -231,22 +231,21 @@ for(nameV in l_name){
     scale_y_continuous(limits = YLIM)+
     COMMON_theme+
     guides(col="none")
-  
+
   ### GG theta
   ########
-  GG_Theta_univ<-ggplot(data=Melting_theta,aes(x=Time,
-                          y=value,
-                          group=interaction(index),
-                            col=index))+
+  GG_Theta_univ<-ggplot2::ggplot(data=Melting_theta,aes(x=Time,
+                                          y=value,group=interaction(index),
+                                          col=index))+
     geom_line()+
     ylab(YLAB_theta_univ)+xlab(NULL)+
     scale_y_continuous(limits=YTheta_Lim)+
     COMMON_theme+
     guides(col="none")
-  
-  GG_Theta<-ggplot(data=Melting_theta,aes(x=Time,
-            y=value,group=interaction(index),
-            col=index))+
+
+  GG_Theta<-ggplot2::ggplot(data=Melting_theta,aes(x=Time,
+                                          y=value,group=interaction(index),
+                                          col=index))+
     geom_line()+
     ylab(YLAB_theta)+xlab(NULL)+
     scale_y_continuous(limits=YTheta_Lim)+
@@ -260,44 +259,57 @@ for(nameV in l_name){
   GGsum_unif<-GG_Zuniv+GG_Theta_univ+
     plot_layout(axis_titles = "collect",
        ncol = 2,nrow=1)
-  ggh_univ<-plot_grid(GGsum_unif,TITLE,
+  ggh_univ<-cowplot::plot_grid(GGsum_unif,TITLE,
                  ncol=1,nrow=2,
                  rel_heights = c(12,1))
   plot_ggh_univ<-ggdraw()+
     draw_plot(ggh_univ)+
-    theme(plot.background = element_rect(fill = "white", 
+    theme(plot.background = element_rect(fill = "white",
                                          color = NA))
   ggsave(filename = paste0(path_graph,"Z_vs_Theta_d="
              ,d,"_",nameGraph, ".png"),
         plot = plot_ggh_univ, width = 10,height = 6)
-  
+
   if(Z_seen==1){
     Combn_Z_vs_Theta<-GG_sum
   }else{
-    ### 
     Rest<-(Z_seen-1)
-    Combn_Z_vs_Theta<-plot_grid(Combn_Z_vs_Theta,
+    Combn_Z_vs_Theta<-cowplot::plot_grid(
+            Combn_Z_vs_Theta,
             GG_sum,rel_widths = c(Rest,1))
   }
 
   #################
   DF_RF[[nameV]]<-rf_j 
-  Link_j<-paste0(l_root,nameV,"_residuals_",
-                 d,".csv")
-  Orig_j<-read.csv(Link_j)
-
-  DF_orig[[nameV]]<-Orig_j
-  
-  list_form<-list()
-  PARAMS_GPD<-read.csv(file = paste0(path_conversion,nameV,
-                                      "_GPD_params_",d,".csv"))
-  K_hat<-read.csv(file = paste0(path_conversion,nameV,
-                                "_Kdens_estim_",d,".csv"))
-  list_form[["K"]]<-K_hat
-  list_form[["LEVT"]]<-PARAMS_GPD
-  
+  if(METHOD_MGtransf=="_EGPD_transf_"){
+    
+    Orig_j<-read.csv(file = paste0(path_conversion,nameV,
+                                   "_data_ref_",d,".csv"))
+    L2_norm<-apply(X = Orig_j,MARGIN = 1,FUN = calcul_norm_L2)
+    
+    DF_orig[[nameV]]<-Orig_j
+    PARAMS_EGPD<-read.csv(file = paste0(path_conversion,nameV,
+                                        "_EDPD_params_",d,".csv"))
+    colnames(PARAMS_EGPD)<-c("mu","sigma","nu")
+    list_form<-apply(PARAMS_EGPD,function(x){return(
+      list("mu"=x[1],"sigma"=x[2],"nu"=x[3]))},
+      MARGIN=1)
+  }else{
+    Link_j<-paste0(l_root,nameV,"_residuals_",
+                   d,".csv")
+    Orig_j<-read.csv(Link_j)
+    DF_orig[[nameV]]<-Orig_j
+    
+    list_form<-list()
+    PARAMS_GPD<-read.csv(file = paste0(path_conversion,nameV,
+                                        "_GPD_params_",d,".csv"))
+    K_hat<-read.csv(file = paste0(path_conversion,nameV,
+                                  "_Kdens_estim_",d,".csv"))
+    list_form[["K"]]<-K_hat
+    list_form[["LEVT"]]<-PARAMS_GPD
+  }
   SUMMARY[[nameV]]<-list("transf"=DF_transf,
-                       "params_transfo"=list_form)
+                         "params_transfo"=list_form)
   ALL_transf[[nameV]]<-DF_transf
   Z_seen<-Z_seen+1
 }
