@@ -613,7 +613,7 @@ F_automatic_ggplot_marg<-function(l_name_time, l_unit,
            Simul_ij = Simul_ij, l_name_time = l_name_time,
            cols_ggplot = cols_,zeta_sim = zeta_forsim,
            l_unit = l_unit,levels_used = levels_used,
-           hearts = hearts,Obs_ext_ij=Obs_with_cond,
+           hearts = hearts,Obs_ext_ij = Obs_with_cond,
            Nb_boot = 500)+
     theme_common
   F_name2<-paste0(Path_EXT
@@ -858,15 +858,18 @@ Bivariate_Qreg_simul_vs_obs<-function(l_name_time,Obs_ij,
 #' positive values. 
 #' @param Nb_boot int. Number of bootstrap samples 
 #' to provide a confidence band.
+#' @param Obs_ext_ij Matrix. Bivariate values from 
+#' observed extreme multivariate time series.
 #'
 #' @return Ggplot object. 
 #' @export
 #'
 #' @examples
 Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
-                             l_name_time,cols_ggplot,l_unit,
-                               levels_used,zeta_sim,
-                          hearts,sub_pos=TRUE,Nb_boot){
+                                        l_name_time,cols_ggplot,l_unit,
+                                        levels_used,zeta_sim,
+                                        hearts,sub_pos=TRUE,
+                                        Obs_ext_ij,Nb_boot){
   
   if(sub_pos){
     ### Need to modify zeta if positive values are used.
@@ -893,19 +896,20 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   ### Empirical bivariate return levels
   whill <- seq(0, 1, by = 0.001)
   expdata<-ReturnCurves::margtransf(data = Obs_ij, 
-                      qmarg = rep(0.95, 2),
-                      constrainedshape = T)
+                                    qmarg = rep(0.95, 2),
+                                    constrainedshape = T)
   Curves_found<-lapply(levels_used,FUN = function(x){
+    
     rch<-ReturnCurves::rc_est(margdata = expdata, w = whill, 
-           p = x, method = "hill",
-           q = 0.95, constrained = F)
+                              p = x, method = "hill",
+                              q = 0.95, constrained = F)
     rch_unc<-ReturnCurves::rc_unc(rch, nboot = Nb_boot, 
-           nangles = 200, alpha = 0.05)
+                                  nangles = 200, alpha = 0.05)
     Curve<-rch_unc@retcurve@rc
     Lower<-rch_unc@unc$lower
     Upper<-rch_unc@unc$upper
     bounds_type<-c(rep("Qinf",nrow(Lower)),
-              rep("Qsup",nrow(Upper)))
+                   rep("Qsup",nrow(Upper)))
     Bounds<-rbind.data.frame(Lower,
                              Upper)
     Tau_<-rep(x,nrow(Curve))
@@ -919,19 +923,25 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
     return(x[[name_key]])
   }
   List_Curve<-lapply(Curves_found,Fct_extract_curve,
-                    name_key="Curve")
+                     name_key="Curve")
   List_Unc<-lapply(Curves_found,Fct_extract_curve,
                    name_key="Unc")
   combined_df<-do.call(rbind.data.frame,  
-                  List_Curve)
+                       List_Curve)
   Bounds_for_graph<-do.call(rbind.data.frame,  
-               List_Unc)
+                            List_Unc)
   colnames(combined_df)<-c("t","s","level")
   combined_df$level<-as.character(combined_df$level)
-
+  
+  # Bounds_for_graph<-do.call(rbind.data.frame,Rult)
   colnames(Bounds_for_graph)<-c("level","t","s","bounds")
   Bounds_for_graph$level<-paste0("rho==",
-                          as.character(Bounds_for_graph$level))
+                                 as.character(Bounds_for_graph$level))
+  # Build polygon data
+  # x and y are changing so we must create a ggplot polygon object
+  # arrange(level,t) for ordering
+  # group_by level--> polygon per level
+  # bind_rows to assemble rows per group
   poly_data <- Bounds_for_graph %>%
     group_by(level) %>%
     group_modify(~{
@@ -951,14 +961,15 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   ### Curves for simulated
   ### consider formula of total probs.
   levels_used_for_sim<-levels_used/zeta_sim
-  Curves_found_SIM<-lapply(levels_used_for_sim,
-    FUN = function(x){
-    JCsim<-texmex::JointExceedanceCurve(
-                  Sample = Simul_ij,
-                  ExceedanceProb = x)
-    return(JCsim)
 
-  })
+  Curves_found_SIM<-lapply(levels_used_for_sim,
+                           FUN = function(x){
+                             JCsim<-texmex::JointExceedanceCurve(Sample = Simul_ij,
+                                                                 ExceedanceProb = x)
+                             return(JCsim)
+                             
+                           })
+  
   All_sim<-lapply(c(1:length(levels_used)),function(x){
     df_j<-do.call(cbind.data.frame,Curves_found_SIM[[x]])
     nj<-nrow(df_j)
@@ -970,19 +981,20 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   combined_df_sim<- do.call(rbind, All_sim)
   colnames(combined_df_sim)<-c("t","s","level")
   combined_df_sim$level<-paste0("rho==",
-                as.character(combined_df_sim$level))
+                                as.character(combined_df_sim$level))
   ### Curves for data Texmex
   Texmex_curves<-list()
   d<-length(l_name_time)
   Model_all <- mexAll(Obs_ij,mqu=0.7,dqu=rep(0.7,5))
   Simuls_from_tex_all <- mexMonteCarlo(nSample=5000,
-                      mexList=Model_all)
+                                       mexList=Model_all)
+  
   Curves_tex_<-lapply(levels_used,FUN = function(x){
     JRC_j<-texmex::JointExceedanceCurve(
       Sample = Simuls_from_tex_all,
-       ExceedanceProb = x,
+      ExceedanceProb = x,
       which=c("V1","V2"))
-
+    
     return(JRC_j)
   })
   hh<-lapply(Curves_tex_,FUN = function(x){
@@ -994,12 +1006,12 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   combined_df_TEX<-do.call(rbind.data.frame,hh)
   colnames(combined_df_TEX)<-c("t","s","level")
   combined_df_TEX$level<-paste0("rho==",
-            as.character(combined_df_TEX$level))
+                                as.character(combined_df_TEX$level))
   ### Create ggplot object
   custom_labels <-as.character(levels_used)
   GG_BivRL_obs_with_Tawn<-ggplot2::ggplot(Obs_ij)+
     geom_point(aes(x=V1,y=V2,col="data"),size=0.5)
-
+  
   exp_type<-expression(x[M]^t~v)
   NAMES<-names(l_name_time)
   N1<-NAMES[1]
@@ -1011,25 +1023,25 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   T1<-l_name_time[[N1]]
   T2<-l_name_time[[N2]]
   xlab_title<-do.call("substitute", list(exp_type[[1]], 
-               list(t=T1,
-                    x=N1_graph,v=l_unit[[N1]])))
+                                         list(t=T1,
+                                              x=N1_graph,v=l_unit[[N1]])))
   ylab_title<-do.call("substitute", list(exp_type[[1]], 
-               list(t=T2,
-                    x=N2_graph,v=l_unit[[N2]])))
+                                         list(t=T2,
+                                              x=N2_graph,v=l_unit[[N2]])))
   combined_df$level<-paste0("rho==",
                             combined_df$level)
   GG_BivRL_obs<-GG_BivRL_obs_with_Tawn+
     geom_line(data=combined_df,aes(x=t,y=s,
-         group=interaction(level),
-         col="data"))+
+                                   group=interaction(level),
+                                   col="data"))+
     facet_wrap(~level,
-           labeller = label_parsed)+
+               labeller = label_parsed)+
     geom_line(data=combined_df_TEX,aes(x=t,y=s,
-                   group=interaction(level),
-                   col="CEVmodel"))+
+                                       group=interaction(level),
+                                       col="CEVmodel"))+
     geom_line(data=combined_df_sim,aes(x=t,y=s,
-                   group=interaction(level),
-                   col="simulations"))+
+                                       group=interaction(level),
+                                       col="simulations"))+
     geom_polygon(
       data = poly_data,
       aes(x = t, y = s,  
@@ -1037,10 +1049,10 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
       alpha = 0.3
     )+
     geom_line(data = Bounds_for_graph,
-      aes(x = t, y = s,
-          group = interaction(level, bounds),
-          col="confidence_band"),
-      linetype="dashed"
+              aes(x = t, y = s,
+                  group = interaction(level, bounds),
+                  col="confidence_band"),
+              linetype="dashed"
     ) +
     labs(col="Legend")+
     guides(fill="none")+
@@ -1053,6 +1065,7 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
           legend.direction = "horizontal",
           strip.text=element_text(size=14))+
     scale_color_manual(values = cols_ggplot)
+  
   return(GG_BivRL_obs)
 }
 

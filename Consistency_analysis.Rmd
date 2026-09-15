@@ -332,7 +332,7 @@ if(ANALYSIS_for_resid){
     Lab_j<-expression("C"[index_j])
     Lab_j_eval<-do.call("substitute", list( Lab_j[[1]], 
                                             list(index_j =index_j)))
-    GG1<-ggplot(data=df_combo,aes(x=V1,y=V2,
+    GG1<-ggplot2::ggplot(data=df_combo,aes(x=V1,y=V2,
                       colour=Legend,shape=Legend),
     )+
       geom_point(aes(size=Legend))+
@@ -348,7 +348,7 @@ if(ANALYSIS_for_resid){
     LIST_GG[[j]]<-GG1
     N_sum<-N_sum+1
     if(N_sum==3){
-      #blank <- ggplot(width=0.5) + theme_void()
+      #blank <- ggplot2::ggplot(width=0.5) + theme_void()
       obj1<-LIST_GG[[3*(Rank_Cop-1)+1]] 
       obj2<-LIST_GG[[3*(Rank_Cop-1)+2]]
       obj3<-LIST_GG[[3*(Rank_Cop)]]
@@ -472,7 +472,7 @@ for(NV in L_nameV){
   Melt_whole$origin<-c(rep("data",nrow(Melt_data_violin)),
                        rep("simulations",nrow(Melt_sim_violin)))
   Melt_whole$time<-as.character(( Melt_whole$time-19)/6)
-  GG_violin<-ggplot(data=Melt_whole,aes(x = time,y=value))+
+  GG_violin<-ggplot2::ggplot(data=Melt_whole,aes(x = time,y=value))+
     geom_boxplot(width=0.8,aes(fill=origin))+
     facet_wrap(~origin)+
     labs(fill="Legend")+
@@ -559,7 +559,7 @@ for(NV in L_nameV){
   Whole$origin<-c(rep("simulations",nrow(Melteur)),
                   rep("data",nrow(M2)))
   Whole$Index <- as.factor(Whole$Index)
-  GGsum<-ggplot(data=Whole,
+  GGsum<-ggplot2::ggplot(data=Whole,
                 aes(x=Time,y=valeur,col=Index,
                     group=Index,
                 ))+
@@ -626,7 +626,7 @@ for(NV in L_nameV){
                 rep("Q50",ncol(Reals_1)),
                 rep("Q95",ncol(Reals_1)), 
                 rep("Q975",ncol(Reals_1)))
-  GG_percent<-ggplot(data=df,aes(x=Time,y=estimator,
+  GG_percent<-ggplot2::ggplot(data=df,aes(x=Time,y=estimator,
                   group=interaction(percent),col="data"))+
     facet_wrap(~percent,scales="free_y")+
     geom_line()+
@@ -728,7 +728,7 @@ for(NV in L_nameV){
   Q95_corr<-fnct_quantile(x = t(Result_resample_corr),q=0.95)
   resultat_corr$bound_inf<-Q05_coor
   resultat_corr$bound_sup<-Q95_corr
-  GG_kendall<-ggplot(data=resultat_corr,aes(
+  GG_kendall<-ggplot2::ggplot(data=resultat_corr,aes(
               x=delta,y=val_simul,col="simulations"))+
     geom_point()+
     geom_point(aes(y=val_data,col="data"))+
@@ -902,7 +902,7 @@ for(NV in L_nameV){
   colnames(Df_for_annotate)<-c("xspec","yspec","label_spec")
   Ymin<-min(LIMS_data[2,1],LIMS_sim[2,1])
   Ymax<-max(LIMS_data[2,2],LIMS_sim[2,2])
-  GG0<-ggplot(df_combo,aes(x=Score_1,
+  GG0<-ggplot2::ggplot(df_combo,aes(x=Score_1,
                           y=Score_2))+
     geom_text(
       data=Df_for_annotate,
@@ -1011,7 +1011,7 @@ ALL_CE<-Cross_Extremo_MV_all(list_simul = list_simul,
                   q_per_time = q_chosen,
                   B = 500)
 WHOLE<-do.call(rbind.data.frame,ALL_CE)
-GG_cross_Gam<-ggplot(data=WHOLE,
+GG_cross_Gam<-ggplot2::ggplot(data=WHOLE,
        aes(x=time_d,y=val_data,col="data"))+
   geom_point()+
   geom_line()+
@@ -1102,7 +1102,7 @@ colnames(Risk_f_simul)<-c("Risk_f","orig")
 colnames(Risk_f_obs)<-colnames(Risk_f_simul)
 Risk_f_obs_simul<-rbind.data.frame(Risk_f_obs,Risk_f_simul)
 colnames(Risk_f_obs_simul)<-c("value_Risk_f","origin")
-GG_violin_Risk_f<-ggplot(data=Risk_f_obs_simul,
+GG_violin_Risk_f<-ggplot2::ggplot(data=Risk_f_obs_simul,
                          aes(x=origin,y=value_Risk_f,
                               fill=origin))+
   geom_violin()+
@@ -1125,7 +1125,7 @@ NL2_all<-rbind.data.frame(NL2_obs,NL2_simul)
 NL2_all<-melt(NL2_all)
 colnames(NL2_all)<-c("origin","variable",
                      "value")
-GG_violin<-ggplot(data=NL2_all,aes(x=origin,y=value,fill=origin))+
+GG_violin<-ggplot2::ggplot(data=NL2_all,aes(x=origin,y=value,fill=origin))+
   facet_wrap(~variable,scales = "free")+
   geom_violin(alpha=0.6)+
   scale_fill_manual(values=cols_)+
@@ -1206,7 +1206,7 @@ for(Z in c(1:nrow(Combn_rf))){
   name_icorrect<-Fct_correct_name(x = name_i,
                                   target = "Surcote",
                                   replacement = "Surge")
-  GG_RF_j<-ggplot(data=Sub_whole_j,
+  GG_RF_j<-ggplot2::ggplot(data=Sub_whole_j,
                   mapping = aes(x=V1,y=V2,
                                 colour=Legend,shape=Legend))+
     geom_point(aes(size=Legend))+
@@ -1289,7 +1289,7 @@ for(i in c(1:nrow(MAT_times))){
 
 ```
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
 NPY<-5
 NB_years<-c(20,50)
 Levels_for_RL<-(NPY*(NB_years))^(-1)
@@ -1297,7 +1297,8 @@ Levels_for_RL<-(NPY*(NB_years))^(-1)
 ### Export the required packages for the CPU ----------
 clusterEvalQ(heartsCPU, c(library(dplyr),library(reshape2),
                        library(ggplot2),
-                       library(ggside),library(texmex)))
+                       library(ggside),library(texmex),
+                       library(stringr)))
 ```
 
 
@@ -1423,7 +1424,7 @@ LIST_ML[["Angle_X"]]<-DATA_for_gg_ML_Angle
 
 for(name_elt_gg in names(LIST_ML)){
   ### Different ML results summarised
-  GG_summary_MV<-ggplot(data = LIST_ML[[name_elt_gg]],
+  GG_summary_MV<-ggplot2::ggplot(data = LIST_ML[[name_elt_gg]],
                 aes(y=value))+
     geom_violin(aes(x=model,fill=model),alpha=0.7)+
     facet_wrap(~variable,scales="free_y")+

@@ -150,7 +150,7 @@ VECTOR_K<-seq.int(from = 5,to = 40,
 #                         "value")
 # EXPR_Kchosen<-expression(n[KNN])
 # melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
-# GG_CV_metrics<-ggplot(melting_CV)+
+# GG_CV_metrics<-ggplot2::ggplot(melting_CV)+
 #   #facet_wrap(~stat,scales = "free_y")+
 #   geom_line(aes(x=hyper_param,y=value))+
 #   guides(col="none")+
@@ -189,8 +189,7 @@ common_linetype<-scale_linetype_manual("Legend",
 ```
 ```{r}
 REPERTORY_<-"data_detrend_Winter/"
-Output<-Generator_TSERIES_MV(type_donnees = "HIVER",
-            hearts = hearts,list_variable = lNAME,
+Output<-Generator_TSERIES_MV(hearts = hearts,list_variable = lNAME,
             link_import_residuals = Link_resid,
             prefix_link_resid=Prefix,
             subfix_link_Sim=Subfix_sim,
@@ -201,8 +200,7 @@ Output<-Generator_TSERIES_MV(type_donnees = "HIVER",
             cols_gg = cols_,Name_riskF=G_used2,
             Vect_VARtimes=c(1:37),
             Dates_Johanna=IndJohanna,Risk_Function=gl,
-            opt_used=OPT_USED,
-            repertory=REPERTORY_)
+            opt_used=OPT_USED,repertory_data=REPERTORY_)
 ```
 
 
@@ -243,7 +241,7 @@ for(nameV in names(Output$X0)){
                               length(Max_previous_target)))
  
 
-  GGtaken<-ggplot(Taken_previous)+
+  GGtaken<-ggplot2::ggplot(Taken_previous)+
     geom_violin(aes(x=origin,y=value,fill=origin),
                  alpha=0.7)+
     geom_boxplot(aes(x=origin,y=value),width=0.3,
@@ -276,7 +274,7 @@ for(nameV in names(Output$X0)){
                                     Relation_sim)
   Relations_whole$Legend<-c(rep("data",nrow(Relation_data)),
                             rep("simulations",nrow(Relation_sim)))
-  GGRelation_found<-ggplot(Relations_whole,
+  GGRelation_found<-ggplot2::ggplot(Relations_whole,
                            mapping = aes(x=previous,y=value,
                       colour=Legend,shape=Legend))+
     ylab(paste0("max( ",YLEFT," )"))+
@@ -314,7 +312,7 @@ for(nameV in names(Output$X0)){
   Relations_wholeEPREV$Legend<-c(rep("data",
                           nrow(Relation_dataEPREV)),
                rep("simulations",nrow(Relation_simEPREV)))
-  GGRelation_EPSI_Prev<-ggplot(Relations_wholeEPREV,
+  GGRelation_EPSI_Prev<-ggplot2::ggplot(Relations_wholeEPREV,
                            mapping = aes(y=previous,x=EPSI,
                  colour=Legend,shape=Legend))+
     ylab(paste0("max( ",YLEFT," ) prev"))+
@@ -417,15 +415,13 @@ for(NV in lNAME){
   Df_for_annotate<-cbind.data.frame(0,unlist(M2$valeur)[mid],
                                     Date_predicted)
   colnames(Df_for_annotate)<-c("xspec","yspec","label_spec")
-  GGsum<-ggplot(data=Whole,
+  GGsum<-ggplot2::ggplot(data=Whole,
                 aes(x=Time,y=valeur
                 ))+
     geom_text(
       data=Df_for_annotate,
       aes(x=xspec,y=yspec,label=label_spec),
       size=4,col="darkblue")+
-    ### prevent stacking ribbons
-    ### with the group parameter. 
     geom_ribbon(aes(ymin=bound_inf,ymax=bound_sup,
                     linetype="confidence_band",
                     group=1),
@@ -459,6 +455,9 @@ for(NV in lNAME){
   }
   J<-J+1
 }
+
+```
+```{r}
 LGD_exs<-plot_grid(LEGEND_exs)
 intermed_plot_EXS<-Cum_exs_simuls+
   plot_layout(axis_titles = "collect_x")

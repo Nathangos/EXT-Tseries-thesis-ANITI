@@ -164,7 +164,7 @@ KNN_distancef_returnMean<-function(i,X_sim,X_data,f_distance,K,hearts,
   }
 
 }
-Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
+Generator_TSERIES_MV<-function(hearts,list_variable,
                                Name_riskF,link_import_residuals,
                                link_rootVAR_model, K_chosen,
                                f_distance,link_export_generations,
@@ -172,14 +172,13 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
                                subfix_link_Sim,Dates_Johanna,
                                subfix_link_Data,Vect_VARtimes,
                                Risk_Function,opt_used,
-                               repertory){
+                               repertory_data){
   
   link_export_SIM<-paste0(link_export_generations,opt_used,"_")
   link_g_chosen<-paste0("residuals_MV/",Name_riskF,"/")
 
   # (1) Import X(M-1) -----------------------------------------------------------
   ######
-  repertory<-
   l_RiskF<-list()
   l_Orig<-lapply(Vect_VARtimes,
                     function(x){
@@ -216,25 +215,26 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
   Params_mu<-list()
   for(name_variable in list_variable){
     if(name_variable=="U"){
-      lien_donnees<-paste0(repertory,name_variable,
-                           "_trunc_detrend.csv")
-      Donnes<-read.csv(file=lien_donnees)
+      link_transit<-paste0(repertory_data,name_variable)
+      link_data<-paste0(link_transit,"_trunc_detrend.csv")
+      Data<-read.csv(file=link_data)
       
     }else{
-      lien_donnees<-paste0(repertory,name_variable,"_detrend.csv")
-      Donnes<-read.csv(file=lien_donnees)
+      link_transit<-paste0(repertory_data,name_variable)
+      link_data<-paste0(link_transit,"_detrend.csv")
+      Data<-read.csv(file=link_data)
     }
-    D<-ncol(Donnes)
-    Donnes<-Donnes[,c(2:D)]
-    colnames(Donnes)<-substr(x = colnames(Donnes),
+    D<-ncol(Data)
+    Data<-Data[,c(2:D)]
+    colnames(Data)<-substr(x = colnames(Data),
                              start = 2,stop = 3)
-    rownames(Donnes)<-c(1:nrow(Donnes))
-    l_Orig[[name_variable]]<-Donnes
+    rownames(Data)<-c(1:nrow(Data))
+    l_Orig[[name_variable]]<-Data
     ind_target_joh<-Dates_Johanna+1
-    l_Target_Joh[[name_variable]]<-Donnes[ind_target_joh,]
-    N_data<-nrow(Donnes)
-    C_data<-ncol(Donnes)
-    Max_X_raw<-apply(X = Donnes,MARGIN = 1,
+    l_Target_Joh[[name_variable]]<-Data[ind_target_joh,]
+    N_data<-nrow(Data)
+    C_data<-ncol(Data)
+    Max_X_raw<-apply(X = Data,MARGIN = 1,
                      FUN=max)
     l_RiskF[[name_variable]]<-Max_X_raw
     
@@ -261,7 +261,7 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
     
     # Drop the first resid if it was done before...
     ####
-    if(nrow(Epsi_data)==nrow(Donnes)){
+    if(nrow(Epsi_data)==nrow(Data)){
       Epsi_data<-Epsi_data[c(2:nrow(Epsi_data)),]
     }
     Max_epsiraw<-apply(X = Epsi_data,
@@ -291,7 +291,7 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
     Params_scale[[name_variable]]<-Sd_epsi_data
     Params_mu[[name_variable]]<-Mu_epsi_data
     for(Time in colnames(Epsi_Sim)){
-      Add_data<-Donnes[,Time]
+      Add_data<-Data[,Time]
       Add_sim<-Epsi_Sim[,Time]
       l_Epsi_Sim[[Time]][[name_variable]]<-Add_sim
       l_X_data[[Time]][[name_variable]]<-Add_data
@@ -639,7 +639,7 @@ K_fold_k_param_j_test<-function(hearts,f_distance,l_Epsi_Data_varwise,
   Overall_Distance<-rowMeans(as.data.frame(Mat_dce))
   return(Overall_Distance)
 }
-# function(hearts,type_donnees,list_variable,
+# function(hearts,type_data,list_variable,
 #          Name_riskF,link_import_residuals,
 #          link_rootVAR_model, K_chosen,
 #          f_distance,link_export_generations,
@@ -660,7 +660,7 @@ K_fold_k_param_j_test<-function(hearts,f_distance,l_Epsi_Data_varwise,
 #'
 #' @examples
 K_fold_k_param<-function(hearts,f_distance,
-                        number_Kfold,type_donnees,list_variable,
+                        number_Kfold,type_data,list_variable,
                         Name_riskF,link_import_residuals,vector_K){
 
     link_g_chosen<-paste0("residuals_MV/",Name_riskF,"/")
@@ -678,20 +678,20 @@ K_fold_k_param<-function(hearts,f_distance,
     # #########
     for(name_variable in list_variable){
       if(name_variable=="U"){
-        lien_donnees<-paste0(repertory,name_variable,
+        link_data<-paste0(repertory,name_variable,
                              "_trunc_detrend.csv")
-        Donnes<-read.csv(file=lien_donnees)
+        Data<-read.csv(file=link_data)
         
       }else{
-        lien_donnees<-paste0(repertory,name_variable,"_detrend.csv")
-        Donnes<-read.csv(file=lien_donnees)
+        link_data<-paste0(repertory,name_variable,"_detrend.csv")
+        Data<-read.csv(file=link_data)
       }
-      D<-ncol(Donnes)
-      Donnes<-Donnes[,c(2:D)]
-      colnames(Donnes)<-substr(x = colnames(Donnes),
+      D<-ncol(Data)
+      Data<-Data[,c(2:D)]
+      colnames(Data)<-substr(x = colnames(Data),
                                start = 2,stop = 3)
-      rownames(Donnes)<-c(1:nrow(Donnes))
-      l_output[[name_variable]]<-Donnes
+      rownames(Data)<-c(1:nrow(Data))
+      l_output[[name_variable]]<-Data
 
       # Import Resid data -------------------------------------------------------
       Epsi_data<-read.csv(file=paste0(link_import_residuals,

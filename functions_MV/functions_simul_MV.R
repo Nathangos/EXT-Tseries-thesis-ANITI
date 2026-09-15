@@ -14,7 +14,7 @@
 Fct_correct_name<-function(x,target,replacement){
   
 
-  b<-as.numeric(str_locate(x,target))
+  b<-as.numeric(stringr::str_locate(x,target))
   S<-sum((is.na(b)))
   if(S>=1){
     return(x)

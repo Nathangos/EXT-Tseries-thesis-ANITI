@@ -357,9 +357,6 @@ colnames(DF_summy)<-c("delta","mean")
 
 ```
 
-```{r}
-str(DF_summy)
-```
 
 
 ```{r}
@@ -549,7 +546,7 @@ if(Name_riskF=="Weighted_NQ"){
 }
 ```
 
-```{r}
+```{r,warning=FALSE,message=FALSE}
 
 path <- paste0(getwd(),"/residuals_MV")
 path_graph<-paste0(getwd(),"/Graphics_MV/resid")
@@ -704,7 +701,6 @@ GG_Exts_RF<-Graphics_estimators_gamma(
         vect_k = Vector_K2,
         Title_graphic = " ",
         dims_elt_text = c(20,14,13,12))
-GG_Exts_RF
 ggsave(filename = paste0(Lg_path,"/",l_name[1],
                          "_",l_name[2],"_d=",length(l_name),
                          "_extremes_shape.png"),
@@ -755,9 +751,6 @@ METRIC_plot_used<-"mad"
 k_metric<-mindist_update(data = Riskf_data,
                          ts = TS_param,method = METRIC_plot_used)
 which.min(k_metric$value_metric)
-Graphics_estimators_gamma(series = Riskf_data,
-                          vect_k = c(50:200),
-                          Title_graphic = "test")
 kZero_found<-which.min(k_metric$value_metric)
 Inds_subs_plot<-which(unlist(k_metric$Nb_k)%in%c(50:200))
 k_metric_sub<-k_metric[Inds_subs_plot,]
@@ -1039,15 +1032,15 @@ if(Launch_graph_conv){
 
 
 ```{r}
-EXPRESSIONS<-c(latex2exp::TeX("$\\rho_{kk'}$ value"),
-                 latex2exp::TeX("$\\sigma_{kk'}$ value"),
-                 latex2exp::TeX("$\\gamma_{kk'}$ value"))
+EXPRESSIONS<-c(latex2exp::TeX("$\\rho_{jj'}$ value"),
+                 latex2exp::TeX("$\\sigma_{jj'}$ value"),
+                 latex2exp::TeX("$\\gamma_{jj'}$ value"))
 EXPRESSIONS_stab<-c(latex2exp::TeX(
-  "standard deviation of $\\rho_{kk'}$"),
+  "standard deviation of $\\rho_{jj'}$"),
                     latex2exp::TeX(
-  "standard deviation of $\\sigma_{kk'}$"),
+  "standard deviation of $\\sigma_{jj'}$"),
                     latex2exp::TeX(
-  "standard deviation of $\\gamma_{kk'}$"))
+  "standard deviation of $\\gamma_{jj'}$"))
 ```
 
 
@@ -1088,7 +1081,7 @@ if(Launch_graph_conv){
   Result_criterion_stability$sigXY
   Nb_pairs<-length(l_name)*(length(l_name)-1)/2
   
-  v_corr<-c("rho[kk']","sigma[kk']","gam[kk']")
+  v_corr<-c("rho[jj']","sigma[jj']","gam[jj']")
   v_corr2<-c("rhoXY","sigXY","gamXY")
   
   for(J in c(1:length(v_corr))){
@@ -1217,8 +1210,8 @@ if(Launch_graph_conv){
                                   replacement = "Surge"))})
   
   centerGPD<-NULL
-  colnames(Evol_conv_criterion)[c(2:4)]<-c("sigma[kk']",
-          "rho[kk']","gam[kk']")
+  colnames(Evol_conv_criterion)[c(2:4)]<-c("sigma[jj']",
+          "rho[jj']","gam[jj']")
 }
 ```
 
@@ -1908,14 +1901,14 @@ if(Run_Kzka_test){
     EPPR_base<-expression(sigma[descrip]~"density")
     EVAL_expr<-do.call("substitute", 
             list(EPPR_base[[1]], 
-                 list(descrip ="kk'")))
+                 list(descrip ="jj'")))
     GG_corr_shape<-GG_corr_shape+
       ylab(EVAL_expr) 
   }else{
     EPPR_base<-expression(rho[descrip]~"density")
     EVAL_expr<-do.call("substitute", 
                        list(EPPR_base[[1]], 
-                            list(descrip ="kk'")))
+                            list(descrip ="jj'")))
     GG_corr_shape<-GG_corr_shape+
       ylab(EVAL_expr)
   }

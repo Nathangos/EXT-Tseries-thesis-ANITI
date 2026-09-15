@@ -1354,7 +1354,7 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
   # Methode delta par defaut -------------------------------------------------
   #############
   
-  Modele_vs_emp<-ci(x = modele_ev,alpha = alpha,
+  Modele_vs_emp<-distillery::ci(x = modele_ev,alpha = alpha,
                     return.period=period_years,
                     method=methode_ci)
   Base<-cbind.data.frame(Modele_vs_emp[,1],Modele_vs_emp[,2],Modele_vs_emp[,3])
