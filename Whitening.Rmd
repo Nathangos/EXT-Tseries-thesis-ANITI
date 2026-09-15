@@ -1,4 +1,4 @@
-```{r}
+```{r,message=FALSE,warning=FALSE}
 rm(list=ls())
 set.seed(133)
 
@@ -18,12 +18,16 @@ require(tseries)
 require(patchwork)
 require(cowplot)
 require(viridis)
+require(stringr)
+require(ggpubr)
 
-### Use defined functions
-source("functions_MV/functions_simul_MV.R")
 ```
 
 ```{r}
+###Use defined functions ####
+source("functions/fonctions.R")
+source("functions_MV/functions_simul_MV.R")
+source("functions_MV/functions_prelim_analysis.R")
 
 COMMON_theme<-theme(axis.title = element_text(size=20),
                     strip.text=element_text(size=20),
@@ -34,13 +38,10 @@ COMMON_theme<-theme(axis.title = element_text(size=20),
 
 
 ```{r}
-
-### Source des fonctions. ####
-source("functions/fonctions.R")
 F_names<-ls()
-nb_coeurs<-detectCores()-4
-coeurs<-makeCluster(nb_coeurs)
-clusterExport(coeurs,varlist=F_names)
+nb_hearts<-detectCores()-4
+hearts<-makeCluster(nb_hearts)
+clusterExport(hearts,varlist=F_names)
 
 ### times bound
 Time_lag<-8
@@ -71,6 +72,7 @@ NEW_labels<-c("-3","-1.5","0","1.5","3")
 y_breaks <-c(1,10,19,28,37)
 vectName<-c("Hs","Surge","U")
 list_FGD_detrend<-list()
+
 for(INDEX in c(1:length(vectName))){
     new_name<-vectName[INDEX]
     lien_donnees<-paste0(root_import,new_name,"_detrend.csv")
@@ -162,7 +164,7 @@ try({
 
 
 ```{r}
-function_AR_MV<-function(coeurs,list_variable,repertory){
+function_AR_MV<-function(hearts,list_variable,repertory){
   l_Orig<-list()
   l_Transf<-list()
   D_full<-0
@@ -189,19 +191,9 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
     D_full<-max(D_full,
             ncol(Donnes))
     l_Orig[[name_variable]]<-Donnes
-    
-    # N<-nrow(Donnes)
-    # Mat_df<-data.frame(l_Transf)
-    ### Replace c(1:37) by the real variable names
-    ### Will be the actual df exported. 
-    #colnames(Mat_df)<-Times
     l_Transf[[name_variable]]<-Donnes[c(2:nrow(Donnes)),]
   }
-  #return(l_L2)
   d<-length(list_variable)
-  # p<-d+2
-  # MATRIX_Mod_VAR<-matrix(NA,nrow=D*p,ncol=d)
-  # print(dim(MATRIX_Mod_VAR))
   for(t in c(1:D_full)){
     ### VAR depends on the number of available variables
     ### per forcing condition. 
@@ -239,7 +231,6 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
       return(x[,1])})
     MATRIX_Mod_VAR_t<-Coefficients_matrix
     Resid_VAR<-as.data.frame(residuals(model_VAR))
-    # l_name_other<-list_variable[-ind_missing]
     colnames(Resid_VAR)<-Namevariables_found
     png(filename=paste0("whitening_MV/corr_intervar_",
                         name_first[1],"_",
@@ -255,8 +246,6 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
     dev.off()
     ### Result of the Var(1) model. 
     ######
-    # mtext(text=paste0("Correlation at time ", t ," for the first two variables"),
-    #       outer=TRUE,line=-3)
     par(mfrow=c(1,1))
     for(nameFull in  Namevariables_found){
       t_str<-as.character(t)
@@ -268,14 +257,6 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
     write.csv(file=paste0("whitening_MV/VAR_model_",t,".csv"),
               x = MATRIX_Mod_VAR_t)
   }
-  ### Export VAR model
-  # colnames(MATRIX_Mod_VAR)<-lNAME
-  # write.csv(file="whitening_MV/VAR_model.csv",
-  #           x = MATRIX_Mod_VAR)
-  
-  ### Export residuals
-  #### ATTENTION)
-  ### 09/03, use param to distinguish two residuals
   
   for(Z in c(1:d)){
     NAMEV<-list_variable[Z]
@@ -285,7 +266,6 @@ function_AR_MV<-function(coeurs,list_variable,repertory){
       "_residuals_",d,".csv"
     ),x=Data_toexport_Z,row.names = FALSE)
   }
-  #return(model_VAR)
 }
 ```
 
@@ -301,8 +281,12 @@ CF<--0.1
 
 ### Repertory where detrended data can be found
 RPTY<-"data_detrend_Winter/"
-R<-function_AR_MV(coeurs = coeurs, 
+R<-function_AR_MV(hearts = hearts, 
                   list_variable = lNAME,
                   repertory=RPTY)
+```
+```{r}
+### End of the code --------------------
+parallel::stopCluster(hearts)
 ```
 

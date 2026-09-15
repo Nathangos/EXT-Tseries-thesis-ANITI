@@ -13,7 +13,7 @@
 #' @examples
 Fct_correct_name<-function(x,target,replacement){
   
-  require(stringr)
+
   b<-as.numeric(str_locate(x,target))
   S<-sum((is.na(b)))
   if(S>=1){

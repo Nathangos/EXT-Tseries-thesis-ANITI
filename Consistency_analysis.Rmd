@@ -18,7 +18,14 @@ require(viridis)
 require(parallel)
 require(cowplot)
 require(texmex)
+require(stringr)
 
+
+
+
+```
+
+```{r}
 #Functions from univariate case. 
 source("functions/fonctions_perfs_ML.R")
 source("functions/fonctions.R")
@@ -28,9 +35,8 @@ source("functions_MV/functions_consistency.R")
 source("functions_MV/functions_simul_MV.R")
 source("functions_MV/functions_estim_simul_gPareto.R")
 
-
-
 ```
+
 
 ```{r,warning=FALSE}
 F_names<-ls()

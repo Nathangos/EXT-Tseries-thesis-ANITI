@@ -1,4 +1,3 @@
-require(roxygen2)
 
 #' fonction_fichier
 #'

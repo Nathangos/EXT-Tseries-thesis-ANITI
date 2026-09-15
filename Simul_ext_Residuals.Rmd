@@ -78,13 +78,15 @@ source("Choice_auto_thresh/src/helper_functions.R")
 # Consistency results -----------------------------------------------------
 source("functions_MV/functions_consistency.R")
 
-F_names<-ls()
-nb_heartsCPU<-detectCores()-4
+
 ```
 
 
 ```{r}
-# Ouverture des clusters --------------------------------------------------
+# Defining clusters --------------------------------------------------
+F_names<-ls()
+nb_heartsCPU<-detectCores()-4
+
 heartsCPU<-makeCluster(nb_heartsCPU)
 clusterExport(heartsCPU,varlist=F_names)
 cols_<-c("data"="blue","simulations"="orange",
@@ -135,15 +137,8 @@ TITLE<-ggdraw() +
 Z_seen<-1
 YLIM<-c(0,5)
 YTheta_Lim<-c(0,2)
-NV_DKG<-"Hs"
 DF_transf<-read.csv(file = paste0(path_conversion,NV_DKG,
                                   METHOD_MGtransf,d,".csv"))
-Variable_ref<-DF_transf[,19]
-ind_DKG<-order(Variable_ref,decreasing = TRUE)[1:4]
-
-DROP_DKG<-FALSE
-DATES<-read.csv(file = "data_detrend_Winter/dates.csv")[,2]
-DATES[ind_DKG]
 
 ```
 
@@ -151,14 +146,8 @@ DATES[ind_DKG]
 ```{r}
 
 for(nameV in l_name){
-  ###[,c(2:38)]
   DF_transf<-read.csv(file = paste0(path_conversion,nameV,
                                 METHOD_MGtransf,d,".csv"))
-  ### remove pbtic value
-  if(DROP_DKG){
-    DF_transf<-DF_transf[-ind_DKG,]
-  }
-  
   ### Convert_to_Pareto(pow_transform)
   DF_transf<-(DF_transf+1)^(Shape_chosen)-1
   
@@ -275,10 +264,7 @@ for(nameV in l_name){
   Link_j<-paste0(l_root,nameV,"_residuals_",
                  d,".csv")
   Orig_j<-read.csv(Link_j)
-  ### Remove the DKG
-  if(DROP_DKG){
-    Orig_j<-Orig_j[-ind_DKG,]
-  }
+
   DF_orig[[nameV]]<-Orig_j
   
   list_form<-list()

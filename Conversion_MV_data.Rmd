@@ -20,6 +20,7 @@ require(ggside)
 require(mev)
 require(scales)
 require(gamlss)
+require(stringr)
 
 source("functions/fonctions_Pareto.R")
 source("functions/fonctions.r")
@@ -36,11 +37,11 @@ source("Choice_auto_thresh/src/eqd.R")
 source("Choice_auto_thresh/src/helper_functions.R")
 
 F_names<-ls()
-nb_coeurs<-detectCores()-4
+nb_hearts<-detectCores()-4
 
-# Ouverture des clusters --------------------------------------------------
-coeurs<-makeCluster(nb_coeurs)
-clusterExport(coeurs,varlist=F_names)
+# Defining clusters --------------------------------------------------
+hearts<-makeCluster(nb_hearts)
+clusterExport(hearts,varlist=F_names)
 
 ```
 ```{r}
@@ -84,7 +85,7 @@ cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue",
 #' MarTransfo_TS_exts_Mixture
 #'
 #' @param type_donnees 
-#' @param coeurs 
+#' @param hearts 
 #' @param lien_racine 
 #' @param list_names
 #' @param n.dens 
@@ -95,7 +96,7 @@ cols_<-c("data"="blue","simulations"="orange","confidence_band"="darkblue",
 #' @export
 #'
 #' @examples
-MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,
+MarTransfo_TS_exts_Mixture<-function(type_donnees,hearts,lien_racine,
                                      list_names,n.dens,
                                      opt_Frech,type_entree,
                                      Nb_Threshs,CPU_hearts){
@@ -216,13 +217,13 @@ MarTransfo_TS_exts_Mixture<-function(type_donnees,coeurs,lien_racine,
 ### Mixture model results
 NB_THRESH<-20
 Result_MV<-MarTransfo_TS_exts_Mixture(type_donnees = "hiver",
-                   coeurs = coeurs,
+                   hearts = hearts,
                    lien_racine = l_root,
                    list_names = l_name,
                    n.dens = 2^(14),opt_Frech = opt_Frech,
                    type_entree = TE,
                    Nb_Threshs = NB_THRESH,
-                   CPU_hearts = coeurs)
+                   CPU_hearts = hearts)
 
 
 ```

@@ -15,6 +15,10 @@ require(VineCopula)
 require(grid)
 require(gridExtra)
 require(mvPot)
+require(stringr)
+```
+
+```{r}
 #Functions from univariate case. 
 source("functions/fonctions_Pareto.R")
 source("functions/fonctions.r")
@@ -28,7 +32,7 @@ F_names<-ls()
 nb_hearts<-detectCores()-4
 
 
-# Ouverture des clusters --------------------------------------------------
+# Defining clusters --------------------------------------------------
 hearts<-makeCluster(nb_hearts)
 clusterExport(hearts,varlist=F_names)
 COMMON_theme<-theme(axis.title = element_text(size=20),
@@ -37,6 +41,7 @@ COMMON_theme<-theme(axis.title = element_text(size=20),
                     legend.text=element_text(size=17),
                     axis.text=element_text(size=17))
 ```
+
 
 ```{r}
 
@@ -329,9 +334,6 @@ for(nameV in names(Output$X0)){
     LEGEND_3<-get_legend(GGRelation_EPSI_Prev)
     Cums_compar<-GGtaken+
       guides(fill="none")
-    # Cums_compar2<-GGRelation_found+
-    #     guides(col="none",size="none",
-    #          shape="none")
     Cums_compar3<-GGRelation_EPSI_Prev+
       guides(col="none",size="none",
              shape="none")
@@ -339,10 +341,7 @@ for(nameV in names(Output$X0)){
     Cums_compar<-Cums_compar+
       GGtaken+
       guides(fill="none")
-    # Cums_compar2<-Cums_compar2+
-    #   GGRelation_found+
-    #   guides(col="none",size="none",
-    #          shape="none")
+
     Cums_compar3<-Cums_compar3+
       GGRelation_EPSI_Prev+
       guides(col="none",size="none",
