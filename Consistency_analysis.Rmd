@@ -1304,7 +1304,9 @@ list_EVALQ<-clusterEvalQ(heartsCPU, c(library(dplyr),library(reshape2),
 L_info_export<-list("model"=opt_used,
                     "prefix"=Prefix,
                     "complement"=CPLMT)
-Summary_pairs<-parallel::parLapply(cl = heartsCPU,
+RUN_biv_analysis<-FALSE
+if(RUN_biv_analysis){
+  Summary_pairs<-parallel::parLapply(cl = heartsCPU,
       list_summary,F_automatic_ggplot_marg,
       Path_EXT = Extremo_path,Path_TREND = TREND_path,
       l_unit=Unit_variable,risk_function=Risk_f,
@@ -1314,6 +1316,8 @@ Summary_pairs<-parallel::parLapply(cl = heartsCPU,
       hearts=heartsCPU,basis_functionGAM="tp",
       n_sim=1000,list_info_export=L_info_export,
       theme_common=COMMON_theme)
+}
+
 
 ```
 
