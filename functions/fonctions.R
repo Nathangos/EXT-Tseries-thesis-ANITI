@@ -329,7 +329,7 @@ fonction_MLplot_resume<-function(resultatML,vecteur_k,nom_variable,lims_Y=c(-2,2
   bilan<-as.data.frame(apply(intermed,MARGIN = 2,FUN=unlist))
   #nom_plot<-paste("Evolution du gamma pour",nom_variable)
   cols_scale<-c("confidence_band"="darkblue","estimator"="blue")
-  GA_plot<-ggplot(data=bilan,aes(x=vecteur_k,y=estimator,col="estimator"))+
+  GA_plot<-ggplot2::ggplot(data=bilan,aes(x=vecteur_k,y=estimator,col="estimator"))+
     geom_line()
   if (all(!is.na(bilan))==TRUE){
     GA_plot<-GA_plot+
@@ -872,7 +872,7 @@ Graphics_estimators_gamma<-function(series,vect_k,Title_graphic,
                        "ML_gamma"=4,
                        "confidence_band"=5)
   }
-  GGothers<-ggplot(data=Gam,aes(x=number_excesses,y =gamma_estimed,color=source,
+  GGothers<-ggplot2::ggplot(data=Gam,aes(x=number_excesses,y =gamma_estimed,color=source,
                                 group=interaction(source),
                                 linetype=source))+
     geom_line()+
@@ -1382,7 +1382,7 @@ RL_ggplot_cond_ext<-function(series,seuil,period_years,NPY,
   }
   Xbottom<-"Period P (years)"
   yleft <- paste0("return level ",unit_used)
-  GG_RL<-ggplot(data = Base,aes(x=period_years,y=estimateur))+
+  GG_RL<-ggplot2::ggplot(data = Base,aes(x=period_years,y=estimateur))+
     geom_line()+
     geom_line(linetype=0)+
     annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
@@ -1486,7 +1486,7 @@ RL_ggplot_uniroot_ext<-function(series,seuil,period_years,NPY,
   }
   Xbottom<-"Period P (years)"
   yleft <- paste0("return level (",unit_used,")")
-  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+  GG_RL<-ggplot2::ggplot(data = Base,aes(x=periods_years,y=estimateur))+
     geom_line()+
     geom_line(linetype=0)+
     annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
@@ -1761,7 +1761,7 @@ RL_ggplot<-function(series,seuil,period_years,NPY,titre,
     phrase_caption<-paste0(phrase_caption,", number_simul=",length(series_simul))
     
   }
-  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+  GG_RL<-ggplot2::ggplot(data = Base,aes(x=periods_years,y=estimateur))+
     geom_line()+
     geom_line(linetype=0)+
     annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
@@ -1842,7 +1842,7 @@ RL_ggplot_boot_opitz<-function(series,seuil,period_years,NPY,titre,
   
   # GGplot ------------------------------------------------------------------
   
-  GG_RL<-ggplot(data = Base,aes(x=periods_years,y=estimateur))+
+  GG_RL<-ggplot2::ggplot(data = Base,aes(x=periods_years,y=estimateur))+
     geom_line()+
     geom_line(linetype=0)+
     annotate("point", x = 20, y = rvalue_predicted,colour = "red", 
@@ -1921,7 +1921,7 @@ Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
   colnames(DF_rad)<-c("individual","rad",
                       "time")
   DF_rad$individual<-as.character(DF_rad$individual)
-  GG_TS<-ggplot(data=Series_Z,
+  GG_TS<-ggplot2::ggplot(data=Series_Z,
                    aes(x=Time,y=value,col=individual,
                        group=interaction(individual), 
                    ))+geom_line()+
@@ -1933,7 +1933,7 @@ Graph_polar_decomp<-function(Df_time_series,y_label,fct_rad,
           axis.text=element_text(size=dims_elt_text[4]))+
     guides(col="none")
     # annotate(geom = "point",x=rep(0,length(Rad_comp)),y=Rad_comp)
-  GG_Theta<-ggplot(data=Series_Omega,
+  GG_Theta<-ggplot2::ggplot(data=Series_Omega,
                 aes(x=Time,y=value,col=individual,
                     group=interaction(individual), 
                 ))+

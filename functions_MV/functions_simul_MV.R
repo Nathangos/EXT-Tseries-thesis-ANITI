@@ -523,7 +523,7 @@ Fct_cplmt_ggplot<-function(Times_available,vect_name_variable,Melting_df,
               rep(Value_y_for_spec,length(sub_dash)),
               vect_name_variable_Corrected)
   colnames(Df_for_annotate)<-c("xspec","yspec","label_spec")
-  GG_present_object<-ggplot()+
+  GG_present_object<-ggplot2::ggplot()+
     geom_text(
       data=Df_for_annotate,
       aes(x=xspec,y=yspec,label=label_spec),
@@ -943,7 +943,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
 
   df_angle_exceeds<-as.data.frame(Angle_exceeds)
   colnames(df_angle_exceeds)<-c("V1","V2")
-  GG_dens_Ang<-ggplot(data = df_angle_exceeds,aes(x=V1,y=V2))+
+  GG_dens_Ang<-ggplot2::ggplot(data = df_angle_exceeds,aes(x=V1,y=V2))+
     geom_point(col="blue")+
     geom_xsidedensity(alpha=0.5)+
     geom_ysidedensity(alpha=0.5)+
@@ -974,7 +974,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                                      Result_AIC)
         colnames(Result_AIC)<-c("model","AIC_found")
         Result_AIC$index<-c(1:nrow(Result_AIC))
-        GG1<-ggplot(data=Result_AIC,aes(x=index,y=AIC_found,col=model))+
+        GG1<-ggplot2::ggplot(data=Result_AIC,aes(x=index,y=AIC_found,col=model))+
           geom_point()+
           labs(col="MEV model")
         ggsave(filename= paste0(root_for_export,
@@ -1130,7 +1130,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
         RESID<-c(Resid)
         DF<-cbind.data.frame(VARIABLE,REGRESSOR,RESID)
         colnames(DF)<-c("variable","reg_","resid_")
-        GG_trend_Z_Yreg<-ggplot(DF,aes(x=reg_,y=resid_))+
+        GG_trend_Z_Yreg<-ggplot2::ggplot(DF,aes(x=reg_,y=resid_))+
           facet_wrap(~variable)+
           geom_point()+
           geom_smooth(aes(col="Polynomial regression"),
@@ -1162,7 +1162,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
                                   PAIR_for_graphic_corrected[1]))
         Label_2<-latex2exp::TeX(sprintf("$\\ell(T(%s))$",
                                   PAIR_for_graphic_corrected[2]))
-        GG_z_model<-ggplot(data = Data_tfed,aes(x=V1,y=V2,
+        GG_z_model<-ggplot2::ggplot(data = Data_tfed,aes(x=V1,y=V2,
                                                 col=inds_exts_Z))+
           geom_point()
         Real_test<-expression(u[Z])
@@ -1435,7 +1435,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
         YLAB<-expression(R[M~","~Z_gg2]^g)
         YLAB<-as.expression(do.call('substitute', 
                                     list( YLAB[[1]], list(Z_gg2=Z_gg2))))
-        GG_RG_sim_vs_obs<-ggplot(data=Df_combs_sim_exts,
+        GG_RG_sim_vs_obs<-ggplot2::ggplot(data=Df_combs_sim_exts,
                                  aes(x=V1,y=V2))+
           geom_point(aes(shape=Legend,col=Legend,
                          size=Legend))+
@@ -1492,7 +1492,7 @@ Simul_MV_residuals<-function(result_transformation,l_variables,Q_thresh,
       YLAB<-expression(R[M~","~Z_gg2]^g)
       YLAB<-as.expression(do.call('substitute', 
                                   list( YLAB[[1]], list(Z_gg2=Z_gg2))))
-      GG_RG_sim_vs_obs<-ggplot(data=Df_combs_sim_exts,
+      GG_RG_sim_vs_obs<-ggplot2::ggplot(data=Df_combs_sim_exts,
                                aes(x=V1,y=V2))+
         geom_point(aes(shape=Legend,col=Legend,
                        size=Legend))+

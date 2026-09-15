@@ -110,7 +110,7 @@ AD_test_analysis<-function(Matrix_df,Mat_cthresh,
   
   d<-ncol(Matrix_df)
   All_AD_AI$round_Value<-round(All_AD_AI$Value,2)
-  GG_complete_AD_AI<-ggplot(All_AD_AI, aes(x = Col, y = Row, fill = Value)) 
+  GG_complete_AD_AI<-ggplot2::ggplot(All_AD_AI, aes(x = Col, y = Row, fill = Value)) 
   if(!Case_1){
     ### if two elements--> facet_wrap
     GG_complete_AD_AI<-GG_complete_AD_AI+
@@ -195,7 +195,7 @@ Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
     # Convert matrix to long format
     df <- melt(mat)
     colnames(df) <- c("Row", "Col", "Value")
-    GGdefault<-ggplot(df, aes(x = Col, y = Row, fill = Value)) +
+    GGdefault<-ggplot2::ggplot(df, aes(x = Col, y = Row, fill = Value)) +
       geom_tile() +
       xlab("")+ylab("")+
       scale_fill_viridis()+
@@ -277,7 +277,7 @@ Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
     input_for_tex<-paste0("$\\bar{\\chi}$ matrix of ",Name_main)
     Name_main_modif<-latex2exp::TeX(input_for_tex)
     colnames(df) <- c("Row", "Col", "Value")
-    GGdefault<-ggplot(df, aes(x = Col, y = Row, fill = Value)) +
+    GGdefault<-ggplot2::ggplot(df, aes(x = Col, y = Row, fill = Value)) +
       geom_tile() +
       xlab("")+ylab("")+
       scale_fill_viridis()+
@@ -344,7 +344,7 @@ Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
                 "chi_bar"="bar(chi)")
   d<-ncol(Matrix_df_unif)
   All_chi$round_Value<-round(All_chi$Value,2)
-  GG_complete_chi<-ggplot(All_chi, aes(x = Col, y = Row, fill = Value)) +
+  GG_complete_chi<-ggplot2::ggplot(All_chi, aes(x = Col, y = Row, fill = Value)) +
     facet_wrap(~category,
                labeller=as_labeller(cat_labels,label_parsed))+
     geom_tile()

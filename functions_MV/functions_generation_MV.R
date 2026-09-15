@@ -379,7 +379,7 @@ Generator_TSERIES_MV<-function(hearts,type_donnees,list_variable,
       YLAB<-expression("Max of "~tilde(X)[M-Delta~","~Z_gg])
       YLAB<-as.expression(do.call('substitute', list( YLAB[[1]], 
                                                       list(Z_gg=Corrected_list_variable[Z_gg]))))
-      GG_relation<-ggplot(MATRIX_rel_epsi_previous,aes(x=Epsi_norm,y=X_prevnorm,
+      GG_relation<-ggplot2::ggplot(MATRIX_rel_epsi_previous,aes(x=Epsi_norm,y=X_prevnorm,
                                                        col="data"))+
         geom_point()+
         geom_point(data=MATRIX_rel_epsi_previous_sim,aes(y=X_prevnorm,

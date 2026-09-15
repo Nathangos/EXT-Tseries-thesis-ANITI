@@ -12,6 +12,7 @@ require(parallel)
 require(utils)
 require(latex2exp)
 require(lubridate)
+require(stringr)
 
 ### Packages for data analysis
 require(VineCopula)
@@ -353,11 +354,18 @@ YLAB<-do.call("substitute",
 DF_summy<-cbind.data.frame(pow_tried,Mean_found)
 colnames(DF_summy)<-c("delta","mean")
 
-GG_RV_test<-ggplot(data=DF_summy,aes(x=delta,y=mean))+
-  geom_line()+
-  geom_point()+
-  xlab(expression(delta))+
-  ylab(YLAB)+
+
+```
+
+```{r}
+str(DF_summy)
+```
+
+
+```{r}
+GG_RV_test<-ggplot2::ggplot(data=DF_summy,aes(x=delta,y=mean))+
+  geom_line()+ geom_point()+
+  xlab(expression(delta))+ylab(YLAB)+
   geom_vline(aes(xintercept = 1/Shape_chosen,
                  col="chosen index"))+
   labs(col="Legend")
@@ -400,7 +408,7 @@ DF_wholeTF$variable<-sapply(DF_wholeTF$variable,
                   target = "Surcote",
                   replacement = "Surge")})
 
-GGgam_tf<-ggplot(data=DF_wholeTF,aes(x=number_excesses,
+GGgam_tf<-ggplot2::ggplot(data=DF_wholeTF,aes(x=number_excesses,
           y =gamma_estimed,color=source,
           group=interaction(source),
           linetype=source))+
@@ -814,7 +822,7 @@ Graph_label_value<-Sub_graph_GamGl_update+
 # Criterion choice ----------
 ###############
 
-GG_criterion_first<-ggplot(k_metric_sub,
+GG_criterion_first<-ggplot2::ggplot(k_metric_sub,
                            aes(x=Nb_k,
                                y=value_metric))+
   geom_line()+
@@ -912,7 +920,7 @@ if(Launch_graph_conv){
   Evol_Theta_ofRad_criterion$pair<-sapply(Evol_Theta_ofRad_criterion$pair,FUN = function(x){
         return(Fct_correct_name(x,target = "Surcote",
                         replacement = "Surge"))})
-  GGCorr_Radevol<-ggplot(Evol_Theta_ofRad_criterion,
+  GGCorr_Radevol<-ggplot2::ggplot(Evol_Theta_ofRad_criterion,
                          aes(x=number_exceed,y=value,
                              col=pair))+
     geom_line()+
@@ -974,7 +982,7 @@ if(Launch_graph_conv){
              replacement = "Surge"))
                                    })
   COLORS_for_conv<-scale_fill_hue()$palette(length(l_name)+1)
-  GG_conv_MV_Angle<-ggplot(Melting_whole)+
+  GG_conv_MV_Angle<-ggplot2::ggplot(Melting_whole)+
     facet_wrap(~eigen_index,
                scales = "free_y",
                labeller = label_parsed)+
@@ -1146,7 +1154,7 @@ if(Launch_graph_conv){
     colnames(df_C)<-c("C_f",
                       "value",
                       "pair_vars")
-    GG_stab_j<-ggplot(data=df_stat_std)+
+    GG_stab_j<-ggplot2::ggplot(data=df_stat_std)+
       facet_wrap(~pair_vars,scales = "free_y")+
       
       geom_line(aes(x=k,y=value,
@@ -1233,7 +1241,7 @@ if(Launch_graph_conv){
     ratio<-nrow(df_forgg)/nrow(Evol_conv_criterion)
     df_forgg$k<-rep(Evol_conv_criterion$k,ratio)
     
-    GGCorr_evol<-ggplot(df_forgg)+
+    GGCorr_evol<-ggplot2::ggplot(df_forgg)+
       geom_line(aes(x=k,y=value,
                     group=interaction(pair_vars),
                     col=pair_vars))+
@@ -1337,7 +1345,7 @@ if(!is.na(re$Vect_RiskF_transf)){
                               nrow(Sub_vect)),Ext_boolZ)
   colnames(daZ)<-c("u1","u2","pair","cat")
   daZ$cat<-ifelse(daZ$cat,yes="extreme",no="standard")
-  GG_AD_AI_Qtion<-ggplot(data=daZ)+
+  GG_AD_AI_Qtion<-ggplot2::ggplot(data=daZ)+
     geom_point(aes(x=u1,y=u2,col=cat))+
     geom_hline(data_TH,mapping=
                  aes(yintercept = Th_used),
@@ -1673,7 +1681,7 @@ for(Z in c(1:DFC)){
   Whole$origin<-c(rep("simulations",nrow(Melteur)),
                   rep("data",nrow(M2)))
   Whole$Index <- as.factor(Whole$Index)
-  GGsum<-ggplot(data=Whole,
+  GGsum<-ggplot2::ggplot(data=Whole,
                 aes(x=Time,y=valeur,col=Index,
                     group=Index,
                 ))+
@@ -1873,7 +1881,7 @@ if(Run_Kzka_test){
   Key<-"sigXY"
   sub_Bound_stats_obs<-Bound_stats_obs[which(Bound_stats_obs$statistic==Key),]
   Summarised_sig<-Summarised[which(Summarised$variable==Key),]
-  GG_summary<-ggplot(Summarised_sig)+
+  GG_summary<-ggplot2::ggplot(Summarised_sig)+
     facet_wrap(~pair_vars,scales="free")+
     geom_density(aes(x = value),
                  alpha=0.6,fill="blue")+

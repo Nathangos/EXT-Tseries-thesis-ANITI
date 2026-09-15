@@ -69,7 +69,7 @@ Run_diagnostics_Gamma_G<-function(dims_elt_text,Vectors_HTAIL,
                            FUN =function(x){
                              Fct_correct_name(x = x,target = "Surcote",
                                               replacement = "Surge")})
-  GG_shape_AD<-ggplot(data=Df_all,aes(x=number_excesses,y =gamma_estimed,color=source,
+  GG_shape_AD<-ggplot2::ggplot(data=Df_all,aes(x=number_excesses,y =gamma_estimed,color=source,
                                       group=interaction(source),
                                       linetype=source))+
     geom_line()+
