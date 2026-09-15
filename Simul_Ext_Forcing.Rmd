@@ -17,11 +17,6 @@ require(gridExtra)
 require(mvPot)
 require(stringr)
 
-### Packages for machine learning #####
-require(e1071)
-require(randomForest)
-require(pROC)
-
 ```
 
 ```{r,message=FALSE,warning=FALSE}

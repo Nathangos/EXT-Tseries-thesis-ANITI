@@ -1,26 +1,41 @@
-```{r}
+```{r,warning=FALSE,message=FALSE}
 rm(list=ls())
 
 ##################
 set.seed(133)
 
-#### Import des packages. #####
+#### General packages #####
 require(reshape2)
 require(scales)
-require(ggplot2)
-require(gridExtra)
 require(grid)
 require(dplyr)
+require(parallel)
+require(stringr)
+
+### Packages for data analysis
+require(eummd)
+require(cramer)
 require(extRemes)
+require(texmex)
+require(FactoMineR)
+
+###Packages for graphics
+
+require(utils)
 require(ggside)
 require(patchwork)
 require(viridis)
-require(parallel)
+require(ggplot2)
 require(cowplot)
-require(texmex)
+require(gridExtra)
+require(ggpubr)
 require(stringr)
 
 
+### Packages for machine learning #####
+require(e1071)
+require(randomForest)
+require(pROC)
 
 
 ```
@@ -383,14 +398,6 @@ l_PCA<-l_exs_simuls
 
 common_scale <- scale_color_manual(values = cols_)
 
-common_theme <- COMMON_theme+theme(
-  legend.key.size = unit(5, "mm"),
-  legend.spacing = unit(2, "mm"),
-  legend.margin = margin(2, 2, 2, 2),
-  legend.position = "right",
-  strip.text.x = element_text(size = 13),
-  
-)
 common_guides <- guides(color = guide_legend(title = "Legend"))
 common_linetype<-scale_linetype_manual("Legend",
               values=c("confidence_band"=2,
