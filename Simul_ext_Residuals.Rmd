@@ -546,8 +546,8 @@ ROOT_export_graph<-paste0(path_graph,"/",
 try({
   Corr_path<-paste0(ROOT_export_graph,"Corr")
   dir.create(file.path(Corr_path))
-  TEND_path<-paste0(ROOT_export_graph,"Tend")
-  dir.create(file.path(TEND_path))
+  TREND_path<-paste0(ROOT_export_graph,"Trend")
+  dir.create(file.path(TREND_path))
   Lg_path<-paste0(ROOT_export_graph,"RisKfunctions")
   dir.create(file.path(Lg_path))
   Theta_path<-paste0(ROOT_export_graph,"Theta")
@@ -559,7 +559,7 @@ try({
   for(name_V in l_name){
     newfolder<-name_V
     try({
-      dir.create(file.path(TEND_path, newfolder))
+      dir.create(file.path(TREND_path, newfolder))
       dir.create(file.path(Theta_path, newfolder))
       dir.create(file.path(PCA_path, newfolder))
       dir.create(file.path(Extremo_path, newfolder))
