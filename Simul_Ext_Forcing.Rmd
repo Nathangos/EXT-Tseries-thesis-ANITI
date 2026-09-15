@@ -1,9 +1,9 @@
-```{r}
+```{r,message=FALSE,warning=FALSE}
 rm(list=ls())
 set.seed(133)
 par(mfrow=c(1,1))
 
-#### Import des packages. #####
+#### Import packages #####
 require(dplyr)
 require(ggplot2)
 require(reshape2)
@@ -16,9 +16,15 @@ require(grid)
 require(gridExtra)
 require(mvPot)
 require(stringr)
+
+### Packages for machine learning #####
+require(e1071)
+require(randomForest)
+require(pROC)
+
 ```
 
-```{r}
+```{r,message=FALSE,warning=FALSE}
 #Functions from univariate case. 
 source("functions/fonctions_Pareto.R")
 source("functions/fonctions.r")

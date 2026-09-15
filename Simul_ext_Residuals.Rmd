@@ -1,4 +1,4 @@
-```{r}
+```{r,message=FALSE,warning=FALSE}
 rm(list=ls())
 set.seed(133)
 par(mfrow=c(1,1))
@@ -31,31 +31,10 @@ require(mclust)
 
 ```
 
-```{r}
-### Options for graphics -----------------
-###########################
-
-COMMON_theme<-theme(axis.title = element_text(size=20),
-                    strip.text=element_text(size=20),
-                    legend.title = element_text(size=20),
-                    legend.text=element_text(size=17),
-                    axis.text=element_text(size=17))
-
-COLS_chosen<-c("gam_ref"="red",
-               "ML_gamma"="blue",
-               "confidence_band"="darkblue",
-               "threshold"="red",
-               "gam_ref"="black")
-LINETYPE_chosen<-c("gam_ref"=3,
-                   "Hill_gamma"=2,
-                   "ML_gamma"=4,
-                   "confidence_band"=5,
-                   "threshold"=6,
-                   "gam_ref"=6)
-```
 
 
-```{r}
+
+```{r,message=FALSE, warning=FALSE}
 ### Function source. ####
 #Functions from univariate case. 
 source("functions/fonctions_Pareto.R")
@@ -129,6 +108,30 @@ d<-length(l_name)
 
 
 ```
+
+```{r}
+### Options for graphics -----------------
+###########################
+
+COMMON_theme<-theme(axis.title = element_text(size=20),
+                    strip.text=element_text(size=20),
+                    legend.title = element_text(size=20),
+                    legend.text=element_text(size=17),
+                    axis.text=element_text(size=17))
+
+COLS_chosen<-c("gam_ref"="red",
+               "ML_gamma"="blue",
+               "confidence_band"="darkblue",
+               "threshold"="red",
+               "gam_ref"="black")
+LINETYPE_chosen<-c("gam_ref"=3,
+                   "Hill_gamma"=2,
+                   "ML_gamma"=4,
+                   "confidence_band"=5,
+                   "threshold"=6,
+                   "gam_ref"=6)
+```
+
 ```{r}
 ##########
 XLAB<-'Time(hour) with respect to tidal peak'

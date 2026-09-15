@@ -23,17 +23,12 @@ require(ggpubr)
 
 ```
 
-```{r}
+```{r,message=FALSE,warning=FALSE}
 ###Use defined functions ####
 source("functions/fonctions.R")
 source("functions_MV/functions_simul_MV.R")
 source("functions_MV/functions_prelim_analysis.R")
 
-COMMON_theme<-theme(axis.title = element_text(size=20),
-                    strip.text=element_text(size=20),
-                    legend.title = element_text(size=20),
-                    legend.text=element_text(size=13),
-                    axis.text=element_text(size=17))
 ```
 
 
@@ -48,6 +43,15 @@ Time_lag<-8
 Times_bound<-c(19-Time_lag,19+Time_lag)
 Dnew<-length(c(Times_bound[1]:Times_bound[2]))
 ```
+
+```{r}
+COMMON_theme<-theme(axis.title = element_text(size=20),
+                    strip.text=element_text(size=20),
+                    legend.title = element_text(size=20),
+                    legend.text=element_text(size=13),
+                    axis.text=element_text(size=17))
+```
+
 
 ```{r}
 Area_sub<-c(Dnew)**2

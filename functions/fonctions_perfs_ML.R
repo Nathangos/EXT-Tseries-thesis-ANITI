@@ -1,13 +1,13 @@
-# Modèles ML --------------------------------------------------------------
+# Models ML --------------------------------------------------------------
 
 # # -----------------------------------------------------------------------
 
-fnct_ML_realite_simulations_all_kernels<-function(ech_test,ech_train,variable){
+fnct_ML_groundTruth_simulations_all_kernels<-function(ech_test,ech_train,variable){
   LISTE<-list()
   Matrice_perfomances<-matrix(NA,nrow=4,ncol=4)
   j<-1
   for(type_noyau in c("linear","sigmoid","polynomial","radial")){
-    resultat<-fnct_ML_realite_simulations(ech_train = ech_train,ech_test=ech_test,
+    resultat<-fnct_ML_groundTruth_simulations(ech_train = ech_train,ech_test=ech_test,
                                           type_noyau = type_noyau)
     LISTE[[type_noyau]]<-resultat
     Mat_confTest<-resultat$resultat_conf_test
@@ -21,7 +21,7 @@ fnct_ML_realite_simulations_all_kernels<-function(ech_test,ech_train,variable){
     }
     Total<-colSums(df)
     Proportion_simulations_predite<-sum(df[,2])/sum(df)
-    Proportion_simulations_realite<-sum(df[2,])/sum(df)
+    Proportion_simulations_groundTruth<-sum(df[2,])/sum(df)
     # ligne =vérité. ----------------------------------------------------------
     Sensilite<-df[2,2]/sum(df[2,])
     Specificite<-df[1,1]/sum(df[1,])
@@ -36,7 +36,7 @@ fnct_ML_realite_simulations_all_kernels<-function(ech_test,ech_train,variable){
     
     F1_score<-2*(Accuracy*Sensilite)/(Accuracy+Sensilite)
     Matrice_perfomances[j,]<-c(type_noyau,round(F1_score,2),round(Proportion_simulations_predite,2),
-                               round(Proportion_simulations_realite,2))
+                               round(Proportion_simulations_groundTruth,2))
     j<-j+1
   }
   colnames(Matrice_perfomances)<-c("Noyau utilise","F1 score",
@@ -45,7 +45,7 @@ fnct_ML_realite_simulations_all_kernels<-function(ech_test,ech_train,variable){
   return(LISTE)
 }
 
-fnct_logistigue_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts){
+fnct_logistic_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts){
   LISTE_resultat<-list()
   Matrice_perfomances<-matrix(NA,nrow=length(liste_fncts),ncol=4)
   j<-1
@@ -67,7 +67,7 @@ fnct_logistigue_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts
       }
       Total<-colSums(df)
       Proportion_simulations_predite<-sum(df[,2])/sum(df)
-      Proportion_simulations_realite<-sum(df[2,])/sum(df)
+      Proportion_simulations_groundTruth<-sum(df[2,])/sum(df)
       # ligne =vérité. ----------------------------------------------------------
       Sensilite<-df[2,2]/sum(df[2,])
       Specificite<-df[1,1]/sum(df[1,])
@@ -81,7 +81,7 @@ fnct_logistigue_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts
       colnames(df)<-c("obs pred","simul pred","variable","lien")
       F1_score<-2*(Accuracy*Sensilite)/(Accuracy+Sensilite)
       Matrice_perfomances[j,]<-c(fnct_link_name,round(F1_score,2),round(Proportion_simulations_predite,2),
-                                 round(Proportion_simulations_realite,2))
+                                 round(Proportion_simulations_groundTruth,2))
       LISTE_resultat[[fnct_link_name]]$resultat_conf_test<-df
       }), error=function(e){
         print(e)
@@ -95,7 +95,7 @@ fnct_logistigue_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts
   return(LISTE_resultat)
 }
 
-#' fnct_ML_realite_simulations
+#' fnct_ML_groundTruth_simulations
 #'
 
 #' @param ech_train : list. Training elements with simulated time series (or values)
@@ -107,7 +107,7 @@ fnct_logistigue_glm_mult_links<-function(ech_test,ech_train,variable,liste_fncts
 #' @export
 #'
 #' @examples
-fnct_ML_realite_simulations<-function(ech_train,ech_test,type_noyau){
+fnct_ML_groundTruth_simulations<-function(ech_train,ech_test,type_noyau){
   
   Modif<-FALSE
   simul_train<-ech_train$simul
@@ -131,28 +131,28 @@ fnct_ML_realite_simulations<-function(ech_train,ech_test,type_noyau){
   sd_realisations<-apply(X = realisations,MARGIN = 2, 
                          FUN = sd)
   realisations<-as.data.frame(scale(as.matrix(realisations)))
-  # Variable cible : indicatrice simulation ---------------------------------
+  # Target variable: simulation indicator ---------------------------------
   
-  # Echantillon d'apprentissage ---------------------------------------------
+  # Training sample---------------------------------------------
   # y=1 for simulations et y=0 for observations
   realisations$y<-c(rep(0,nrow(real_train)),rep(1,nrow(simul_train)))
   realisations$y<-as.factor(realisations$y)
   realisations<-realisations[sample(nrow(realisations)),]
   
-  modele_svm<-e1071::svm(y~.,data=realisations,kernel=type_noyau, 
+  model_svm<-e1071::svm(y~.,data=realisations,kernel=type_noyau, 
                          probability=TRUE)
   
-  predictions<-modele_svm$fitted
+  predictions<-model_svm$fitted
   DF_test<-rbind(real_test,simul_test)
   DF_test<-as.data.frame(scale(DF_test,center=mean_realisations, 
                  scale=sd_realisations))
   rownames(DF_test)<-c(1:nrow(DF_test))
   y<-c(rep(0,nrow(real_test)),rep(1,nrow(simul_test)))
   # predictions--SVM ---------------------------------------------------------
-  predictions_modele<-predict(modele_svm,DF_test,
+  predictions_model<-predict(model_svm,DF_test,
                               decision.values = TRUE)
-  y_pred<-as.numeric(as.character(predictions_modele))
-  scores<-attr(predictions_modele,"decision.values")
+  y_pred<-as.numeric(as.character(predictions_model))
+  scores<-attr(predictions_model,"decision.values")
   probs_fonction_chosen<-as.numeric((1+exp((-1)*scores))^(-1))
   
   # Take into account the order ---------------------------------------------
@@ -160,10 +160,10 @@ fnct_ML_realite_simulations<-function(ech_train,ech_test,type_noyau){
   if(y_pred[1]!=round(probs_fonction_chosen[1])){
     probs_fonction_chosen<-(1-probs_fonction_chosen)
   }
-  return(list("Modèle"=modele_svm,"resultat_conf_train"=table(realisations$y,predictions),
-              "resultat_conf_test"=table(y,predictions_modele),
+  return(list("Model"=model_svm,"resultat_conf_train"=table(realisations$y,predictions),
+              "resultat_conf_test"=table(y,predictions_model),
               "type_noyau"=type_noyau, 
-              "predictions_modele"=predictions_modele,
+              "predictions_model"=predictions_model,
               "probs_y"=probs_fonction_chosen, 
               "y"=y_pred, 
               "y_test"=y))
@@ -208,9 +208,9 @@ fnct_RF<-function(ech_train,ech_test,NB_trees){
   sd_realisations<-apply(X = realisations,MARGIN = 2, 
                          FUN = sd)
   realisations<-as.data.frame(scale(as.matrix(realisations)))
-  # Variable cible : indicatrice simulation ---------------------------------
+  # Target variable: simulation indicator ---------------------------------
   
-  # Echantillon d'apprentissage ---------------------------------------------
+  # Training sample---------------------------------------------
   # y=1 for simulations et y=0 for observations
   L<-ncol(realisations)
   realisations$y<-c(rep("0",nrow(real_train)),rep("1",nrow(simul_train)))
@@ -221,10 +221,10 @@ fnct_RF<-function(ech_train,ech_test,NB_trees){
     Input_rf<-matrix(Input_rf,byrow = FALSE,ncol = 1,
                      nrow = length(Input_rf))
   }
-  modele_rf<-randomForest::randomForest(Input_rf,y=realisations$y,
+  model_rf<-randomForest::randomForest(Input_rf,y=realisations$y,
                                         data=realisations,
                                         ntree=NB_trees)
-  predictions<-modele_rf$predicted
+  predictions<-model_rf$predicted
   DF_test<-rbind(real_test,simul_test)
   if(ncol(DF_test)==1){
     DF_test<-scale(DF_test,center=mean_realisations, 
@@ -236,10 +236,10 @@ fnct_RF<-function(ech_train,ech_test,NB_trees){
   }
   y<-c(rep(0,nrow(real_test)),rep(1,nrow(simul_test)))
   # predictions--RF ---------------------------------------------------------
-  probs_fonction_chosen<-predict(modele_rf,DF_test,
+  probs_fonction_chosen<-predict(model_rf,DF_test,
                               type = "prob")[,2]
   y_pred<-round(probs_fonction_chosen)
-  return(list("Modèle"=modele_rf,"resultat_conf_train"=table(realisations$y,predictions),
+  return(list("Model"=model_rf,"resultat_conf_train"=table(realisations$y,predictions),
               "resultat_conf_test"=table(y,y_pred),
               "probs_y"=probs_fonction_chosen, 
               "y"=y_pred, 
@@ -282,9 +282,9 @@ fnct_logistic_glm<-function(ech_train,ech_test,fnct_lien){
   sd_realisations<-apply(X = realisations,MARGIN = 2, 
                          FUN = sd)
   realisations<-as.data.frame(scale(as.matrix(realisations)))
-  # Variable cible : indicatrice simulation ---------------------------------
+  # Target variable: simulation indicator ---------------------------------
   
-  # Echantillon d'apprentissage ---------------------------------------------
+  # Training sample---------------------------------------------
   
   # y=1 pour les simulations et y=0 pour les observations
   realisations$y<-c(rep(0,nrow(real_train)),rep(1,nrow(simul_train)))
@@ -292,8 +292,8 @@ fnct_logistic_glm<-function(ech_train,ech_test,fnct_lien){
   
   # Shuffle -----------------------------------------------------------------
   realisations<-realisations[sample(nrow(realisations)),]
-  modele_logit<-glm(y~.,data=realisations,family = binomial(link = fnct_lien))
-  predictions<-round(modele_logit$fitted)
+  model_logit<-glm(y~.,data=realisations,family = binomial(link = fnct_lien))
+  predictions<-round(model_logit$fitted)
   
   # Echantillon_test --------------------------------------------------------
   y<-c(rep(0,nrow(real_test)),rep(1,nrow(simul_test)))
@@ -303,34 +303,34 @@ fnct_logistic_glm<-function(ech_train,ech_test,fnct_lien){
                                  scale=sd_realisations))
   rownames(DF_test)<-c(1:nrow(DF_test))
   # predictions--logit ---------------------------------------------------------
-  probs_model<-as.numeric(predict(modele_logit,DF_test,
+  probs_model<-as.numeric(predict(model_logit,DF_test,
                                     type="response"))
-  predictions_modele<-round(probs_model)
-  return(list("Modèle"=modele_logit,"resultat_conf_train"=table(realisations$y,predictions),
-              "resultat_conf_test"=table(y,predictions_modele),
+  predictions_model<-round(probs_model)
+  return(list("Model"=model_logit,"resultat_conf_train"=table(realisations$y,predictions),
+              "resultat_conf_test"=table(y,predictions_model),
               "type_fnct_lien"=fnct_lien,"y_test"=y,"probs_y"=probs_model))
 }
 
 #' Function_extract_elt
 #'
-#' @param modele_stat : model. Return object of craft GLM, SVM and RF functions.
+#' @param model_stat : model. Return object of craft GLM, SVM and RF functions.
 #'
 #' @return Key performance values.
 #' @export
 #'
 #' @examples
-Function_extract_elt<-function(modele_stat){
+Function_extract_elt<-function(model_stat){
   
   # ROC ---------------------------------------------------------------------
-  reality_<-modele_stat$y_test
-  probs_algorithm_<-modele_stat$probs_y
+  reality_<-model_stat$y_test
+  probs_algorithm_<-model_stat$probs_y
   curve_roc_<-pROC::roc(reality_,
                          probs_algorithm_,plot=FALSE, 
                          quiet=TRUE)
   index_mid_<-which.min(abs(curve_roc_$thresholds-0.5))
   Liste_ROC_<-list("curve"=curve_roc_, 
                    "index_mid"=index_mid_)
-  Mat_confTest_<-modele_stat$resultat_conf_test
+  Mat_confTest_<-model_stat$resultat_conf_test
   df_<-matrix(0,nrow=2,ncol=2)
   if(ncol(Mat_confTest_)!=2){
     indice<-as.numeric(colnames(Mat_confTest_))+1
@@ -412,17 +412,17 @@ fnct_calcul_correct_proportion<-function(Base_simul, Base_data,hyp_param,
                      "real"= Base_data[Inds_r_test])
     }
     
-    modele_SVM<-fnct_ML_realite_simulations(ech_train = ech_train,ech_test=ech_test,
+    model_SVM<-fnct_ML_groundTruth_simulations(ech_train = ech_train,ech_test=ech_test,
                                             type_noyau = hyp_param[1])
-    SVM_results<-Function_extract_elt(modele_stat = modele_SVM)
+    SVM_results<-Function_extract_elt(model_stat = model_SVM)
     Prop_SVM<-SVM_results[[1]]
     R_SVM<-SVM_results[[2]]
     Liste_ROC_SVM<-SVM_results[[3]]
     HSS_SVM<-SVM_results[[4]]
     
-    modele_GLM<-fnct_logistic_glm(fnct_lien = hyp_param[2],
+    model_GLM<-fnct_logistic_glm(fnct_lien = hyp_param[2],
                                     ech_test=ech_test,ech_train=ech_train)
-    GLM_results<-Function_extract_elt(modele_stat = modele_GLM)
+    GLM_results<-Function_extract_elt(model_stat = model_GLM)
     Prop_GLM<-GLM_results[[1]]
     R_GLM<-GLM_results[[2]]
     Liste_ROC_GLM<-GLM_results[[3]]
@@ -430,9 +430,9 @@ fnct_calcul_correct_proportion<-function(Base_simul, Base_data,hyp_param,
 
     
     # RF ----------------------------------------------------------------------
-    modele_RF<-fnct_RF(ech_train = ech_train,ech_test=ech_test,
+    model_RF<-fnct_RF(ech_train = ech_train,ech_test=ech_test,
                        NB_trees = as.numeric(hyp_param[3]))
-    RF_results<-Function_extract_elt(modele_stat = modele_RF)
+    RF_results<-Function_extract_elt(model_stat = model_RF)
     Prop_RF<-RF_results[[1]]
     R_RF<-RF_results[[2]]
     Liste_ROC_RF<-RF_results[[3]]
@@ -441,15 +441,15 @@ fnct_calcul_correct_proportion<-function(Base_simul, Base_data,hyp_param,
   }
   
   return(list("GLM"=list("accuracy"=R_GLM,
-                         "modeles"=modele_GLM,
+                         "models"=model_GLM,
                          "ROC"=Liste_ROC_GLM,
                          "HSS"=HSS_),
               "SVM"=list("accuracy"=R_SVM,
-                         "modeles"=modele_SVM,
+                         "models"=model_SVM,
                          "ROC"=Liste_ROC_SVM,
                          "HSS"=HSS_SVM),
               "RF"=list("accuracy"=R_RF,
-                        "modeles"=modele_RF,
+                        "models"=model_RF,
                         "ROC"=Liste_ROC_RF,
                         "HSS"=HSS_rf)))
 }
@@ -476,9 +476,9 @@ Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K
   
   
   Resultat<-replicate(n = NB_times,fnct_calcul_correct_proportion(Base_simul=Base_simul,
-                                                                   Base_data = Base_data,
-                                                                   hyp_param =hyp_param,type_sampling=type_sampling,
-                                                                   K=K))
+               Base_data = Base_data,
+               hyp_param =hyp_param,type_sampling=type_sampling,
+               K=K))
   Echs<-sample(c(1:NB_times),size = NB_shown_ROC)
   Whole_curve<-apply(Resultat,MARGIN = 2,
                              function(x){return(x$SVM$ROC$curve)})                                                                
@@ -524,7 +524,7 @@ Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K
   df<-cbind.data.frame(Q1,Q2)
   resultat<-cbind.data.frame(Names_model,
                         paste0(df$Q1,"-",df$Q2))
-  colnames(resultat)<-c("Modele","qu_accuracy")
+  colnames(resultat)<-c("model","qu_accuracy")
   
   # HSS ----------------------------------------------------------------
   GLM_HSS<-apply(Resultat,MARGIN = 2,function(x){return(x$GLM$HSS)})
@@ -535,7 +535,7 @@ Running_perfs_ML<-function(Base_simul, Base_data,hyp_param,NB_times,alpha_prop,K
   Q2_h<-apply(X = HSS,MARGIN = 2,FUN = function(x){return(round(quantile(x,1-(alpha_prop/2)),2)*100)})
   df<-cbind.data.frame(Q1_h,Q2_h)
   resultat_h<-cbind.data.frame(c("SVM","GLM","RF"),paste0("(",df$Q1,")-(",df$Q2,")"))
-  colnames(resultat_h)<-c("Modele","qu_hss")
+  colnames(resultat_h)<-c("model","qu_hss")
   
   return(list("Accuracy"=resultat,
               "HSS"=resultat_h,
@@ -578,9 +578,9 @@ Plot_ROC_curves_mult_links<-function(obj_link_GLM,titre_graphique,liste_cles,rac
   Mat_AUC<-as.data.frame(Mat_AUC)
   colnames(Mat_AUC)<-c("lien","AUC")
   Mat_AUC$variable<-rep(variable,nrow(Mat_AUC))
-  # Exporter l'AUC --------------------------------------------------------------
+  # AUC export  --------------------------------------------------------------
+  ###########################
   return(list("AUC"=Mat_AUC,"grap"=GG))
   
-  # Fin code  ---------------------------------------------------------------
-  
+
 }

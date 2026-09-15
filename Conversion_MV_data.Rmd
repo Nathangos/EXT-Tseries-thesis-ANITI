@@ -1,4 +1,4 @@
-```{r}
+```{r,message=FALSE,warning=FALSE}
 rm(list=ls())
 set.seed(133)
 par(mfrow=c(1,1))
@@ -22,6 +22,11 @@ require(scales)
 require(gamlss)
 require(stringr)
 
+
+
+```
+
+```{r,message=FALSE, warning=FALSE}
 source("functions/fonctions_Pareto.R")
 source("functions/fonctions.r")
 
@@ -42,8 +47,8 @@ nb_hearts<-detectCores()-4
 # Defining clusters --------------------------------------------------
 hearts<-makeCluster(nb_hearts)
 clusterExport(hearts,varlist=F_names)
-
 ```
+
 ```{r}
 
 l_root<-"residuals_MV/"

@@ -162,7 +162,7 @@ AD_test_analysis<-function(Matrix_df,Mat_cthresh,
 #' analysed (used for the title of ggplot2 object). 
 #'
 #' @return Matrix of pairwise correlation coefficient or ggplot2 
-#' object.
+#' object or ggplot2 object
 #' @export
 #'
 #' @examples
@@ -211,7 +211,8 @@ Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
   }
   
 }
-#' Chi_bar_measure_analysis_pair
+#' chi-bar extremal correlation coefficient
+#' for a specific pair of components (t,s) of the input matrix
 #'
 #' @param Matrix_df_unif dataframe[float]. Univariate
 #' matrix with uniform margins
@@ -219,7 +220,7 @@ Chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
 #' @param t int. Coordinate index to analyse. 
 #' @param s int. Other coordinate index to analyse. 
 #'
-#' @return
+#' @return Float.
 #' @export
 #'
 #' @examples
@@ -234,7 +235,8 @@ Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
   return(chibar)
 }
 
-#' Chi_bar_measure_analysis
+#' Ggplot object displaying the chi-bar extremal correlation coefficient
+#' for every pair of components of the input matrix.
 #'
 #' @param Matrix_df_unif dataframe[float]. Univariate
 #' matrix with uniform margins
@@ -243,8 +245,7 @@ Chi_bar_measure_analysis_pair<-function(Matrix_df_unif,Order_quantile,
 #' @param Name_main String (NA by default). Name of the variable 
 #' analysed (used for the title of ggplot2 object). 
 #'
-#' @return Ggplot object summarising the asymptotic 
-#' dependencies between the components of the input matrix.
+#' @return Ggplot object. 
 #' @export
 #'
 #' @examples
@@ -265,7 +266,6 @@ Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
     
   }
   if(is.na(Filename)){
-    #return(All)
     return(t(Mat_Xibar_found))
   }else{
     mat <-All
@@ -274,7 +274,6 @@ Chi_bar_measure_analysis<-function(Matrix_df_unif,Order_quantile,
     
     # Convert matrix to long format
     df <- melt(mat)
-    require(viridis)
     input_for_tex<-paste0("$\\bar{\\chi}$ matrix of ",Name_main)
     Name_main_modif<-latex2exp::TeX(input_for_tex)
     colnames(df) <- c("Row", "Col", "Value")
