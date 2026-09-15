@@ -1287,13 +1287,13 @@ for(i in c(1:nrow(MAT_times))){
 
 ```
 
-```{r,warning=FALSE,message=FALSE}
+```{r}
 NPY<-5
 NB_years<-c(20,50)
 Levels_for_RL<-(NPY*(NB_years))^(-1)
 
 ### Export the required packages for the CPU ----------
-clusterEvalQ(heartsCPU, c(library(dplyr),library(reshape2),
+list_EVALQ<-clusterEvalQ(heartsCPU, c(library(dplyr),library(reshape2),
                        library(ggplot2),
                        library(ggside),library(texmex),
                        library(stringr)))
