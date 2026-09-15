@@ -55,7 +55,7 @@ source("functions_MV/functions_estim_simul_gPareto.R")
 
 ```{r,warning=FALSE}
 F_names<-ls()
-nb_heartsCPU<-detectCores()-4
+nb_heartsCPU<-detectCores()-2
 FSIZE<-20
 COMMON_theme<-theme(axis.title = element_text(size=FSIZE),
                     strip.text=element_text(size=FSIZE),
@@ -1274,11 +1274,9 @@ VARFOURTH<-L_nameV[c(3,1)]
 VARFIFTH<-L_nameV[c(1,2)]
 VARSIXTH<-L_nameV[c(1,2)]
 
-MAT_times<-rbind(VFIRST,VSECOND,VTHIRD,
-                 VFOURTH,VFIFTH,VSIXTH)
+MAT_times<-rbind(VFIRST,VSECOND,VTHIRD)
 MAT_VAR<-rbind(VARFIRST,VARSECOND,
-            VARTHIRD,VARFOURTH,
-            VARFIFTH,VARSIXTH)
+            VARTHIRD)
 
 list_summary<-list()
 for(i in c(1:nrow(MAT_times))){
@@ -1307,23 +1305,14 @@ L_info_export<-list("model"=opt_used,
                     "prefix"=Prefix,
                     "complement"=CPLMT)
 Summary_pairs<-parallel::parLapply(cl = heartsCPU,
-      
-                                          list_summary,F_automatic_ggplot_marg,
-      
+      list_summary,F_automatic_ggplot_marg,
       Path_EXT = Extremo_path,Path_TREND = TREND_path,
-      
       l_unit=Unit_variable,risk_function=Risk_f,
-      
       ind_var_cond=2,levels_used=Levels_for_RL,
-      
       L_obs=list_obs,L_simul=list_simul,
-      
       L_whole_obs=L_whole,cols=cols_,
-      
       hearts=heartsCPU,basis_functionGAM="tp",
-      
       n_sim=1000,list_info_export=L_info_export,
-      
       theme_common=COMMON_theme)
 
 ```
@@ -1488,7 +1477,7 @@ result_MV[,1]<-LIST_MV_ML[["X"]]$Accuracy$qu_accuracy
 ### (2) d-dimensional vector of  maximum value--------------
 ###################
 LIST_MV_ML[["L2"]]<-Running_perfs_ML(Base_simul = L_L2_simul_MV,
-                                Base_data =L_L2_reals_MV, 
+                      Base_data =L_L2_reals_MV, 
                       hyp_param = H_Params,
                       NB_times =NB_times,alpha_prop=ALPHA_PROP,K = K, 
                       type_sampling = typeS,
@@ -1499,13 +1488,13 @@ result_MV[,2]<-LIST_MV_ML[["L2"]]$Accuracy$qu_accuracy
 ### (3) Concatenated angular time series-------------------
 ###################
 LIST_MV_ML[["A_X"]]<-Running_perfs_ML(Base_simul = A_X_simul_MV,
-                              Base_data =A_X_reals_MV, 
-                              hyp_param = H_Params, 
-                              NB_times =NB_times,
-                              alpha_prop=ALPHA_PROP,K = K, 
-                              type_sampling = typeS,
-                              title_ROC ="Angle MV case",
-                              NB_shown_ROC = 20)
+                      Base_data =A_X_reals_MV, 
+                      hyp_param = H_Params, 
+                      NB_times =NB_times,
+                      alpha_prop=ALPHA_PROP,K = K, 
+                      type_sampling = typeS,
+                      title_ROC ="Angle MV case",
+                      NB_shown_ROC = 20)
 result_MV[,3]<-LIST_MV_ML[["A_X"]]$Accuracy$qu_accuracy
 
 ```
