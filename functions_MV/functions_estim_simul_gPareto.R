@@ -42,82 +42,6 @@ Max_Likely<-function(alpha_value,scale_frechet_d,obs,
   return(-Likely_data)
 }
 
-Simul_RF_max_NP<-function(Params_risk_Function,M,QTH,
-                          Vect_l_function){
-  Lg<-apply(X =Vect_l_function,MARGIN = 1,FUN = max)
-  Threshold_exp<-quantile(Lg,QTH)
-  Inds_exts_lg<-which(Lg>Threshold_exp)
-  Excedents_lprime<-Vect_l_function[Inds_exts_lg,]
-  # Simulations with LEGRAND method -------------------------------------------------------
-  Sim_l<-Non_param_LEGRAND_RiskF(Data_scale_exp =Excedents_lprime,
-                                   nb_simul = M,
-                                   Threshold_EXP=Threshold_exp)
-  return(Sim_l)
-}
-
-#' Non_param_LEGRAND_RiskF
-#'
-#' @param Data_scale_exp: dataframe. Vector of risk functions for extreme individuals.
-#' @param nb_simul: int. Number of desired simulations.  
-#' @param MOD_EGPD_RiskF: list. EGPD parameters for each variable.
-#' @param Threshold_EXP: float. Threshold used to identify exponential scale.
-#'
-#' @return Simulations of Risk functions. 
-#' @export
-#'
-#' @examples
-Non_param_LEGRAND_RiskF<-function(Data_scale_exp,nb_simul,Threshold_EXP){
-  # From algorithm 1 in LEGRAND ---------------------------------------------
-  # Simul Z exp -------------------------------------------------------------
-  Zsimul<-rexp(n = nb_simul,rate = 1)
-  D<-ncol(Data_scale_exp)
-  
-  # Simul T  ----------------------------------------------------------------
-  Simul_Z<-matrix(Zsimul,ncol = D,
-                  nrow=nb_simul,
-                  byrow = FALSE)
-  print(Data_scale_exp[2,])
-  Delta_i<-as.numeric(t(diff(t(Data_scale_exp))))*(-1)
-  print(Delta_i[2])
-  Max_Vl<-apply(X = Data_scale_exp,MARGIN = 1,FUN = max)
-  
-  # Independence test BWN ang and rad ---------------------------------------
-  print("Test independence")
-  print(cor.test(x = Delta_i,y=Max_Vl,method="kendall"))
-  print(cor.test(x = Delta_i,y=Max_Vl,method="spearman"))
-  plot(Delta_i,Max_Vl,main="Distribution max versus Difference")
-  print("Cop Indep test. Null hypothesis = independence")
-  UNIF_for_test<-VineCopula::pobs(cbind(Delta_i,Max_Vl))
-  IndepCop_chosen<-VineCopula::BiCopIndTest(UNIF_for_test[,1],
-                                      UNIF_for_test[,2])
-  print(IndepCop_chosen)
-
-  # Sample Delta ------------------------------------------------------------
-  Delta_tilde<-sample(Delta_i,size = nb_simul,
-                      replace = TRUE)
-  IND_plus<-which(Delta_tilde>=0)
-  Delta_mat<-matrix(0,ncol = D,
-                    nrow=nb_simul)
-  Delta_mat[-IND_plus,1]<-Delta_tilde[-IND_plus]
-  Delta_mat[IND_plus,2]<-(-1)*Delta_tilde[IND_plus]
-  
-  # Simul complement --------------------------------------------------------
-  Simul_RiskF<-Simul_Z+Delta_mat
-  return(Simul_RiskF)
-  # Exp to orig -------------------------------------------------------------
-  # Simul_Z_Unif<-1-exp(-Simul_RiskF)
-  # # Simul_RiskF<-Simul_Z_Unif
-  # # for(Z in c(1:ncol(Simul_RiskF))){
-  # #   Orig_z<-Simul_Z_Unif[,Z]
-  # #   Theta_EXTGP<-MOD_EGPD_RiskF[[Z]]
-  # #   Orig_to_EGPD<-qEGPDModel1(p = Orig_z,mu = Theta_EXTGP[["mu"]],
-  # #                             sigma = Theta_EXTGP[["sigma"]],
-  # #                             nu = Theta_EXTGP[["nu"]])
-  # #   Simul_RiskF[,Z]<-Orig_to_EGPD
-  # # }
-  # return(Simul_RiskF)
-}
-
 #' Title
 #'
 #' @param Params_risk_Function 
@@ -593,8 +517,6 @@ Rejection_sampling_gPto<-function(Params_risk_Function,d,
     Copy<-Params_risk_Function
     # U generator
     if(Model!="hr"){
-      # candidate<-mev::rmev(n =1,d = d,param = theta_opt,
-      #                  model = Model)
       candidate<-mev::rmevspec(n =1,d = d,param = theta_opt,
                                model = Model)
     }
@@ -602,10 +524,7 @@ Rejection_sampling_gPto<-function(Params_risk_Function,d,
       candidate<-mev::rmev(n=1,d = d,sigma = theta_opt,
                        model = Model)
     }
-    # candidate<-Simulation_gParetoP(Params_risk_Function =Copy ,
-    #                                Threshold = 1,
-    #                                d = d,M = 1,
-    #                                theta_opt = theta_opt)
+
     Cond_factor<-g_chosen(candidate)
     if(unif_sample<=Cond_factor){
       Angular_sim<-(candidate/Cond_factor)
@@ -667,11 +586,6 @@ Norm_q<-function(x,q,weights_nq){
 }
 # 
 DNorm_q<-function(x,q,weights_nq){
-  # Personal
-  # Constant<-sum(weights_nq*(x)^q)^((1/q)-1)
-  # Deriv<-weights_nq*(x)^(q-1)
-  #return(Constant*Deriv)
-  # Work from Legrand, Opitz.
   objet<-sum(weights_nq*x**(q-1))*sum(weights_nq*x**q)**((1/q)-1)
   return(objet)
 }
@@ -700,42 +614,6 @@ Gamma_to_Sigma_ij<-function(i,j,Gamma_matrix,d,k_taken){
   first_elt<-Gamma_matrix[i,k_taken]
   second_elt<-Gamma_matrix[j,k_taken]
   third_elt<-Gamma_matrix[i,j]
-  #divide by 2 if variogram, by 1 if semi.
   Num<-first_elt+second_elt-third_elt
   return(Num/2)
 }
-simulation_mixture_HR<-function(d,r,Gamma_mat,A){
-  w<-mass_of_scenario(d, r, Sigma, A)  
-  T<-rep(-Inf,d)
-  b<-sample(c(1:r), prob=w,size=1)
-  sign_column_b<-which(A[,b]>0)
-  n_column_b<-(A[sign_column_b,b])/sum(A[sign_column_b,b])  
-  accept=FALSE
-  while(!(accept)){
-    if(length(sign_column_b)==1){a<-sign_column_b}
-    else{a<-sample(sign_column_b, prob=n_column_b,size=1)}
-    sig <- which(A[,b]>0)
-    lsig <- length(sig)
-    if(lsig == 1){ Z[[k]][sig , ] <- -1/ log( runif(N , 0 , 1) ) * A[sign_column_b, b] 
-    } 
-    else{
-      sub_sigma <- sigma[sig , sig]
-    }
-    T[sign_column_b]<- t(rmev(N, lsig, sigma = sub_sigma, model = "hr"))*A[sign_column_b, b]
-    #T[sign_column_b]<- HR_generator_from_Gamma(a ,b, A[sign_column_b, b], sign_column_b, Sigma[[b]],r)  
-    U_0<-runif(1,min=0,max=1)
-    if ( (U_0 < rejection_sampling(T)) ) {
-      accept = TRUE
-    }
-  }
-  E<-rexp(1,1)
-  Y <- T - max(T) + E
-}
-HR_generator_from_Gamma<-function(i,j, column, sign, covariance_matrix, r){
-  # Formula with j= (i of the article).
-  # covariance matrix= (sigma of the article)
-  T<-mvrnorm(1, mu = -(1 / 2) * diag(covariance_matrix)[sign] + log(r * column) + covariance_matrix[sign, i], 
-             Sigma = covariance_matrix[sign, sign])
-  
-  return(T)
-} 

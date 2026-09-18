@@ -1,143 +1,4 @@
-#' Title
-#'
-#' @param gam_t 
-#' @param sig_t 
-#' @param Kappa_t 
-#' @param p 
-#'
-#' @return gradient for rl level confidence.Delta method
-#' @export
-#'
-#' @examples
-fprime_Rl_extgp<-function(gam_t,sig_t,Kappa_t,p){
-  
-  ### beta0=shape_param, exp(beta1)=sigma, exp(beta2)=Kappa
-  shape_param<-gam_t
-  beta_1<-log(sig_t)
-  beta_2<-log(Kappa_t)
-  rlevel<-as.numeric(mev::qextgp(kappa = Kappa_t,
-                                 sigma =  sig_t,
-                                 xi = gam_t,type = 1,
-                                 p=p))
-  ## Derivative|shape
-  #u'.v
-  grad_1num1<-shape_param*(-log(1-p*exp(-beta_2))*(1-p*exp(-beta_2))^(-shape_param))*exp(beta_1)
-  #u.v'
-  grad_1num2<-rlevel*shape_param
-  grad_1num<-grad_1num1-grad_1num2
-  grad_1denom<-shape_param^(2)
-  grad_1<-grad_1num/grad_1denom
-  
-  ## Derivative|scale
-  grad_2<-rlevel
-  
-  ## Derivative|kappa
-  Deriv_kappa<-(log(p)*exp(-beta_2))*(p^(exp(-beta_2)))
-  grad_3num<-(-shape_param)*(1-p^(exp(-beta_2)))^(-shape_param-1)*Deriv_kappa
-  grad_3denom<-shape_param*exp(-beta_1)
-  grad_3<-grad_3num/grad_3denom
-  
-  Vect_grad<-c(grad_1,grad_2,grad_3)
-  return(as.numeric(Vect_grad))
-}
-Fct_correlations<-function(method_corr,df1,
-                           Intersect_times,df2=NA,
-                           mat_corr=TRUE){
-  if(is.null(dim(df2))){
-    Na_found<-(!is.na(df2))
-    Cond<-sum(Na_found)==length(df2)
-  }else{
-    Na_found<-(is.na(df2)) 
-    Test<-sum(colSums(Na_found))
-    Cond<-Test==0
-  }
-  if(Cond){
-    vect_r<-sapply(X = Intersect_times,
-                   FUN = function(j,x_1,x_2){
-                     series_1<-x_1[,j]
-                     
-                     series_2<-x_2[,j]
-                     return(cor(x = series_1,y = series_2,method = method_corr))
-                   },x_1=df1,x_2=df2)
-    return(vect_r)
-  }else{
-    d<-ncol(df1)
-    NAMES<-colnames(df1)
-    if(mat_corr){
-      Mat_corr<-cor(df1,method = method_corr)
-      return(Mat_corr)
-    }else{
-      Matrix_cases<-t(utils::combn(x = c(1:d),m = 2))
-      list_corr<-list()
-      list_pairs<-list()
-      for(j in c(1:nrow(Matrix_cases))){
-        Pair<-Matrix_cases[j,]
-        Pair_used<-NAMES[Pair]
-        Sub_df<-df1[,Pair_used]
-        value_corr<-cor(x = Sub_df[,1],y = Sub_df[,2],
-                      method = method_corr)
-        list_corr[[j]]<-value_corr
-        list_pairs[[j]]<-paste0("(",Pair_used[1],",",
-                                Pair_used[2],")")
-      }
-      return(data.frame("value"=unlist(list_corr),
-                        "pair"=unlist(list_pairs)))
-    }
-  }
-  
-}
 
-Resamples_correlations<-function(l_extremes_indus,B,method_corr,
-                                 l_namei,l_namej){
-  N<-nrow(l_extremes_indus[[1]])
-  Indexes_B<-sample(x = c(1:N),size = B,replace = TRUE)
-  DF1<-l_extremes_indus[[l_namei]][Indexes_B,]
-  DF2<-l_extremes_indus[[l_namej]][Indexes_B,]
-  Correlations_sample<-Fct_correlations(method_corr = method_corr ,
-                            df1 =DF1,
-                            df2=DF2)
-  
-  return(Correlations_sample)
-}
-
-######## Consistency measurement
-
-Conf_interval_correlations_2V<-function(df1,df2,niv_conf,method_corr,NB_boot){
-  Realisations_values<-replicate(n = NB_boot,Sample_level_correlation(df1=df1,
-                                                 df2=df2,
-                                                 method_corr=method_corr))
-  Bound_sup<-apply(X = Realisations_values,MARGIN = 1,FUN = function(x){
-    return(quantile(x,(1-(niv_conf/2))))})
-  Mean<-apply(X=Realisations_values,MARGIN = 1,FUN = mean)
-  Bound_inf<-apply(X = Realisations_values,MARGIN = 1,FUN = function(x){
-    return(quantile(x,niv_conf/2))})
-  return(cbind(Bound_inf,Mean,Bound_sup))
-}
-Conf_interval_ext_correlations_2V<-function(df1,df2,niv_conf,method_corr,NB_boot){
-  Realisations_values<-replicate(n = NB_boot,Sample_level_correlation(df1=df1,
-                                                                      df2=df2,
-                                                                      method_corr=method_corr))
-  Bound_sup<-apply(X = Realisations_values,MARGIN = 1,FUN = function(x){
-    return(quantile(x,(1-(niv_conf/2))))})
-  Mean<-apply(X=Realisations_values,MARGIN = 1,FUN = mean)
-  Bound_inf<-apply(X = Realisations_values,MARGIN = 1,FUN = function(x){
-    return(quantile(x,niv_conf/2))})
-  return(cbind(Bound_inf,Mean,Bound_sup))
-}
-Sample_level_correlation<-function(df1,df2,method_corr){
-  
-  Sample_inds<-sample(c(1:nrow(df1)),size =nrow(df1),
-                      replace = TRUE)
-  Intersection_times<-intersect(colnames(df1),colnames(df2))
-  Sample_df1<-as.data.frame(df1[Sample_inds,])
-  Sample_df2<-as.data.frame(df2[Sample_inds,])
-  colnames(Sample_df1)<-colnames(df1)
-  colnames(Sample_df2)<-colnames(df2)
-  Values_obtained<-Fct_correlations(method_corr = "kendall",
-                   df1 =Sample_df1, df2=Sample_df2,
-                   Intersect_times = Intersection_times)
-  return(Values_obtained)
-}
 #' Evolution with the time lag 
 #' of the correlation coefficient for each pair of variables.
 #'
@@ -199,7 +60,6 @@ Cross_Extremo_MV_all<-function(list_simul,list_reality,
     return(df_cross_extremo_ij)
    
   },MARGIN = 1)
-  ### Obtained_graphics
   return(All_C_extremo)
 }
 #' Evolution with the time lag 
@@ -937,11 +797,6 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   colnames(Bounds_for_graph)<-c("level","t","s","bounds")
   Bounds_for_graph$level<-paste0("rho==",
                                  as.character(Bounds_for_graph$level))
-  # Build polygon data
-  # x and y are changing so we must create a ggplot polygon object
-  # arrange(level,t) for ordering
-  # group_by level--> polygon per level
-  # bind_rows to assemble rows per group
   poly_data <- Bounds_for_graph %>%
     group_by(level) %>%
     group_modify(~{
@@ -963,12 +818,12 @@ Bivariate_RLevel_simul_vs_obs<-function(Obs_ij,Simul_ij,
   levels_used_for_sim<-levels_used/zeta_sim
 
   Curves_found_SIM<-lapply(levels_used_for_sim,
-                           FUN = function(x){
-                             JCsim<-texmex::JointExceedanceCurve(Sample = Simul_ij,
-                                                                 ExceedanceProb = x)
-                             return(JCsim)
-                             
-                           })
+       FUN = function(x){
+         JCsim<-texmex::JointExceedanceCurve(Sample = Simul_ij,
+                                             ExceedanceProb = x)
+         return(JCsim)
+         
+       })
   
   All_sim<-lapply(c(1:length(levels_used)),function(x){
     df_j<-do.call(cbind.data.frame,Curves_found_SIM[[x]])
@@ -1094,59 +949,6 @@ Onesample_Bootstrap_Bivar_RL<-function(Obs_t_s,levels_used){
   return(combined_df_1sample)
 }
 
-
-One_sample_EGPD<-function(n,theta_egpd,order_quantiles){
-  kappa<-theta_egpd[["kappa"]]
-  sig<-theta_egpd[["sigma"]]
-  xi<-theta_egpd[["xi"]]
-  simul_from_egpd<-mev::rextgp(n = n,type=1,kappa =kappa ,
-              sigma = sig,
-              xi =xi )
-  model_boot_fit<-mev::fit.extgp(data=simul_from_egpd,
-               model = 1,init = c(kappa,
-                                  sig,xi),
-               method="mle",plots = FALSE)$fit$mle
-  ### Quantiles found
-  QEGPD<-sapply(order_quantiles,
-                FUN=function(x){
-        return(mev::qextgp(p = x,
-                  kappa = model_boot_fit[["kappa"]],
-                  xi = model_boot_fit[["xi"]],
-                  sigma =model_boot_fit[["sigma"]]))
-                })
-  return(QEGPD)
-}
-Bootstrap_conf_band<-function(M,n,theta_egpd,order_quantiles,
-                              alpha_){
-  ### Estimaed EGPD curve
-  Mean_egpd<-sapply(order_quantiles,
-         FUN=function(x){
-           return(mev::qextgp(p = x,
-                              kappa = theta_egpd[["kappa"]],
-                              xi = theta_egpd[["xi"]],
-                              sigma = theta_egpd[["sigma"]]))
-         })
-  
-  ### Conf_bands
-  Result_boot<-t(replicate(n = M,
-                         expr = One_sample_EGPD(n = n,
-          theta_egpd = theta_egpd,
-          order_quantiles = order_quantiles)))
-  Niv_1<-alpha_/2
-  Q1<-apply(
-    Result_boot,MARGIN = 2,
-    FUN = function(x){
-          return(as.numeric(quantile(x,Niv_1)))
-        })
-  Niv_2<-1-(alpha_/2)
-  Q2<-apply(Result_boot,MARGIN = 2,
-            FUN = function(x){
-              return(as.numeric(quantile(x,Niv_2)))
-            })
-  return(list("bound_inf"=Q1,
-              "bound_sup"=Q2,
-              "mean"=Mean_egpd))
-}
 Marg_2d_cond_ext<-function(Simul_ij,Obs_ij,l_name_time,
                                cols_ggplot,l_unit,risk_function,
                            ind_var_cond){
@@ -1199,128 +1001,7 @@ Marg_2d_cond_ext<-function(Simul_ij,Obs_ij,l_name_time,
   return(GG0)
   
 }
-# Extreme values estimators + data generated according to the model---------------------------------
-#' Title
-#'
-#' @param gamma 
-#' @param sigma 
-#' @param kappa 
-#' @param M 
-#' @param order_quantiles 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-RL_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles,
-                                 list_params_EGPD){
-  n.cyc<- list_params_EGPD[["n.cyc"]]
-  mu.step<- list_params_EGPD[["mu.step"]]
-  sigma.step<- list_params_EGPD[["sigma.step"]]
-  nu.step<- list_params_EGPD[["nu.step"]]
-  tau.step<- list_params_EGPD[["tau.step"]]
-  Sample_EGPD<-mev::rextgp(n = M,xi= as.numeric(gamma),
-                           kappa = kappa,sigma = sigma)
-  Th<-quantile(Sample_EGPD,probs=0.50)
-  #Th<-0
-  ### PWM way
-  SUB_EGPD<-Sample_EGPD[which(Sample_EGPD>Th)]-Th
-  mu0<-mean(SUB_EGPD)
-  next_<-length(SUB_EGPD)+1
-  Fbar_side<-(next_-VineCopula::pobs(SUB_EGPD)*next_)/next_
-  mu1<-mean(SUB_EGPD*Fbar_side)
-  Shape<-(mu0-4*mu1)/(mu0-2*mu1)
-  print(Shape)
-  Scale<-mu0*(1-Shape)
-  # FIT_pos<-mev::gp.fit(xdat = Sample_EGPD,threshold =Th)$est
-  # Shape<-FIT_pos[2]
-  # #Use gpd property to get the scale at 0.
-  # Scale<-FIT_pos[1]-Th*Shape
-  # #Scale<-FIT_pos[1]
-  # INIT<-c(Shape,Scale)
-  #Nu.start initialisation using moments.
-  Th_beg<-quantile(x = Sample_EGPD,0.10)
-  Lower_tail<-Sample_EGPD[which(Sample_EGPD<Th_beg)]
-  Moment_1<-mean(Lower_tail)
-  nu.start<-as.numeric((1-(Moment_1/Th_beg))^(-1)-1)
-  db<-as.data.frame(Sample_EGPD)
-  colnames(db)<-c("x")
-  con <- gamlss::gamlss.control(n.cyc =  n.cyc,
-                        mu.step = mu.step, sigma.step = sigma.step, 
-                        nu.step = nu.step,tau.step = tau.step,autostep=TRUE,
-                        trace = TRUE)
-  con.i<-gamlss::glim.control(glm.trace = TRUE)
-  EGPD1Family <- MakeEGPD (function (z,nu) z^nu, Gname = "Model1")
-  Fitting_sample_EGPD <- gamlss::gamlss(x~1, 
-                           data=db,
-                           family = EGPD1Family(mu.link = "identity"),
-                           control = con,mu.start=gamma,
-                           sigma.start=sigma,
-                           nu.start=kappa,
-                          i.control=con.i,
-                           method=CG())
-  muFit <- fitted(Fitting_sample_EGPD,"mu")[1]
-  sigmaFit <- predict(Fitting_sample_EGPD,what="sigma", 
-                      type="response")[[1]]
-  nuFit <- predict(Fitting_sample_EGPD,what="nu", 
-                   type="response")[[1]]
-  # Ratio_found_EGPD<-Ratio_log_model1(gamma = muFit,sigma_EGPD = sigmaFit,order_quantiles = order_quantiles,
-  #                  data = Sample_EGPD)
-  RL_EGPD<-sapply(order_quantiles,function(x){
-    return(as.numeric(mev::qextgp(p =x,
-          kappa = nuFit,sigma = sigmaFit,xi =muFit)))
-  })
-  return(RL_EGPD)
-}
-One_sim<-function(ALL_Quantiles,Kappa_t,gam_t,sig_t,list_params_EGPD,
-                  Msim,i){
-  return(RL_generations_EGPD(kappa=Kappa_t,
-                             gamma=gam_t,sigma=sig_t,
-                             list_params_EGPD= list_params_EGPD,
-                             M=Msim,order_quantiles = ALL_Quantiles))
-}
-# Extreme values estimators + data generated according to the model---------------------------------
-#' Title
-#'
-#' @param gamma 
-#' @param sigma 
-#' @param kappa 
-#' @param M 
-#' @param order_quantiles 
-#'
-#' @return
-#' @export
-#'
-#' @examples
-RLevel_generations_EGPD<-function(gamma,sigma,kappa,M,order_quantiles){
-  
-  Sample_EGPD<-rEGPDModel1(n = M,mu = gamma,nu = kappa,sigma = sigma)
-  Theta<-mev::gp.fit(xdat = Sample_EGPD,threshold = 0)$est
-  INIT<-c(Theta[2],Theta[1])
-  db<-as.data.frame(Sample_EGPD)
-  colnames(db)<-c("x")
-  con <- gamlss.control(n.cyc = 100,
-                        mu.step = 0.1, 
-                        sigma.step = 0.1, nu.step = 0.1,tau.step = 0.1,autostep=TRUE,
-                        trace = FALSE)
-  con.i=glim.control(glm.trace = FALSE)
-  Fitting_sample_EGPD <- gamlss(x~1, 
-                                data=db,
-                                family = EGPD1Family(mu.link = "identity"),
-                                control = con,mu.start=INIT[1],sigma.start=INIT[2],
-                                nu.start=0.5,
-                                i.control=con.i,
-                                method=CG())
-  muFit <- fitted(Fitting_sample_EGPD,"mu")[1]
-  sigmaFit <- predict(Fitting_sample_EGPD,what="sigma", 
-                      type="response")[[1]]
-  nuFit <- predict(Fitting_sample_EGPD,what="nu", 
-                   type="response")[[1]]
-  Rl_estim<-RL_EGPD_model1(gamma = muFit,sigma_EGPD = sigmaFit,
-                 order_quantiles = order_quantiles,
-                 Kappa = nuFit)
-  return(Rl_estim)
-}
-### 
+
+
 
 

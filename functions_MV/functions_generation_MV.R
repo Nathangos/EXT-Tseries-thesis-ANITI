@@ -1,7 +1,9 @@
 # Apply for each time the corresponding VAR model--------------------------------------------
 #####################
 
-#' Apply_VAR_per_t
+#' Inverting the VAR model of the t-th time 
+#' step to get the value of the multivariate 
+#' time series at this time step.  
 #'
 #' @param t int. Time step of the multivariate time series
 #' @param list_sim list[str: vector]. For each time 
@@ -12,7 +14,8 @@
 #' @param Indexes_delta vector[int]. Indexes of chosen previous
 #' multivariate time series
 #'
-#' @return
+#' @return list with predicted time series and 
+#' previous time series. 
 #' @export
 #'
 #' @examples
@@ -164,6 +167,41 @@ KNN_distancef_returnMean<-function(i,X_sim,X_data,f_distance,K,hearts,
   }
 
 }
+#' Title
+#'
+#' @param hearts object from the parallel cluster
+#' @param list_variable variable names. 
+#' @param Name_riskF string. Name of the compound risk function.
+#' @param link_import_residuals string. Directory path 
+#' for the residuals.
+#' @param link_rootVAR_model string. Directory path 
+#' for the VAR models. 
+#' @param K_chosen int. Number of nearest neighbords in the 
+#' KNN approach. 
+#' @param f_distance function. Distance function used 
+#' in the KNN approach. 
+#' @param link_export_generations string. Directory path
+#' of the generated multivariate time series.
+#' @param cols_gg vector[string]. Colors used in the ggplot2
+#' object. 
+#' @param prefix_link_resid string. Model used for the simulation.  
+#' @param subfix_link_Sim string. Other setting used for the simulations.
+#' @param Dates_Johanna vector[string]. Dates of the Johanna storm. 
+#' @param subfix_link_Data string. Modeling option which has 
+#' an effect on the index of extreme events. 
+#' @param Vect_VARtimes vector[int]. Values of the time steps. 
+#' @param Risk_Function function. g function intervening 
+#' in the compound risk function formula. 
+#' @param opt_used string. Option used for choosing the previous 
+#' time series. 
+#' @param repertory_data string. Directory path of the 
+#' original time series
+#'
+#' @return list that includes the simulated time series, 
+#' the previous time series and other elements. 
+#' @export
+#'
+#' @examples
 Generator_TSERIES_MV<-function(hearts,list_variable,
                                Name_riskF,link_import_residuals,
                                link_rootVAR_model, K_chosen,
@@ -639,13 +677,7 @@ K_fold_k_param_j_test<-function(hearts,f_distance,l_Epsi_Data_varwise,
   Overall_Distance<-rowMeans(as.data.frame(Mat_dce))
   return(Overall_Distance)
 }
-# function(hearts,type_data,list_variable,
-#          Name_riskF,link_import_residuals,
-#          link_rootVAR_model, K_chosen,
-#          f_distance,link_export_generations,
-#          cols_gg,prefix_link_resid,
-#          subfix_link_Sim,Dates_Johanna,
-#          subfix_link_Data,Vect_VARtimes){
+
 #' Title
 #'
 #' @param hearts 

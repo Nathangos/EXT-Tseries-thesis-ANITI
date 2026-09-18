@@ -67,7 +67,7 @@ source("functions_MV/functions_Angle_MV.r")
 
 # import G pareto ---------------------------------------------------------
 source("functions_MV/functions_estim_simul_gPareto.R")
-source("functions_MV/Hidden_RV_functions.R")
+#source("functions_MV/Hidden_RV_functions.R")
 
 # Choice of threshold -----------------------------------------------------
 source("Choice_auto_thresh/src/eqd.R")
@@ -899,7 +899,7 @@ ggsave(plot = f_Conv_Rad,
 ```{r}
 ### Evolution of the radial vector -------
 ################
-Launch_graph_conv<-FALSE
+Launch_graph_conv<-TRUE
 if(Launch_graph_conv){
   # Convergence for the radius --------
   #################################

@@ -385,7 +385,7 @@ Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
 #' Evolution with k of the convergence
 #' of the angular component for each forcing condition. 
 #'
-#' @param liste_MV_Orig list[str: dataframe]. Multivariate
+#' @param list_MV_Orig list[str: dataframe]. Multivariate
 #' time series where the key corresponds to the variable name.
 #' 
 #' @param l_name vector[str]. Name of forcing conditions
@@ -398,13 +398,13 @@ Complete_chi_measure_analysis<-function(Matrix_df_unif,Order_quantile,
 #' @export
 #'
 #' @examples
-Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
+Convgce_Angle_evol<-function(list_MV_Orig,l_name,vector_k,
                              Ref_RiskF){
   
   All_results<-lapply(X = vector_k,
                       Launch_MVconvergence_per_K,
                       l_name=l_name,
-                      liste_MV_Orig=liste_MV_Orig,
+                      list_MV_Orig=list_MV_Orig,
                       vect_lg=Ref_RiskF)
   
   return(All_results)
@@ -413,7 +413,7 @@ Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
 #' coordinates in a finite-dimensional basis for
 #' several forcing conditions. 
 #' 
-#' @param liste_MV_Orig: list[df]. 
+#' @param list_MV_Orig: list[df]. 
 #' @param l_name: vect[str].
 #' @param k: int. Number of extreme multivariate extreme time series. 
 #' @param vect_lg: vect[float]. Value of the risk function (gol). 
@@ -422,7 +422,7 @@ Convgce_Angle_evol<-function(liste_MV_Orig,l_name,vector_k,
 #' @export
 #'
 #' @examples
-Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
+Launch_MVconvergence_per_K<-function(list_MV_Orig,l_name,k,
                                      vect_lg){
   
   Order_lg<-order(vect_lg,
@@ -435,7 +435,7 @@ Launch_MVconvergence_per_K<-function(liste_MV_Orig,l_name,k,
   Df<-list()
   list_conv<-list()
   for(nameV in l_name){
-    Sub_Mat<-liste_MV_Orig[[nameV]][sub_order,]
+    Sub_Mat<-list_MV_Orig[[nameV]][sub_order,]
     L2_extj<-apply(X = Sub_Mat,MARGIN = 1,
                    FUN = calcul_norm_L2)
     Angle_extj<-t(t(Sub_Mat)%*%diag(L2_extj^(-1)))
@@ -466,17 +466,17 @@ Function_conv_univ<-function(Shape_d){
     vecteur_r<-sapply(vecteur_temps,fnct_par_temps,j=j)
     return(vecteur_r)
   }
-  LISTE_convergence<-c()
+  list_convergence<-c()
   for(l in c(1:8)){
     fonction_obtenue<-fonction_propre_j(vecteur_temps =vecteur_temps,j=l )
     
     # approx de Rieman --------------------------------------------------------
     coordonnees<-(Shape_d%*%fonction_obtenue)*(pas_x)
-    LISTE_convergence<-c(LISTE_convergence,
+    list_convergence<-c(list_convergence,
                          mean(abs(coordonnees)))
   }
   
-  return(LISTE_convergence)
+  return(list_convergence)
 }
 
 ### base comes from tea::mindist, idea is to better 
@@ -510,6 +510,244 @@ mindist_update<-function (data, ts = 0.15, method = "mad")
   df<-cbind.data.frame(1:(T-1),M,method)
   colnames(df)<-c("Nb_k","value_metric","metric")
   return(df)
+}
+#' Title
+#'
+#' @param dims_elt_text 
+#' @param Vectors_HTAIL 
+#' @param Vect_k 
+#' @param q 
+#' @param root_export 
+#' @param YLIM_MV 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Run_diagnostics_Gamma_G<-function(dims_elt_text,Vectors_HTAIL,
+                                  Vect_k,q,root_export,YLIM_MV){
+  
+  Mat_combs<-t(utils::combn(x = c(1:ncol(Vectors_HTAIL)),
+                            m = 2))
+  list_gg<-list()
+  Names<-colnames(Vectors_HTAIL)
+  for(j in c(1:nrow(Mat_combs))){
+    pair<-Mat_combs[j,]
+    pair_names<-Names[pair]
+    Sub_vector<-Vectors_HTAIL[,pair]
+    Minj<-apply(X = Sub_vector,MARGIN = 1,FUN = min)
+    GG<-Graphics_estimators_gamma(series = Minj,
+                                  vect_k = Vect_k,
+                                  Title_graphic = " ",
+                                  dims_elt_text = dims_elt_text,
+                                  SELECT_estim = c("ML_gamma"))
+    DF_j<-GG$data
+    DF_j$pair_vars<-rep(paste0("Min(",pair_names[1],",",
+                               pair_names[2],")"),nrow(DF_j))
+    list_gg[[j]]<-DF_j
+  }
+  Df_all<-do.call(rbind.data.frame,list_gg)
+  COLS_chosen<-c("gam_ref"="red",
+                 "ML_gamma"="blue",
+                 "confidence_band"="darkblue",
+                 "threshold"="red")
+  LINETYPE_chosen<-c("gam_ref"=3,
+                     "Hill_gamma"=2,
+                     "ML_gamma"=4,
+                     "confidence_band"=5,
+                     "threshold"=6)
+  Df_all$pair_vars<-sapply(Df_all$pair_vars,
+                           FUN =function(x){
+                             Fct_correct_name(x = x,target = "Surcote",
+                                              replacement = "Surge")})
+  GG_shape_AD<-ggplot2::ggplot(data=Df_all,aes(x=number_excesses,y =gamma_estimed,color=source,
+                                               group=interaction(source),
+                                               linetype=source))+
+    geom_line()+
+    facet_wrap(~pair_vars)+
+    ylab(expression(gamma))+
+    xlab("Number of exceedances")+
+    ylim(YLIM_MV)+
+    geom_ribbon(mapping = aes(ymin=bound_inf,ymax=bound_sup,
+                              col="confidence_band",
+                              linetype = "confidence_band"),alpha=0.15,
+                fill="grey")+
+    geom_hline(aes(yintercept=Shape_chosen,col="gam_ref",
+                   linetype="gam_ref"))+
+    labs(col="Legend", linetype = "Legend")
+  LABELS_shape<-names(COLS_chosen)
+  LEGEND_shape<-sapply(LABELS_shape,
+                       function(x){
+                         if(x=="gam_ref"){
+                           return(latex2exp::TeX("$\\gamma_{0}$"))
+                         }else{
+                           return(x)
+                         }
+                       })
+  GG_shape_new<-GG_shape_AD+
+    scale_linetype_manual(values = LINETYPE_chosen,
+                          labels=LEGEND_shape)+
+    scale_color_manual(values = COLS_chosen,
+                       labels=LEGEND_shape)+
+    theme_bw()+
+    theme(axis.title=element_text(size=dims_elt_text[1]),
+          legend.title = element_text(size=dims_elt_text[2]),
+          legend.text=element_text(size=dims_elt_text[3]),
+          axis.text=element_text(size=dims_elt_text[4]))+
+    theme(legend.position="bottom",
+          legend.direction = "horizontal")
+  ggsave(filename = paste0(root_export,"/ADiag_shape_d=",ncol(Vectors_HTAIL),
+                           ".png"),
+         plot=GG_shape_new,width = 8,height = 6)
+  return(NA)
+  
+  
+}
+
+#' Title
+#'
+#' @param method_corr 
+#' @param df1 
+#' @param Intersect_times 
+#' @param df2 
+#' @param mat_corr 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Fct_correlations<-function(method_corr,df1,
+                           Intersect_times,df2=NA,
+                           mat_corr=TRUE){
+  
+  if(is.null(dim(df2))){
+    Na_found<-(!is.na(df2))
+    Cond<-sum(Na_found)==length(df2)
+  }else{
+    Na_found<-(is.na(df2)) 
+    Test<-sum(colSums(Na_found))
+    Cond<-Test==0
+  }
+  if(Cond){
+    vect_r<-sapply(X = Intersect_times,
+                   FUN = function(j,x_1,x_2){
+                     series_1<-x_1[,j]
+                     
+                     series_2<-x_2[,j]
+                     return(cor(x = series_1,y = series_2,method = method_corr))
+                   },x_1=df1,x_2=df2)
+    return(vect_r)
+  }else{
+    d<-ncol(df1)
+    NAMES<-colnames(df1)
+    if(mat_corr){
+      Mat_corr<-cor(df1,method = method_corr)
+      return(Mat_corr)
+    }else{
+      Matrix_cases<-t(utils::combn(x = c(1:d),m = 2))
+      list_corr<-list()
+      list_pairs<-list()
+      for(j in c(1:nrow(Matrix_cases))){
+        Pair<-Matrix_cases[j,]
+        Pair_used<-NAMES[Pair]
+        Sub_df<-df1[,Pair_used]
+        value_corr<-cor(x = Sub_df[,1],y = Sub_df[,2],
+                        method = method_corr)
+        list_corr[[j]]<-value_corr
+        list_pairs[[j]]<-paste0("(",Pair_used[1],",",
+                                Pair_used[2],")")
+      }
+      return(data.frame("value"=unlist(list_corr),
+                        "pair"=unlist(list_pairs)))
+    }
+  }
+  
+}
+#' Title
+#'
+#' @param k_end 
+#' @param bandwidth_h 
+#' @param series_orig 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Window_std_per_threshold<-function(k_end,bandwidth_h,series_orig){
+  
+  Inds_taken<-k_end-bandwidth_h
+  ### take results found with higher threshold--> go backwards
+  sub_series<-series_orig[Inds_taken:k_end]
+  return(sd(sub_series))
+}
+#' Title
+#'
+#' @param series_sorted_stats 
+#' @param k_max 
+#' @param bandwidth_h 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Stability_criterion_choice_threshold<-function(series_sorted_stats,k_max,
+                                               bandwidth_h){
+  
+  ind_beg<-bandwidth_h
+  Inds_candidates<-c(ind_beg:k_max)
+  Vect_std_window<-sapply(Inds_candidates,
+                          FUN = Window_std_per_threshold,
+                          series_orig=series_sorted_stats,
+                          bandwidth_h=bandwidth_h)
+  ### Detect local minimal for the std vector
+  Differences<-diff(Vect_std_window)
+  L_end<-length(Differences)-1
+  ### The previous index gives a higher value
+  Index_1<-which(Differences[1:L_end]<0)+1
+  ### The next index gives a higher value
+  d2<-Differences
+  Index_2<-which(d2>=0)
+  ind_min_local<-intersect(Index_1,Index_2)
+  
+  ### Determine the local minimum giving a value smaller
+  ### than the mean
+  ref_val<-mean(Vect_std_window)
+  All_candidates<-Vect_std_window[ind_min_local]
+  sub_ind_candidates<-which(All_candidates<ref_val)
+  index_special<-ind_min_local[sub_ind_candidates]
+  
+  ### Since we go back to the statistic--> we need to
+  ### recover the original index--> add bandwidth_h
+  Anchor<-index_special[1]+bandwidth_h
+  end_anchor<-index_special[1]
+  Inds_sub<-c(Anchor:end_anchor)
+  ### select the observations close to the chosen beta
+  Sub_stat<-series_sorted_stats[Inds_sub]
+  
+  ### pick among these observations the one closer to the median
+  Med_sub_stat<-median(Sub_stat)
+  Ind_beta_star<-which.min(abs(Sub_stat-Med_sub_stat))
+  beta_star<-Inds_sub[Ind_beta_star]
+  ### (graphics) recover the associated standard deviation (if available)
+  newbeta_star<-ifelse(beta_star>bandwidth_h,
+                       yes = beta_star-bandwidth_h,
+                       no = NA)
+  print(c(beta_star,newbeta_star))
+  STAT_beta<-ifelse(beta_star>bandwidth_h,
+                    yes=Vect_std_window[newbeta_star],
+                    no=NA)
+  return(list("evol_std"=Vect_std_window,
+              "beta_found"=newbeta_star,
+              "candidates"=index_special,
+              "stat_candidates"=Vect_std_window[index_special],
+              "stat_beta"=STAT_beta))
+}
+Concatenate_entries_same_key<-function(list_,key_target){
+  vector_results<-c(sapply(which(names(list_)==key_target),
+                           FUN=function(x){
+                             return(list_[[x]])
+                           }))
+  return(vector_results)
 }
 
 #' Title
