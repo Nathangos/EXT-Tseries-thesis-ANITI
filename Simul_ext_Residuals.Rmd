@@ -626,7 +626,7 @@ Diags<-Run_diagnostics_Gamma_G(dims_elt_text =DIMS,
 ```
 
 
-```{r}
+```{r,message=FALSE,warning=FALSE}
 # Generator options --------------------------------------------------
 ##############
 
@@ -648,8 +648,8 @@ optional_params<-NULL
 if(Approach!="AD"){
   source("functions_MV/Radial_functions.R")
   require(tailDepFun)
-  library(gtools)
-  library(tidyverse)
+  require(gtools)
+  require(tidyverse)
   dyn.load("main.dll")
 }
 if(Approach=="HTawn"){
@@ -1438,6 +1438,10 @@ MMD_RFModel_vs_Obs
 CRAMER_RiskF<-cramer::cramer.test(x = Matrix_RiskF_sim,
                      y = Matrix_RiskF_ext)$pval
 CRAMER_RiskF
+
+```
+
+```{r}
 ### FRECHET scale
 list_RiskF_ext_FCHET<-lapply(re$Frechet_normal$obs,
    FUN = function(x){
