@@ -899,7 +899,7 @@ ggsave(plot = f_Conv_Rad,
 ```{r}
 ### Evolution of the radial vector -------
 ################
-Launch_graph_conv<-TRUE
+Launch_graph_conv<-FALSE
 if(Launch_graph_conv){
   # Convergence for the radius --------
   #################################
