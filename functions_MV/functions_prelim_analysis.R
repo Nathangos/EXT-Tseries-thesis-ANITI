@@ -511,16 +511,20 @@ mindist_update<-function (data, ts = 0.15, method = "mad")
   colnames(df)<-c("Nb_k","value_metric","metric")
   return(df)
 }
-#' Title
+#' GGplot 2 object displaying the evolution 
+#' of the shape parameter for each coordinate 
+#' of the analysed vector. 
 #'
-#' @param dims_elt_text 
-#' @param Vectors_HTAIL 
-#' @param Vect_k 
+#' @param dims_elt_text vector[float]. Dimensions used
+#' for the theme. 
+#' @param Vectors_HTAIL vector[float]. Observations values.
+#' @param Vect_k vector[int]. Candidate number of exceedances. 
 #' @param q 
-#' @param root_export 
-#' @param YLIM_MV 
+#' @param root_export string. Director path for exporting 
+#' the graphic. 
+#' @param YLIM_MV vector[float]. Ylims used in the ggplot2. 
 #'
-#' @return
+#' @return NA
 #' @export
 #'
 #' @examples
@@ -560,9 +564,10 @@ Run_diagnostics_Gamma_G<-function(dims_elt_text,Vectors_HTAIL,
                            FUN =function(x){
                              Fct_correct_name(x = x,target = "Surcote",
                                               replacement = "Surge")})
-  GG_shape_AD<-ggplot2::ggplot(data=Df_all,aes(x=number_excesses,y =gamma_estimed,color=source,
-                                               group=interaction(source),
-                                               linetype=source))+
+  GG_shape_AD<-ggplot2::ggplot(data=Df_all,aes(x=number_excesses,
+              y =gamma_estimed,color=source,
+               group=interaction(source),
+               linetype=source))+
     geom_line()+
     facet_wrap(~pair_vars)+
     ylab(expression(gamma))+
@@ -604,15 +609,19 @@ Run_diagnostics_Gamma_G<-function(dims_elt_text,Vectors_HTAIL,
   
 }
 
-#' Title
+#' Correlation value between two time series at 
+#' each time step. 
 #'
-#' @param method_corr 
-#' @param df1 
+#' @param method_corr string. Correlation type. 
+#' @param df1 dataframe. Univariate time series
+#' for the first forcing condition. 
 #' @param Intersect_times 
-#' @param df2 
-#' @param mat_corr 
+#' @param df2 dataframe. Univariate time series
+#' for the second forcing condition. 
+#' @param mat_corr Boolean. Type of return type chosen
+#' (matrix or list). 
 #'
-#' @return
+#' @return list or matrix. 
 #' @export
 #'
 #' @examples
@@ -634,7 +643,8 @@ Fct_correlations<-function(method_corr,df1,
                      series_1<-x_1[,j]
                      
                      series_2<-x_2[,j]
-                     return(cor(x = series_1,y = series_2,method = method_corr))
+                     return(cor(x = series_1,y = series_2,
+              method = method_corr))
                    },x_1=df1,x_2=df2)
     return(vect_r)
   }else{
@@ -663,13 +673,14 @@ Fct_correlations<-function(method_corr,df1,
   }
   
 }
-#' Title
+#' Local standard deviation of a statistic 
+#' given a chosen number of exceedances. 
 #'
-#' @param k_end 
-#' @param bandwidth_h 
-#' @param series_orig 
+#' @param k_end inr. Number of exceedances. 
+#' @param bandwidth_h int. Size of the window. 
+#' @param series_orig vector[float]. Statistic values. 
 #'
-#' @return
+#' @return Float. Standard deviation of the local region. 
 #' @export
 #'
 #' @examples
@@ -680,13 +691,16 @@ Window_std_per_threshold<-function(k_end,bandwidth_h,series_orig){
   sub_series<-series_orig[Inds_taken:k_end]
   return(sd(sub_series))
 }
-#' Title
+#' Evolution of the local standard deviation 
+#' with the number of exceedances. 
 #'
-#' @param series_sorted_stats 
-#' @param k_max 
-#' @param bandwidth_h 
+#' @param series_sorted_stats vector[float]. Values of the
+#' statistic. 
+#' @param k_max int. Maximum number of exceedances. 
+#' @param bandwidth_h int. Size of the window used 
+#' to compute the local standard deviation. 
 #'
-#' @return
+#' @return List
 #' @export
 #'
 #' @examples
@@ -696,9 +710,9 @@ Stability_criterion_choice_threshold<-function(series_sorted_stats,k_max,
   ind_beg<-bandwidth_h
   Inds_candidates<-c(ind_beg:k_max)
   Vect_std_window<-sapply(Inds_candidates,
-                          FUN = Window_std_per_threshold,
-                          series_orig=series_sorted_stats,
-                          bandwidth_h=bandwidth_h)
+    FUN = Window_std_per_threshold,
+        series_orig=series_sorted_stats,
+           bandwidth_h=bandwidth_h)
   ### Detect local minimal for the std vector
   Differences<-diff(Vect_std_window)
   L_end<-length(Differences)-1
