@@ -167,7 +167,9 @@ KNN_distancef_returnMean<-function(i,X_sim,X_data,f_distance,K,hearts,
   }
 
 }
-#' Title
+#' Generate the original time series using 
+#' the previous time series and the simulated
+#' residual time series
 #'
 #' @param hearts object from the parallel cluster
 #' @param list_variable variable names. 
@@ -307,6 +309,7 @@ Generator_TSERIES_MV<-function(hearts,list_variable,
                    FUN=max)
     l_RiskF_Epsi_Data[[name_variable]]<-Max_epsiraw
     # Import Resid simulated ------------------------------------------------------------
+    ###################################
     Epsi_Sim<-read.csv(file = paste0(link_g_chosen,prefix_link_resid,
                                      name_variable,"_simul_",
                                      subfix_link_Sim,".csv"))
@@ -413,22 +416,17 @@ Generator_TSERIES_MV<-function(hearts,list_variable,
              apply(X = MATRIX_rel_epsi_previous,MARGIN = 2,FUN = max))
       XLAB<-expression("Max of "~epsilon[M~","~Z_gg])
       XLAB<-as.expression(do.call('substitute', list( XLAB[[1]], 
-                                                      list(Z_gg=Corrected_list_variable[Z_gg]))))
+                    list(Z_gg=Corrected_list_variable[Z_gg]))))
       YLAB<-expression("Max of "~tilde(X)[M-Delta~","~Z_gg])
       YLAB<-as.expression(do.call('substitute', list( YLAB[[1]], 
-                                                      list(Z_gg=Corrected_list_variable[Z_gg]))))
-      GG_relation<-ggplot2::ggplot(MATRIX_rel_epsi_previous,aes(x=Epsi_norm,y=X_prevnorm,
-                                                       col="data"))+
-        geom_point()+
-        geom_point(data=MATRIX_rel_epsi_previous_sim,aes(y=X_prevnorm,
-                                                         x=Epsi_norm,col="simulations",shape="simulations"),size=0.75
-                   ,pch=17)+
-        xlab(XLAB)+
-        ylab(YLAB)+
-        scale_color_manual(values=cols_gg)+
-        # ylim(c(m,M))+
-        # xlim(c(m,M))+
-        labs(col="Legend")+
+                    list(Z_gg=Corrected_list_variable[Z_gg]))))
+      GG_relation<-ggplot2::ggplot(MATRIX_rel_epsi_previous,
+          aes(x=Epsi_norm,y=X_prevnorm,col="data"))+geom_point()+
+        geom_point(data=MATRIX_rel_epsi_previous_sim,
+          aes(y=X_prevnorm,x=Epsi_norm,col="simulations",
+              shape="simulations"),size=0.75,pch=17)+
+        xlab(XLAB)+ylab(YLAB)+
+        scale_color_manual(values=cols_gg)+labs(col="Legend")+
         theme(legend.direction = "horizontal",
               axis.title=element_text(size=FSIZE),
               strip.text=element_text(size=13),
@@ -442,7 +440,6 @@ Generator_TSERIES_MV<-function(hearts,list_variable,
         Summary_relation<-Summary_relation+
           GG_relation+guides(col="none")
       }
-      #list_gg[[name_v]]<-GG_relation
       Z_gg<-Z_gg+1
       
     }
