@@ -90,8 +90,6 @@ lNAME<-c("U","Surge","Hs")
 link_export_<-paste0("Generated_extremes/",G_used2,"/")
 try({
   dir.create(file.path(link_export_))
-  Metamod_path<-paste0("Metamod_generations")
-  dir.create(file.path(Metamod_path))
 })
 ```
 
