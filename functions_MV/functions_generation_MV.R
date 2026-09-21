@@ -128,8 +128,24 @@ KNN_distancef<-function(i,X_sim,X_data,f_distance,K,hearts){
   
   return(Sampled_M)
 }
+#' Average of the KNN neighbors of a multivariate time series
+#'
+#' @param i int. Index of a specific simulated time series,
+#' which corresponds here to an input of a KNN setting.
+#' @param X_sim list. Simulated multivariate time series. 
+#' @param X_data list. Observed multivariate time series. 
+#' @param f_distance function. Distance function.
+#' @param K int. Number of blocks.
+#' @param hearts objects to run parallel computation.
+#' @param Y_data list. Output multivariate time series. 
+#'
+#' @return list. Multivariate time series. 
+#' @export
+#'
+#' @examples
 KNN_distancef_returnMean<-function(i,X_sim,X_data,f_distance,K,hearts,
                                    Y_data){
+  
   Variables_seen<-names(X_sim)
   ### Compute distance for each forcing condition
   if(is.null(f_distance)){
