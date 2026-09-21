@@ -69,7 +69,23 @@ distance_sq<-function(h){
 }
 # Knn with choice of the index --------------------------------------------
 #####################
+
+#' Index of the chosen data time series using a KNN setting.  
+#'
+#' @param i int. Index of a specific simulated time series,
+#' which corresponds here to an input of a KNN setting. 
+#' @param X_sim list. Simulated multivariate time series. 
+#' @param X_data list. Observed multivariate time series. 
+#' @param f_distance function. Distance function.
+#' @param K int. Number of blocks.
+#' @param hearts objects to run parallel computation.
+#'
+#' @return Int. 
+#' @export
+#'
+#' @examples
 KNN_distancef<-function(i,X_sim,X_data,f_distance,K,hearts){
+  
   
   ### Compute distance for each forcing condition
   if(is.null(f_distance)){
@@ -580,8 +596,26 @@ Generator_TSERIES_MV<-function(hearts,list_variable,
               "predictions_Johanna"=list_XendJoh,"target_Johanna"=l_Target_Joh))
   
 }
+#' Distance between the target time series of the test block and 
+#' the predictions. 
+#'
+#' @param hearts object to run parallel computations
+#' @param f_distance function. Distance function.
+#' @param l_Epsi_Data_varwise list. Residual values for 
+#' each variable. 
+#' @param l_output list. Values of interest. 
+#' @param indexes_Kfold vector[int]. Indexes 
+#' of block.  
+#' @param j_test int. Index of the test block.
+#' @param K_chosen int. Number of blocks. 
+#'
+#' @return Float. 
+#' @export
+#'
+#' @examples
 K_fold_k_param_j_test<-function(hearts,f_distance,l_Epsi_Data_varwise,
                               l_output,indexes_Kfold,j_test,K_chosen){
+  
   Indexes_train<-which(indexes_Kfold!=j_test)
 
   l_Epsi_Data_varwise_train<-list()
@@ -675,22 +709,26 @@ K_fold_k_param_j_test<-function(hearts,f_distance,l_Epsi_Data_varwise,
   return(Overall_Distance)
 }
 
-#' Title
+#' Cross-validation error between the target time series and 
+#' the predictions. 
+#' 
+#' @param hearts object to run parallel computations
+#' @param f_distance function. Distance function.
+#' @param number_Kfold int. Number of blocks. 
+#' @param list_variable vector[string]. Variable names.
+#' @param Name_riskF string. Name of the compound risk function. 
+#' @param link_import_residuals string. Directory path of 
+#' the file of the residuals. 
+#' @param vector_K vector[int]. Vector of indexes. 
 #'
-#' @param hearts 
-#' @param f_distance 
-#' @param vector_k 
-#' @param l_Epsi_Data_varwise 
-#' @param l_output 
-#' @param number_Kfold 
-#'
-#' @return
+#' @return list. Errors obtained for each test block. 
 #' @export
 #'
 #' @examples
 K_fold_k_param<-function(hearts,f_distance,
-                        number_Kfold,type_data,list_variable,
+                        number_Kfold,list_variable,
                         Name_riskF,link_import_residuals,vector_K){
+  
 
     link_g_chosen<-paste0("residuals_MV/",Name_riskF,"/")
     
@@ -732,8 +770,8 @@ K_fold_k_param<-function(hearts,f_distance,
   N<-nrow(l_Input[[1]])
   Vect_ind_block<-c(1:number_Kfold)
   ### Repartition in K folds for all observations
-  indexes_Kfold<-sample(x = Vect_ind_block,size = N,
-         replace = TRUE)
+  indexes_Kfold<-sample(x = Vect_ind_block,
+      size = N, replace = TRUE)
   ### Run for all possible values
   l_all_cv<-list()
   for(IND in c(1:length(vector_K))){
