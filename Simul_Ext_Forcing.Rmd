@@ -43,7 +43,6 @@ COMMON_theme<-theme(axis.title = element_text(size=20),
                     axis.text=element_text(size=17))
 ```
 
-
 ```{r}
 
 G_used<-"max"
@@ -74,7 +73,11 @@ if(Approach=="AD"){
 }else{
   opt_used<-Approach
 }
-#METHOD_MGtransf<-"_EGPD_transf_"
+```
+
+
+```{r}
+
 METHOD_MGtransf<-"_Mixt_transf_"
 
 lNAME<-c("Hs","U","Surcote")
