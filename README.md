@@ -6,6 +6,7 @@ You are here in the multivariate branch.
 
 For better modeling surge-induced coastal flooding, we analyse extreme multivariate time series and build a simulator of extreme time series. 
 Our main contributions are the following:
+
 -(a) Accounting for temporal dependence and short-tailed behavior. Use of regularly varying functions, extreme value model and polar decomposition.
 
 -(b) Polar decomposition of extreme multivariate time series with the modeling of polar coordinates. First, we model the distribution of normalised multivariate time series by approaching the distribution of their coordinates in a finite-dimensional basis. 
