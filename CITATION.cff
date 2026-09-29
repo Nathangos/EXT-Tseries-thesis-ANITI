@@ -1,0 +1,9 @@
+cff-version: 1.1.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Gorse
+  given-names: Nathan
+orcid: https://orcid.org/0009-0004-1115-6948
+title:
+version: v1.1.1
+date-released: 2026-09-28
