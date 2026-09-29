@@ -16,7 +16,7 @@ require(grid)
 require(gridExtra)
 require(mvPot)
 require(stringr)
-
+require(scales)
 ```
 
 ```{r,message=FALSE,warning=FALSE}
@@ -111,7 +111,7 @@ sub_Ind_j<-Dates_Joh[which(Dates_Joh%in%Dates)]
 Previous<-sub_Ind_j[1]
 
 #### KNN-based approach
-KCHOSEN<-15
+KCHOSEN<-20
 ```
 
 
@@ -127,52 +127,43 @@ VECTOR_K<-seq.int(from = 5,to = 40,
 ### two options
 ### a) sample with probability the previous time series
 ### b) take for each forcing condition a theoretical "mean" previous time series
-# CV_results_perK<-K_fold_k_param( hearts = hearts,
-#                 list_variable = lNAME,
-#                 link_import_residuals = Link_resid,
-#                 f_distance = distance_sq,Name_riskF=G_used2,
-#                 number_Kfold = NUMBER_FOLD_CrossValid,
-#                 type_donnees = "HIVER",
-#                 vector_K = VECTOR_K)
-# melting_CV_list<-as.data.frame(melt(CV_results_perK))
-# 
-# colnames(melting_CV_list)<-c("value","hyper_param")
-# melting_CV_list$hyper_param<-VECTOR_K[melting_CV_list$hyper_param]
-# melting_CV_list$hyper_param<-as.character(melting_CV_list$hyper_param)
-# melting_CV_list
-# 
-# results_per_K<-melting_CV_list %>%
-#   group_by(hyper_param) %>%
-#   summarise(meanV=mean(value))
-# results_per_K
-# melting_CV<-as.data.frame(results_per_K)
-# melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
-# colnames(melting_CV)<-c("hyper_param",
-#                         "value")
-# EXPR_Kchosen<-expression(n[KNN])
-# melting_CV$hyper_param<-as.numeric(melting_CV$hyper_param)
-# GG_CV_metrics<-ggplot2::ggplot(melting_CV)+
-#   #facet_wrap(~stat,scales = "free_y")+
-#   geom_line(aes(x=hyper_param,y=value))+
-#   guides(col="none")+
-#   xlab("Number of neighbors")+
-#   ylab("Mean Accuracy (CV)")+
-#   geom_vline(aes(xintercept=KCHOSEN,
-#                  linetype="nkNN"))+
-#   scale_linetype_manual(
-#     values = 3,
-#     labels=EXPR_Kchosen)+labs(linetype="Legend")+
-#   theme(legend.direction = "horizontal",
-#         axis.title=element_text(size=FSIZE),
-#         strip.text=element_text(size=13),
-#         legend.title = element_text(size=14),
-#         legend.text=element_text(size=13),
-#         legend.position = "bottom")+
-#   COMMON_theme
-# GG_CV_metrics
-# ggsave(filename = paste0("graphiques_MV/data/",G_used2,
-#                          "/CV_metrics_KNN.png"),
-#        plot = GG_CV_metrics,width=10,height=6)
+CV_results_perK<-K_fold_k_param( hearts = hearts,
+                list_variable = lNAME,
+                link_import_residuals = Link_resid,
+                f_distance = distance_sq,Name_riskF=G_used2,
+                number_Kfold = NUMBER_FOLD_CrossValid,
+                vector_K = VECTOR_K)
+
+
+```
+
+```{r}
+cv.all<-do.call("rbind.data.frame",
+                  CV_results_perK)
+EXPR_Kchosen<-expression(n[KNN])
+LINETYPES<-linetype_pal()(length(lNAME))
+GG_CV_metrics<-ggplot(cv.all)+
+  facet_wrap(~variable,scales = "free_y")+
+  geom_line(aes(x=K,y=MSE,col=variable))+
+  guides(col="none")+xlab("Number of neighbors [-]")+
+  ylab("MSE [-]")+geom_vline(aes(xintercept=KCHOSEN,
+                          linetype="nkNN"))+
+  scale_linetype_manual(
+    values = 3,
+    labels=EXPR_Kchosen)+labs(linetype="Legend")+
+  theme(legend.direction = "horizontal",
+        axis.title=element_text(size=FSIZE),
+        strip.text=element_text(size=13),
+        legend.title = element_text(size=14),
+        legend.text=element_text(size=13),
+        legend.position = "bottom")+COMMON_theme
+GG_CV_metrics
+```
+
+```{r}
+ggsave(filename = paste0(ROOT_export_graph,
+                         "/CV_metrics_KNN.png"),
+       plot = GG_CV_metrics,width=10,height=5)
 ```
 
 ```{r}
@@ -213,18 +204,9 @@ L_Data_Ext<-Output$Target
 L_Sim<-Output$Result
 
 for(nameV in names(Output$X0)){
- 
-  # Reals_1<-L_Data_Ext[[nameV]]
-  # Simuls_1<-L_Sim[[nameV]]
   Correct_name<-Fct_correct_name(x = nameV,
                                  target = "Surcote",
                                  replacement = "Surge")
-  # DF_gene<-rbind.data.frame(Reals_1,Simuls_1)
-  # DF_gene$origin<-c(rep("data_ext",nrow(Reals_1)),
-  #                   rep("sim_ext",nrow(Simuls_1)))
-  # write.csv(file=paste0(Metamod_path,"/",Correct_name,"_data_sim.csv"),
-  #           x = DF_gene,row.names = FALSE)
-  #################
   
   
   YLEFT<-paste0(Correct_name,Unit_variable[[nameV]])

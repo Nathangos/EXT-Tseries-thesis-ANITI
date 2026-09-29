@@ -701,28 +701,16 @@ K_fold_k_param_j_test<-function(hearts,f_distance,l_Epsi_Data_varwise,
   for(name_v in names(l_Epsi_Data_varwise)){
     ### Distance per forcing condition
     Data_Xo_v<-l_output_train[[name_v]]
-    ### predicted if index
-    ### Data_Xo_chosen<-Data_Xo_v[Index_delta,]
-    ### predicted if df
     Data_Xo_chosen<-List_Delta_varwise[[name_v]]
     ### real one
     Data_Xo_true<-l_output_test[[name_v]]
-    ### Take into account the scale of the forcing condition
-    ### use the R^2 coeff
-    #Mean_true<-colMeans(Data_Xo_true)
-    Weight_summarised<-sum((Data_Xo_true)**2)**(-1/2)
     Gap_mat<-Data_Xo_chosen-Data_Xo_true
     Dces_found<-apply(Gap_mat,MARGIN = 1,
                       FUN = f_distance)
-    #Mat_dce[[name_v]]<-Dces_found*Weight_summarised
-    Ratio_<-Dces_found*Weight_summarised
-    Mat_dce[[name_v]]<-1-Ratio_
-    # Mat_dce[[name_v]]<-list("pred"=Data_Xo_chosen,
-    #                         "target"=Data_Xo_true)
+    MSE<-mean(Dces_found)
+    Mat_dce[[name_v]]<-MSE
   }
-  ### per obs of the test set--> gives the mean distance
-  Overall_Distance<-rowMeans(as.data.frame(Mat_dce))
-  return(Overall_Distance)
+  return(unlist(Mat_dce))
 }
 
 #' Cross-validation error between the target time series and 
@@ -792,13 +780,24 @@ K_fold_k_param<-function(hearts,f_distance,
   l_all_cv<-list()
   for(IND in c(1:length(vector_K))){
     K_j<-vector_K[IND]
-    All_CV_j<-t(sapply(X = Vect_ind_block,
+    All_CV_j<-rbind.data.frame(sapply(X = Vect_ind_block,
           K_fold_k_param_j_test,
           hearts=hearts,f_distance=f_distance,
           l_Epsi_Data_varwise=l_Input,
           l_output=l_output,
           indexes_Kfold=indexes_Kfold,K_chosen=K_j))
-    l_all_cv[[IND]]<-do.call(c,All_CV_j)
+    All_CV_j<-rowMeans(All_CV_j)
+    Mat_value.K<-as.data.frame(cbind(All_CV_j,
+                                     rep(K_j,length(All_CV_j))))
+    colnames(Mat_value.K)<-c("MSE","K")
+    Mat_value.K$variable<-rownames(Mat_value.K)
+    Mat_value.K$variable<-sapply(Mat_value.K$variable,
+                                 FUN = function(str){
+                                   Fct_correct_name(x = str,
+                                                    target = "Surcote",
+                                                    replacement = "Surge")})
+    rownames(Mat_value.K)<-c(1:nrow(Mat_value.K))
+    l_all_cv[[IND]]<-Mat_value.K
   }
   return(l_all_cv)
 }
